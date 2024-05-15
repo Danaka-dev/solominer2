@@ -5,8 +5,8 @@
 [![badge](https://img.shields.io/badge/Platform-Linux-orange)]()
 [![badge](https://img.shields.io/badge/License-MIT-blue)](https://github.com/Danaka-dev/solominer2/blob/main/LICENSE)
 
-    Howdy fellow solo adventurers and welcome to your very own one-stop, jack of all trades, swiss knife digital
-    currency mining assistant.
+**Howdy fellow solo adventurers and welcome to your very own one-stop, jack of all trades, swiss knife digital
+currency mining assistant.**
 
 **Solominer** lets you pilot optimized mining algorithms and manage the complex configuration and communication involved 
 with mining digital currency from a straightforward, comfortable and great looking (or at least we think so) graphic user
@@ -66,7 +66,7 @@ https://github.com/Danaka-dev/solominer2
 Download the release files and check that the 'solominer' file is allowed to be executed as a program before
 executing solominer as usual.
 
-To enable the use of huge pages and advanced cpu configuration requires root privilege, from the terminal in the
+To enable the use of huge pages and advanced cpu configuration requires root privilege, from the terminal in your
 binary's directory:
 
 ```sh
