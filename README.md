@@ -1,14 +1,12 @@
 # SOLOMINER 2
 
----
 [![badge](https://img.shields.io/badge/Language-C++-green)]()
 [![badge](https://img.shields.io/badge/Release-v2.0.beta1-blue)]()
 [![badge](https://img.shields.io/badge/Platform-Linux-orange)]()
 [![badge](https://img.shields.io/badge/License-MIT-blue)](https://github.com/Danaka-dev/solominer2/blob/main/LICENSE)
 
----
-Howdy fellow solo adventurers and welcome to your very own one-stop, jack of all trades, swiss knife digital currency
-mining assistant.
+    Howdy fellow solo adventurers and welcome to your very own one-stop, jack of all trades, swiss knife digital
+    currency mining assistant.
 
 **Solominer** lets you pilot optimized mining algorithms and manage the complex configuration and communication involved 
 with mining digital currency from a straightforward, comfortable and great looking (or at least we think so) graphic user
@@ -56,7 +54,6 @@ But do have a look, test the software, tell us what you think. Your feedback is 
 
 Installing the software
 -----------------------
----
 
 ![](https://github.com/Danaka-dev/solominer2/blob/main/assets/images/os/linux-16x16.png)
 **Linux**
@@ -66,23 +63,21 @@ Installing the software
 Make sure to download the binaries and configuration files from the official solominer2 repository:\
 https://github.com/Danaka-dev/solominer2 
 
-Download files from the release directory that corresponds to your platform. Check that the 'solominer' file is allowed
-to be executed as a program.
+Download the release files and check that the 'solominer' file is allowed to be executed as a program before
+executing solominer as usual.
 
-run 'solominer'
-
-*NB: there might be a slight delay before the gui appears as the program is gathering run-time information about  the 
-blockchains.* 
-
-To enable use of huge pages and advanced cpu configuration requires root privilege, from the terminal in the binary's directory:
+To enable the use of huge pages and advanced cpu configuration requires root privilege, from the terminal in the
+binary's directory:
 
 ```sh
 sudo ./solominer
 ```
+***NOTE***
+*there might be a delay before the gui appears as the program is gathering run-time information about the blockchains.*
 
 2. Configure
 
-Within the program, configure connections to your existing core/wallet, or start the one provided with the release.
+Within the program, configure connections to your existing core/wallet, or start the ones provided with the release.
 
 You can access the configuration dialog by clicking on the wallet balance ('not connected' if no connection yet) or 
 clicking the label below the core icon (that's on the left of the start button) in the list of connections. 
@@ -93,8 +88,14 @@ box in the configuration dialog to get a new address from your core/wallet, or i
 It is also possible to configure the connection by editing the solominer.conf file directly before starting the 
 application.
 
-The program will need to be run for a few minutes before the statistical values, such as earnings per day, become well 
-accurate.
+
+***NOTE***
++ *when first starting a full core daemon or wallet it will synchronize with the blockchain, this can take a long time
+  and may require over 1Gb of disk space per blockchain.*
++ *Solominer will need to mine for a few minutes before the statistical values, such as earnings per day, become well
+  accurate for your machine.*
++ *precompiled core binaries may be compressed in the release directory, look into ./cores/ subdirectory for the
+  the blockchain you want to use and uncompress any .zip files.*
 
 ![](https://github.com/Danaka-dev/solominer2/blob/main/assets/images/os/windows-16x16.png)
 **Windows**
@@ -103,7 +104,6 @@ accurate.
 
 Building the library
 --------------------
----
 
 **Get the source code**
 
@@ -136,13 +136,12 @@ make -j8
 
 (NB: you may replace -j8 with the actual number of cores on your machine if different)
 
-Participate
------------
----
+Contribute
+----------
 > <cite> Mining solo harbors this strange impression of togetherness and solidarity that arise from acting as an 
-> individual in our own bubble while at the same time participating in the most positive way to a greater thing. </cite>
+> individual, in our own bubble, while at the same time participating in the most positive way to a greater thing. </cite>
 
-The Solominer adventure is that of community and is open to the participation of everyone
+The **Solominer** adventure is that of community and is open for everyone to participate.
 
 ### *Many ways one can contribute to Solominer:* 
 
@@ -152,7 +151,7 @@ The Solominer adventure is that of community and is open to the participation of
 + Report on bugs, isolate bugs, propose fixes.
 + Review code, write test units, fix typoes.
 + Write documentation, tutorials, samples.
-+ Provide with translation.
++ Provide translation.
 + And more... 
 
 ### *Code of conduct*
@@ -161,16 +160,15 @@ A positive attitude and constructive mindset is all you need to participate to S
 
 Coming soon
 -------------
----
 We are looking forward the release of **Solominer** version **BETA 2** which will feature automatic currency exchange
-of mining rewards in the coins of your choice (BTC, ETH, LTC, USDT...), support for more blockchains and more...
+of mining rewards in the coins of your choice (BTC, ETH, LTC, USDT...), support for more blockchains and more gorgeous
+features...
 
 ### ***Stay tuned !***
 
 
 Donation
 --------
----
 
 **Solominer** is configured for a 3% donation level, which can easily be changed or removed from the source code.
 If you do so however, you might want to consider making a one-off donation to support our work. 
@@ -191,8 +189,6 @@ does not guarantee we will choose to make the requested feature.
 
 ---
 
----
-
 ### *footnote*
 We are dedicated to share great quality software and work hard to provide a stable, bug free and secure experience to
 our users, but unfortunately cannot provide any warranty of any kind for using the software which you are using at your
@@ -205,9 +201,7 @@ cryptocurrency from secure site and reputable sources. Inspect and compile the s
 caution when using noncustodial cryptocurrency solutions, keep your passwords well secured preferably in cold storage.
 
 ---
-
-[Danaka](mailto:danaka-dev@pm.me)
+![](https://github.com/Danaka-dev/solominer2/blob/main/assets/images/solominer-32x32.png)
 
 ### ***Thank you for using Solominer, and, as always, may the blocks be with you!***
-![](https://github.com/Danaka-dev/solominer2/blob/main/assets/images/solominer-32x32.png)  
-
+[Danaka](mailto:danaka-dev@pm.me)
