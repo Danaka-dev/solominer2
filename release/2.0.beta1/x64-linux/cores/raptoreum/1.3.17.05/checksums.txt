@@ -1,0 +1,15 @@
+sha256:
+------------------------------------
+d0873b60758874d4c26b91f15776c6131b74d186  checksums.txt
+e47078fb28e91641df368d519cdc7adbe1de61e2  raptoreum-cli
+7f390051b0af6d6f1d20d162bfa28470c00599f5  raptoreum-qt
+84fd3945c6930ce32124abb0c520b8ad825c848b  raptoreum-tx
+521732aaf9bffefa88ab433db6d51f594acc29c9  raptoreumd
+------------------------------------
+openssl-sha256:
+------------------------------------
+76cae8879d116239324db4bd3a40d9ac25f8669999cadc34c7cd593d09b668c3  checksums.txt
+79066ad9ce71c0642619c5d675fa2351c955bcf9643c958efc0f33554b603356  raptoreum-cli
+cb217c6fc732ab049d257d4e13ab003b918618e778d54f9702d84c82f0f97a51  raptoreum-qt
+5776179fa98bad6c60567e67e5b8c0fd4b2e8eb310b100e8b1d33593c2a33526  raptoreum-tx
+eeb2f5d61db963dafd8f3ae990b999066c78482f14a63e8c26cd2c3eb99b3bf2  raptoreumd
