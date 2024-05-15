@@ -551,6 +551,7 @@ struct UiConnection : public GuiGroup ,public IMinerListener ,public IGuiCommand
 
 ///-- MessageBox
     GuiMessageBox m_startWalletBox;
+    GuiMessageBox m_noMiningAddressBox;
 
 ///-- instance
     UiConnection( CDashboardWindow &parent ,CConnection &connection ) :
@@ -562,6 +563,7 @@ struct UiConnection : public GuiGroup ,public IMinerListener ,public IGuiCommand
         ,balanceLabel( "..." ,this )
         ,earningLabel( "..." ,this )
         ,m_startWalletBox( *this ,"Core" ,"Would like to start core or configure it first?" ,{  {"Cancel","3"} ,{"Configure","1005"} ,{"Start","1006"} } )
+        ,m_noMiningAddressBox( *this ,"Core" ,"No mining address was set for this coin, do you want to configure it?" ,{ {"No","3"} ,{"Configure","1005"} } )
     {
         connection.setMinerListener( this );
         m_refreshTimer = parent.addTimer( *this ,CONNECTION_REFRESH_DELAY );
@@ -1016,16 +1018,30 @@ struct UiConnection : public GuiGroup ,public IMinerListener ,public IGuiCommand
     }
 
 ///-- commands
+    void onMiningStart() {
+        if( m_connection.info().mineCoin.address.empty() ) {
+            root().ShowMessageBox( m_noMiningAddressBox );
+            return;
+        }
+
+        m_connection.Start();
+        startStats();
+    }
+
+    void onMiningStop() {
+        m_connection.Stop();
+    }
+
     void onMiningCommand() {
         switch( miningCommand ) {
             default:
                 break;
             case miningStart:
-                m_connection.Start();
-                startStats();
+                onMiningStart();
                 break;
             case miningStop:
-                m_connection.Stop(); break;
+                onMiningStop();
+                 break;
         }
     }
 
