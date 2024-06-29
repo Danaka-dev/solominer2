@@ -33,7 +33,7 @@
 //////////////////////////////////////////////////////////////////////////
 TINY_NAMESPACE {
 
-using namespace TINY_NAMESPACE_GUI;
+using TINY_NAMESPACE_GUI;
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
@@ -144,6 +144,8 @@ void GuiLabel::setProperties( const Params &properties ) {
 
 //--
 void GuiLabel::onDraw( const OsRect &updateArea ) {
+    if( !shouldDraw(updateArea) ) return;
+
     GuiControl::onDraw(updateArea);
 
     if( m_text.empty() ) return;
@@ -192,7 +194,7 @@ void GuiButton::setProperties( const Params &properties ) {
     GuiControl::setProperties( properties );
     GuiCommandOnClick::setProperties( properties );
 
-    fromString( text() ,getMember( properties ,"text" ) );
+    fromMember( text() ,properties ,"text" );
 
     // String s = getMember( properties ,"colors" );
 
@@ -298,23 +300,107 @@ REGISTER_CLASS(GuiCheckBox)
 
 REGISTER_CLASS(GuiList)
 
-void GuiList::Placer::EmplaceLine( int i ,int n ,const Rect &client ,Rect &area ) {
-    Point p0 = getRectPoint( client ,origin );
+void GuiList::onItemSelect( GuiControl &item ,int index ,bool selected ) {
 
-    Point pos = Point(
-            size.x * getDimSign(0,direction)
-            ,size.y * -1 * getDimSign(1,direction)
-    );
-
-    area = Rect( p0 ,p0+size ) + (pos * i);
 }
 
+void GuiList::onLayout( const OsRect &clientArea ,OsRect &placeArea ) {
+    GuiGroup::onLayout( clientArea ,placeArea );
+
+    Rect group = area();
+
+    int n = controls().size();
+
+    int i=0; for( auto &it : controls() ) {
+        Rect area ,r;
+
+        m_placer.Emplace( i ,n ,group ,area );
+
+        it->onLayout( area ,r );
+
+        ++i;
+    }
+}
+
+void GuiList::onClick( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) {
+    GuiControl::onClick( p ,mouseButton ,keyState );
+
+    int i = 0; for( auto &it : controls() ) {
+        if( it->area() & p ) {
+            onItemSelect( it.get() ,i ,true ); return;
+        }
+
+        ++i;
+    }
+}
+
+//--
 void GuiList::Placer::Emplace( int i ,int n ,const Rect &client ,Rect &area ) {
     switch( placement ) {
         default:
         case placeLine:
             EmplaceLine( i ,n ,client ,area ); break;
+        case placeZigzag:
+            EmplaceZigzag( i ,n ,client ,area ); break;
+        case placeDiamond:
+            EmplaceDiamond( i ,n ,client ,area ); break;
     }
+}
+
+void GuiList::Placer::EmplaceLine( int i ,int n ,const Rect &client ,Rect &area ) {
+    Point p0 = getRectPoint( client ,origin );
+
+    Point pos = Point(
+        size.x * getDimSign(0,direction)
+        ,size.y * getDimSign(1,direction) * -1 //! @note inverted
+    );
+
+    area = Rect( p0 ,p0+size ) + (pos * i);
+}
+
+void GuiList::Placer::EmplaceZigzag( int i ,int n ,const Rect &client ,Rect &area ) {
+    Point p0 = getRectPoint( client ,origin );
+
+    int nx = client.getWidth() / size.x;
+    int ny = client.getHeight() / size.y;
+
+    //! TODO flip direction priority ? (here x is first)
+    if( nx == 0 ) return;
+    int ix = i % nx;
+    int iy = i / nx;
+
+    Point pos = Point(
+        ix * size.x * getDimSign(0,direction)
+        ,iy * size.y * getDimSign(1,direction) * -1 //! @note inverted
+    );
+
+    area = Rect( p0 ,p0+size ) + pos;
+}
+
+void GuiList::Placer::EmplaceDiamond( int i ,int n ,const Rect &client ,Rect &area ) {
+    if( n == 0 ) return;
+
+    Point p0 = client.getCenter(); // getRectPoint( client ,origin );
+    // DIRECTION Y (expand Y)
+
+    int nx = client.getWidth() / size.x;
+    int ny = client.getHeight() / size.y;
+
+    int m = MIN( nx ,(int) ceil( sqrt( (double) n ) ) );
+
+    int ix = i % m;
+    int iy = i / m;
+
+    Point pos = Point(
+        ix*size.x - (m*size.x)/2
+        ,iy*size.y - MIN( client.getHeight() ,m*size.y ) /2
+    );
+
+    area = Rect( p0 ,p0+size ) + pos;
+
+     /* X X X
+    X X X X
+     X X X */
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -323,12 +409,14 @@ void GuiList::Placer::Emplace( int i ,int n ,const Rect &client ,Rect &area ) {
 REGISTER_CLASS(GuiImageBox)
 
 //--
-GuiImageBox::GuiImageBox( GuiImage *image ,const char *text ,IGuiCommandEvent *listener ) :
-    m_image(NullPtr) ,m_thumbId(-1) ,m_textPlacement(alignCenter)
+GuiImageBox::GuiImageBox( GuiImage *image ,const char *text ,IGuiMessage *listener ) :
+    m_image(NullPtr) ,m_thumbId(-1) ,m_textPlacement(alignBottom)
 {
     if( image ) setImage(*image);
     if( text && *text ) setText(text);
-    if( listener ) GuiCommandPublisher::Subscribe(*listener);
+    if( listener ) GuiPublisher::Subscribe(*listener);
+
+    m_textAlign = textalignTopCenter;
 }
 
 ///-- properties
@@ -391,6 +479,7 @@ void GuiImageBox::onLayout( const OsRect &clientArea ,OsRect &placeArea ) {
 
 void GuiImageBox::onDraw( const OsRect &updateArea ) {
     GuiWithText::onDraw(updateArea);
+    GuiControl::onDraw(updateArea);
 
     if( !shouldDraw(updateArea) ) return;
 
@@ -399,7 +488,6 @@ void GuiImageBox::onDraw( const OsRect &updateArea ) {
     if( !m_text.empty() ) {
         SetForeColor( OS_COLOR_WHITE );
         GuiWithText::Draw( m_textArea );
-        // root().DrawTextAlign( m_text.c_str() ,r.left ,r.top ,r.right ,r.bottom , (TextAlign) (textalignCenterH | textalignCenterV) );
     }
 
     Rect ri; getImageArea(ri);
@@ -418,133 +506,117 @@ void GuiImageBox::onDraw( const OsRect &updateArea ) {
 }
 
 //////////////////////////////////////////////////////////////////////////////
-//! GuiThumbnail
+//! GuiProgressBar
 
-REGISTER_CLASS(GuiThumbnail)
+REGISTER_CLASS(GuiProgressBar)
+
+template <>
+const char *Enum_<GuiProgressBar::LabelStyle>::names[] = {
+    "value" ,"valuemax" ,"percent"
+};
+
+template <>
+const GuiProgressBar::LabelStyle Enum_<GuiProgressBar::LabelStyle>::values[] = {
+    GuiProgressBar::labelValue
+    ,GuiProgressBar::labelValueMax
+    ,GuiProgressBar::labelPercent
+};
 
 //--
-void GuiThumbnail::onLayout( const OsRect &clientArea ,OsRect &placeArea ) {
-    GuiControl::onLayout( clientArea ,placeArea );
+GuiProgressBar::GuiProgressBar( int low ,int high ,GuiFont *font ) :
+    GuiWithText( "" ,textalignCenter ,font )
+    ,m_low(low) ,m_high(high) ,m_value(0)
+    ,m_labelStyle(labelValue) ,m_inset(0)
+{
+    const ColorQuad &colors = theTheme().getColors( MyPUID ,"progress" );
 
-    //TODO use GuiArray_ instead
-    m_image.setRoot( root() );
-    m_label.setRoot( root() );
+    m_barColor = colors.fillColor ? colors.fillColor : OS_COLOR_OLIVE;
 
-    OsRect r = this->area(); //! sub area
-    {
-        m_image.onLayout( this->area() ,r );
-
-        Rect imageArea; m_image.getImageArea(imageArea);
-
-        m_label.coords().top = imageArea.bottom - this->area().top;
-
-        m_label.onLayout( this->area() ,r );
-    }
+    m_textAlign = textalignCenter;
 }
 
-void GuiThumbnail::onDraw( const OsRect &updateArea ) {
-    GuiControl::onDraw(updateArea);
+//-- properties
+void GuiProgressBar::getProperties( Params &properties ) const {
+    GuiWithText::getProperties( properties );
 
-    m_image.onDraw(updateArea);
-    m_label.onDraw(updateArea);
+    //TODO
 }
 
-//////////////////////////////////////////////////////////////////////////
-//! GuiThumbwall
+void GuiProgressBar::setProperties( const Params &properties ) {
+    GuiWithText::setProperties( properties );
 
-IAPI_DEF GuiThumbwall::getInterface( UUID id ,void **ppv ) {
-    if( !ppv || *ppv ) return IBADARGS;
+    fromMember( m_low ,properties ,"low" );
+    fromMember( m_high ,properties ,"high" );
+    fromMember( m_value ,properties ,"value" );
 
-    return
-            honorInterface_<GuiThumbwall>(this,id,ppv) || honorInterface_<IGuiCommandEvent>(this,id,ppv) ? IOK
-                                                                                                         : GuiControl::getInterface( id ,ppv )
-            ;
-}
+    enumFromMember( m_labelStyle ,properties ,"labelstyle" );
+    fromMember( m_inset ,properties ,"inset" );
+    fromMember( m_barColor ,properties ,"barcolor" );
 
-void GuiThumbwall::getProperties( Params &properties ) const {
-    GuiWithFont::getProperties( properties );
-    GuiGroup::getProperties( properties );
-}
-
-void GuiThumbwall::setProperties( const Params &properties ) {
-    GuiWithFont::setProperties( properties );
-    GuiGroup::setProperties( properties );
+    updateLabelText();
 }
 
 //--
-int GuiThumbwall::addThumb( GuiImage *image ,const char *label ) {
-    assert(label!=NullPtr);
+float GuiProgressBar::getProgressFactor() const {
+    int q = (m_high - m_low);
 
-    GuiThumbnail *p = new GuiThumbnail(image,label,m_font.ptr());
-
-    p->align() = GuiAlign::noAlign;
-    p->GuiCommandPublisher::Subscribe( *this );
-
-    return addControl( *p );
+    return q ? (float) (m_value - m_low) / (float) q : 0.f;
 }
 
-void GuiThumbwall::removeThumb( int index ) {
-    removeControl( index );
-}
-
-void GuiThumbwall::onLayout( const OsRect &clientArea ,OsRect &placeArea ) {
-    GuiControl::onLayout( clientArea ,placeArea );
-
-    int n = getThumbCount(); if( n == 0 ) return;
-    int w = area().getWidth();
-    int h = area().getHeight();
-
-    Point sz = m_thumbSize;
-    int nx = (int) (w / sz.x);
-    int ny = (int) (w / sz.y);
-
-    int i=0; for( auto &thumb : controls() ) if( thumb->visible() ) {
-        int y = (i / nx) * sz.y;
-        int x = (i % nx) * sz.x;
-
-        thumb->coords() = { x ,y ,x+m_thumbSize.x ,y+m_thumbSize.y };
-
-        ++i;
+void GuiProgressBar::updateLabelText() {
+    switch( m_labelStyle ) {
+        case labelValue:
+            toString( m_value ,m_text ); break;
+        case labelValueMax:
+            Format( m_text ,"%d/%d" ,32 ,(int) m_value ,(int) m_high ); break;
+        case labelPercent:
+            toString( (int) (getProgressFactor() * 100.f) ,m_text ); m_text += "%"; break;
     }
-
-    OsRect r = area();
-
-    GuiGroup::onLayout( clientArea ,r );
 }
 
-void GuiThumbwall::onDraw( const OsRect &updateArea ) {
-    GuiGroup::onDraw( updateArea );
-}
+//--
+void GuiProgressBar::onDraw( const OsRect &updateArea ) {
+    if( !shouldDraw(updateArea) ) return;
 
-void GuiThumbwall::onCommand( GuiControl &source ,uint32_t commandId ,long param ,Params *params ,void *extra ) {
-    onItemSelected( source ,(int) source.id() ,true );
+    GuiControl::onDraw( updateArea );
 
-//! forward to subscribers
-    GuiCommandPublisher::PostCommand( commandId ,param ,params ,extra );
+    Rect dims = area().getDims();
+
+    Rect r = dims;
+    int w = r.getWidth();
+
+    r.right = MIN( (int) (getProgressFactor() * w) ,w );
+    r.Deflate( m_inset );
+
+    SetFillColor( m_barColor );
+    DrawRectangle( r );
+
+    GuiWithText::onDraw(updateArea);
+    GuiWithText::Draw( dims );
 }
 
 //////////////////////////////////////////////////////////////////////////
 //! GuiEdit
 
-GuiEditBox *ICreateGuiEdit( const UUID &editableId ) {
-    UUID editorId;
+GuiDataEdit *ICreateGuiEdit( const PUID &editableId ) {
+    PUID editorId;
 
-    if( !GuiEditBox::findEditor( editableId ,editorId ) )
+    if( !GuiDataEdit::findEditor( editableId ,editorId ) )
         return NullPtr;
 
     GuiControl *editor = Factory_<GuiControl>::getInstance().Create( editorId );
 
-    return editor ? editor->As_<GuiEditBox>() : NullPtr;
+    return editor ? editor->As_<GuiDataEdit>() : NullPtr;
 }
 
 //-- static
-static MapOf<UUID,UUID> g_editors; //! editable => editor
+static MapOf<PUID,PUID> g_editors; //! editable => editor
 
-bool GuiEditBox::RegisterEditor( const UUID &editableId ,const UUID &editorId ) {
+bool GuiDataEdit::RegisterEditor( const PUID &editableId ,const PUID &editorId ) {
     g_editors[editableId] = editorId; return true;
 }
 
-bool GuiEditBox::findEditor( const UUID &editableId ,UUID &editorId ) {
+bool GuiDataEdit::findEditor( const PUID &editableId ,PUID &editorId ) {
     const auto &it = g_editors.find( editableId );
 
     if( it == g_editors.end() ) return false;
@@ -555,21 +627,36 @@ bool GuiEditBox::findEditor( const UUID &editableId ,UUID &editorId ) {
 }
 
 //-- properties
-void GuiEditBox::getProperties( Params &properties ) const {
+void GuiDataEdit::getProperties( Params &properties ) const {
     GuiControl::getProperties( properties );
 
-    if( !m_dataField.empty() ) properties["datafield"] = m_dataField;
+    properties["datafield"] = m_dataField; // .empty() ? m_dataField : "";
+
+    const char *name = "";
+    if( !m_dataSource.isNull() ) {
+        name = root().digBinding( (IObject*) m_dataSource.ptr() );
+    }
+
+    properties["datasource"] = (name ? name : "");
 }
 
-void GuiEditBox::setProperties( const Params &properties ) {
+void GuiDataEdit::setProperties( const Params &properties ) {
     GuiControl::setProperties( properties );
 
-    // getMember( properties ,"datasource" ); // @config/service => store ...
-    m_dataField = getMember( properties ,"datafield" );
+    fromMember( m_dataField ,properties ,"datafield" );
+
+    const char *s;
+
+    if( (s = getMember( properties ,"datasource" )) != NullPtr && *s ) {
+        auto *datasource = root().getBindingAs_<IDataSource>( s );
+
+        if( datasource )
+            Bind( tocstr(m_dataField) ,*datasource );
+    }
 }
 
 //--
-void GuiEditBox::Bind( const char *field ,IDataSource &source ) {
+void GuiDataEdit::Bind( const char *field ,IDataSource &source ) {
     if( m_dataSource ) {
         m_dataSource->Revoke( *this );
     }
@@ -582,15 +669,7 @@ void GuiEditBox::Bind( const char *field ,IDataSource &source ) {
     }
 }
 
-/* void GuiEditBox::adviseEditStart() {
-    if( m_dataField.empty() ) return;
-
-    Params params; //! @note empty, simply advise source edit has started
-
-    m_dataSource->onDataEdit( params );
-} */
-
-IAPI_DEF GuiEditBox::onDataCommit( IDataSource &source ,Params &data ) {
+IAPI_DEF GuiDataEdit::onDataCommit( IDataSource &source ,Params &data ) {
     if( m_dataField.empty() ) return INODATA;
 
     String s; getValue( s );
@@ -600,15 +679,37 @@ IAPI_DEF GuiEditBox::onDataCommit( IDataSource &source ,Params &data ) {
     return IOK;
 }
 
-IAPI_DEF GuiEditBox::onDataChanged( IDataSource &source ,const Params &data ) {
+IAPI_DEF GuiDataEdit::onDataChanged( IDataSource &source ,const Params &data ) {
     if( m_dataField.empty() ) return INODATA;
 
-    const String *field = peekMember( data ,m_dataField.c_str() );
+    NameType decl; String value;
+
+    if( getDecl( data ,tocstr(m_dataField) ,decl ,value ) ) {
+        setValue( tocstr(value) );
+    }
+
+    /* const String *field = peekMember( data ,tocstr(m_dataField) );
 
     if( field )
-        setValue( field->c_str() );
+        setValue( field->c_str() ); */
 
     return IOK;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+//! GuiDataLabel
+
+REGISTER_CLASS(GuiDataLabel)
+
+//-- properties
+void GuiDataLabel::getProperties( Params &properties ) const {
+    GuiDataEdit_<String>::getProperties(properties);
+    GuiLabel::getProperties(properties);
+}
+
+void GuiDataLabel::setProperties( const Params &properties ) {
+    GuiLabel::setProperties( properties );
+    GuiDataEdit_<String>::setProperties( properties );
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -621,24 +722,23 @@ GuiTextBox::GuiTextBox() :
     m_offset(0) ,m_cursor(0) ,m_margins(4)
     ,m_showCursor(false) ,m_blinkCursor(true) ,m_blinkLast(0)
 {
-    m_colors = theTheme().getColors( MyUUID ,"normal" );
+    m_colors = theTheme().getColors( MyPUID ,"normal" );
 }
 
 //-- properties
 void GuiTextBox::getProperties( Params &properties ) const {
-    GuiEditBox_<String>::getProperties(properties);
+    GuiDataEdit_<String>::getProperties(properties);
     GuiWithText::getProperties(properties);
 }
 
 void GuiTextBox::setProperties( const Params &properties ) {
     GuiWithText::setProperties( properties );
-    GuiEditBox_<String>::setProperties( properties );
+    GuiDataEdit_<String>::setProperties( properties );
 
-    setValue( m_text.c_str() ); //TODO remove when merged value & text
+    // setValue( m_text.c_str() );
 }
 
 //--
-
 void GuiTextBox::onMouseDown( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) {
     GuiControl::onMouseDown( p ,mouseButton ,keyState );
 
@@ -650,8 +750,8 @@ void GuiTextBox::onMouseDown( const OsPoint &p ,OsMouseButton mouseButton ,OsKey
 
     m_cursor = 0;
 
-    for( int i=0; i<m_value.size(); ++i ) {
-        String before( m_value.c_str()+m_offset ,MAX(m_cursor-m_offset,0) );
+    for( int i=0; i<m_text.size(); ++i ) {
+        String before( m_text.c_str()+m_offset ,MAX(m_cursor-m_offset,0) );
 
         OsGuiFontCalcSize( m_font->GetHandle() ,before.c_str() ,&point );
 
@@ -672,42 +772,58 @@ void GuiTextBox::onDraw( const OsRect &updateArea )  {
     if( !shouldDraw(updateArea) ) return;
 
     Rect clip0;
-    root().RegionGetArea( clip0 );
-    root().RegionSetArea( area() );
 
-    GuiEditBox_<String>::onDraw( updateArea );
+    root().RegionGetArea( clip0 );
+    root().RegionSetArea( area() ,false );
+
+//-- area
+    GuiDataEdit_<String>::onDraw( updateArea );
     GuiWithText::onDraw( updateArea );
 
     Rect r = area().getDims().Deflate(m_margins);
 
     OsRect extends;
-    String before( m_value.c_str()+m_offset ,MAX(m_cursor-m_offset,0) ); //! MAX should not be needed, but protects from invalid params
-    DrawTextAlign( before.c_str() ,r ,textalignCenterLeft ,&extends );
+    String before( tocstr(m_text)+m_offset ,MAX(m_cursor-m_offset,0) ); //! MAX should not be needed, but protects from invalid params
+    DrawTextAlign( tocstr(before) ,r ,textalignCenterLeft ,&extends );
     m_extends = extends;
 
     int cursorx = r.left = extends.right;
-    DrawTextAlign( m_value.c_str()+m_cursor ,r ,textalignCenterLeft ,&extends );
+    DrawTextAlign( tocstr(m_text)+m_cursor ,r ,textalignCenterLeft ,&extends );
     m_extends |= extends;
 
     drawCursor( cursorx - (m_cursor ? -1 : 0) );
 
-    root().RegionSetArea( clip0 );
+//--
+    root().RegionSetArea( clip0 ,false );
 }
 
 void GuiTextBox::onKeyDown( OsKeyState keyState ,OsKeyCode keyCode ,char_t c ) {
     GuiControl::onKeyDown( keyState ,keyCode ,c );
 
+    if( keyState.ctrl && c == 22 ) { //TODO why 22  // && c == 'v' ) {
+        char dataType[32] = "STRING";
+        void *data;
+        int length;
+        OsHandle h = root().GetHandle();
+
+        if( OsClipboardGetData( h ,dataType ,&data ,&length ) == ENOERROR && data ) {
+            text() = (char*) data;
+        }
+
+        return;
+    }
+
     switch( keyCode ) {
         case OS_KEYCODE_BACKSPACE:
             if( m_cursor ) {
-                m_value.erase( --m_cursor ,1 );
+                m_text.erase( --m_cursor ,1 );
                 onDataEdit( true );
             }
             break;
 
         case OS_KEYCODE_DELETE:
-            if( m_cursor < m_value.size() ) {
-                m_value.erase( m_cursor ,1 );
+            if( m_cursor < m_text.size() ) {
+                m_text.erase( m_cursor ,1 );
                 onDataEdit( true );
             }
             break;
@@ -719,15 +835,15 @@ void GuiTextBox::onKeyDown( OsKeyState keyState ,OsKeyCode keyCode ,char_t c ) {
                 m_cursor = m_offset;
         } break;
 
-        case OS_KEYCODE_END: if( m_cursor < m_value.size() ) {
+        case OS_KEYCODE_END: if( m_cursor < m_text.size() ) {
             ++m_cursor;
 
             if( updateOffset(1) != 0 ) {
-                int delta = m_value.size() - m_cursor;
-                m_cursor = m_value.size();
+                int delta = m_text.size() - m_cursor;
+                m_cursor = m_text.size();
                 updateOffset(delta);
             } else {
-                while( ++m_cursor < m_value.size() && updateOffset(1) == 0 ) {}
+                while( ++m_cursor < m_text.size() && updateOffset(1) == 0 ) {}
                 --m_cursor; --m_offset;
             }
         } break;
@@ -736,7 +852,7 @@ void GuiTextBox::onKeyDown( OsKeyState keyState ,OsKeyCode keyCode ,char_t c ) {
             if( m_cursor == 0 ) break;
 
             if( keyState.ctrl ) { //! word
-                const char *str = m_value.c_str();
+                const char *str = m_text.c_str();
                 bool base = cisalphanum( str[m_cursor-1] );
 
                 int &i = m_cursor; for( --i ; i>0; --i ) {
@@ -749,13 +865,13 @@ void GuiTextBox::onKeyDown( OsKeyState keyState ,OsKeyCode keyCode ,char_t c ) {
             m_offset = MIN( m_offset ,m_cursor );
             break;
 
-        case OS_KEYCODE_RIGHT: if( m_cursor < m_value.size() ) {
+        case OS_KEYCODE_RIGHT: if( m_cursor < m_text.size() ) {
             if( keyState.ctrl ) { //! word
-                const char *str = m_value.c_str();
+                const char *str = m_text.c_str();
                 int &i = m_cursor; int j = i;
                 bool base = cisalphanum( str[i] );
 
-                for( ++i; i < m_value.size(); ++i ) {
+                for( ++i; i < m_text.size(); ++i ) {
                     if( cisalphanum( str[i] ) != base ) break;
                 }
 
@@ -773,7 +889,7 @@ void GuiTextBox::onKeyDown( OsKeyState keyState ,OsKeyCode keyCode ,char_t c ) {
 
         default:
             if( c >= 32 && c <= 127 ) {
-                m_value.insert( m_cursor++ ,1 ,c );
+                m_text.insert( m_cursor++ ,1 ,c );
                 onDataEdit( true );
 
                 updateOffset( 1 );
@@ -802,7 +918,7 @@ int GuiTextBox::updateOffset( int delta ) {
     int d = 0;
 
     for( int i=0; i<delta; ++i ) {
-        String before( m_value.c_str()+m_offset ,MAX(m_cursor-m_offset,0) );
+        String before( m_text.c_str()+m_offset ,MAX(m_cursor-m_offset,0) );
 
         OsGuiFontCalcSize( m_font->GetHandle() ,before.c_str() ,&point );
 
@@ -859,7 +975,9 @@ void GuiComboBox::setProperties( const Params &properties ) {
     if( hasMember( properties ,"menu" ) ) {
         //! menu
 
-        auto *menu = new GuiMenu();
+        auto *menu = &m_menu; // new GuiMenu();
+
+        menu->clear();
 
         const char *props = getMember( properties ,"menu" );
 
@@ -886,7 +1004,7 @@ void GuiComboBox::setListonly( bool listonly ) {
     m_showCursor = !listonly;
 }
 
-void GuiComboBox::Subscribe( IGuiCommandEvent &listener ) {
+void GuiComboBox::Subscribe( IGuiMessage &listener ) {
     if( m_events ) m_events->Subscribe(listener);
 }
 
@@ -978,13 +1096,14 @@ void GuiComboBox::onMouse( OsMouseAction mouseAction ,OsKeyState keyState ,OsMou
     GuiTextBox::onMouse( mouseAction ,keyState ,mouseButton ,points ,pos );
 }
 
-void GuiComboBox::onCommand( GuiControl &source ,uint32_t commandId ,long param ,Params *params ,void *extra ) {
-    if( commandId >= GUI_COMMANDID_MENU && commandId <= GUI_COMMANDID_MENU_MAX && params ) {
+void GuiComboBox::onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) {
+    if( commandId >= GUI_COMMANDID_MENU && commandId <= GUI_COMMANDID_MENUMAX && params ) {
         const auto it = params->find( "text" );
 
         if( it == params->end() ) return;
 
-        m_value = it->second;
+        text() = it->second;
+        onDataEdit();
 
         m_popup.Close();
 
@@ -999,30 +1118,38 @@ REGISTER_CLASS(GuiColorBox);
 REGISTER_EDITBOX( ColorRef ,GuiColorBox );
 
 void GuiColorBox::onDraw( const OsRect &updateArea ) {
-    GuiControl::onDraw( updateArea );
-
-    int w = area().getWidth();
     int h = area().getHeight();
 
-    //-- box
-    Rect r = { Point() ,Point(h) };
+    //-- text
+    m_margins.left = h;
+    GuiComboBox::onDraw( updateArea );
 
-    r.Deflate( 8 );
+    //-- color
+    Rect r = { 0 ,0 ,h ,h };
 
-    root().SetFillColor( m_value );
+    r.Deflate( 4 );
+
+    ColorRef color;
+
+    fromString( color ,text() );
+
+    root().SetForeColor( color );
+    root().SetFillColor( color );
 
     DrawRectangle( r );
-
-    //-- text
-    r.left = h;
-    r.right = w - r.left;
-
-    String s; //! should cache this
-
-    getValue( s );
-
-    DrawTextAlign( s.c_str() ,r ,textalignCenterLeft );
 }
+
+//////////////////////////////////////////////////////////////////////////
+//! GuiBoolBox
+
+REGISTER_CLASS(GuiBoolBox);
+REGISTER_EDITBOX( bool ,GuiBoolBox );
+
+//////////////////////////////////////////////////////////////////////////
+//! GuiAlignBox
+
+REGISTER_CLASS(GuiAlignBox);
+REGISTER_EDITBOX( GuiAlign ,GuiAlignBox );
 
 //////////////////////////////////////////////////////////////////////////
 //! GuiGrid
@@ -1049,12 +1176,12 @@ GuiGrid::GuiGrid() {
     m_titleCoord = m_rowCoord = GuiCoord(10.f);
 
 //-- theme & colors
-    m_colors.normal = theTheme().getColors( MyUUID ,"normal" );
-    m_colors.title = theTheme().getColors( MyUUID ,"title" );
-    m_colors.col1 = theTheme().getColors( MyUUID ,"col1" );
-    m_colors.col2 = theTheme().getColors( MyUUID ,"col2" );
-    m_colors.row1 = theTheme().getColors( MyUUID ,"row1" );
-    m_colors.row2 = theTheme().getColors( MyUUID ,"row2" );
+    m_colors.normal = theTheme().getColors( MyPUID ,"normal" );
+    m_colors.title = theTheme().getColors( MyPUID ,"title" );
+    m_colors.col1 = theTheme().getColors( MyPUID ,"col1" );
+    m_colors.col2 = theTheme().getColors( MyPUID ,"col2" );
+    m_colors.row1 = theTheme().getColors( MyPUID ,"row1" );
+    m_colors.row2 = theTheme().getColors( MyPUID ,"row2" );
 }
 
 //-- properties
@@ -1073,13 +1200,25 @@ void GuiGrid::setProperties( const Params &properties ) {
     ListOf<String> titles;
     fromString( titles ,getMember( properties ,"titles" ) );
 
+    ListOf<String> fields;
+    fromString( fields ,getMember( properties ,"fields" ) );
+
     int n = MAX( coords.size() ,titles.size() );
 
     for( int i=0; i<n; ++i ) {
         GuiCoord coord = ( i < coords.size() ? coords[i] : 10.f );
         String title = ( i < titles.size() ? titles[i] : "" );
+        String field = ( i < fields.size() ? fields[i] : "" );
 
-        addCol( coord ,title.c_str() );
+        addCol( coord ,tocstr(title) ,tocstr(field) );
+    }
+
+    const char *pRows = getMember( properties ,"rows" ,NullPtr );
+    if( pRows && *pRows ) {
+        int nRows;
+
+        fromString( nRows ,pRows );
+        setRows( nRows );
     }
 }
 
@@ -1093,24 +1232,59 @@ void GuiGrid::Reset( bool withRefresh ) {
 }
 
 //--
-void GuiGrid::addCol( const GuiCoord &width ,const char *title ) {
-    auto &col = m_cols.emplace_back();
+void GuiGrid::setCols( int cols ,const ListOf<String> *titles ,const ListOf<String> *fields ) {
+    int n = (int) colCount();
+
+    GuiCoord c0;
+
+    for( int x=0; x<cols; ++x ) {
+        const char *title = titles ? tocstr( (*titles)[x] ) : "";
+        const char *field = fields ? tocstr( (*fields)[x] ) : "";
+
+        if( x >= n ) {
+            addCol( c0 ,title ); ++n;
+        } else {
+            if( titles ) col(x).title = title;
+        }
+
+        fromString( col(x).field ,field );
+    }
+}
+
+void GuiGrid::setRows( int rows ,size_t baseIndex ) {
+    int n = (int) rowCount();
+    int i = (int) baseIndex;
+
+    for( int y=0; y<rows; ++y ) {
+        if( y >= n ) {
+            addRow(); ++n; //! expand
+        }
+
+        row(y).index = i++;
+    }
+
+    //-- trim
+    if( rows > 0 ) while( n > rows ) {
+        m_rows.pop_back(); --n;
+    }
+}
+
+void GuiGrid::addCol( const GuiCoord &width ,const char *title ,const char *field ,bool editable ) {
+    m_cols.emplace_back();
+
+    auto &col = m_cols.back();
 
     col.coord = width;
 
     if( title ) {
-        NameType decl;
+        col.title = title ? title : "";
+        fromString( col.field ,field ? field : "" );
 
-        fromString( decl ,title );
+        if( editable && !col.field.type.empty() ) { //! declaring editor using type
+            PUID editableId;
 
-        col.title = decl.name;
-
-        if( !decl.type.empty() ) { //! declaring editor using type
-            UUID editableId;
-
-            col.edit = getEditBox( decl.type.c_str() );
+            col.edit = makeEditBox( tocstr(col.field.type) );
         }
-
     }
 
     //-- add col to existing rows if any
@@ -1122,7 +1296,9 @@ void GuiGrid::addCol( const GuiCoord &width ,const char *title ) {
 int GuiGrid::addRow() {
     int i = (int) m_rows.size();
 
-    auto &row = m_rows.emplace_back();
+    m_rows.emplace_back();
+
+    auto &row = m_rows.back();
 
     for( auto &it : m_cols ) {
         row.m_cells.emplace_back();
@@ -1139,11 +1315,11 @@ void GuiGrid::setCellText( int y ,int x ,const char *text ) {
     cell.text = text;
 
     if( cell.edit ) {
-        cell.edit->setValue( cell.text.c_str() );
+        cell.edit->setValue( tocstr(cell.text) );
     }
 }
 
-void GuiGrid::setCellEdit( int y ,int x ,GuiEditBox *editor ,bool editable ) {
+void GuiGrid::setCellEdit( int y ,int x ,GuiDataEdit *editor ,bool editable ) {
     if( y < rowCount() && x < colCount() ) {} else return;
 
     auto &cell = row(y).col(x);
@@ -1152,12 +1328,12 @@ void GuiGrid::setCellEdit( int y ,int x ,GuiEditBox *editor ,bool editable ) {
     cell.editable = editable;
 
     if( cell.edit ) {
-        cell.edit->setValue( cell.text.c_str() );
+        cell.edit->setValue( tocstr(cell.text) );
     }
 }
 
-void GuiGrid::setCellType( int y ,int x ,const UUID &editableId ,bool editable ) {
-    GuiEditBox *p = getEditBox( editableId );
+void GuiGrid::setCellType( int y ,int x ,const PUID &editableId ,bool editable ) {
+    GuiDataEdit *p = ICreateGuiEdit( editableId );
 
     if( p ) {
         setCellEdit( y ,x ,p ,editable );
@@ -1165,9 +1341,9 @@ void GuiGrid::setCellType( int y ,int x ,const UUID &editableId ,bool editable )
 }
 
 void GuiGrid::setCellType( int y ,int x ,const char *type ,bool editable ) {
-    UUID editableId;
+    PUID editableId;
 
-    if( getClassIdFromName( type ,editableId ) ) {
+    if( findClassIdByName( type ,editableId ) ) {
         setCellType( y ,x ,editableId ,editable );
     }
 }
@@ -1178,7 +1354,97 @@ void GuiGrid::Clear( bool withRefresh ) {
     if( withRefresh ) Refresh();
 }
 
-//--
+//-- Data
+void GuiGrid::Bind( IDataSource *datasource ) {
+    Clear(false);
+
+    if( m_datasource ) m_datasource->Revoke( *this );
+
+    m_datasource = datasource;
+
+    if( !datasource ) return;
+
+    datasource->Subscribe( *this );
+
+    //-- edit & bindings
+    int nCols = (int) colCount();
+    int nRows = (int) rowCount();
+
+    String id;
+    Params data;
+
+    for( auto y=0; y<nRows; ++y ) {
+        toString( row(y).index ,id );
+
+        if( m_datasource->Seek( tocstr(id) ) != IOK ) continue;
+
+        if( m_datasource->readHeader( data ) != IOK ) {
+            data.clear();
+        }
+
+        for( int x=0; x<nCols; ++x ) {
+            auto &field = col(x).field;
+
+            setCellText( y ,x ,getMember( data ,tocstr(field.name) ,"" ) );
+
+            if( !col(x).editable ) continue;
+
+            if( !field.type.empty() ) {
+                setCellType( y ,x ,tocstr(field.type) ,true );
+            }
+
+            if( !row(y).col(x).edit ) {
+                setCellType( y ,x ,TINY_STRING_PUID ,true );
+            }
+
+            if( row(y).col(x).edit ) {
+                row(y).col(x).edit->Bind( tocstr(field.name) ,*datasource );
+            }
+        }
+    }
+}
+
+void GuiGrid::UpdateData() {
+    int nCols = (int) colCount();
+    int nRows = (int) rowCount();
+
+    String id;
+    Params data;
+
+    //-- list fields
+    for( int x=0; x<nCols; ++x ) {
+        auto &field = col(x).field;
+
+        if( !field.name.empty() )
+            data[field.name] = "";
+    }
+
+    //-- read rows
+    for( int y=0; y<nRows; ++y ) {
+        toString( row(y).index ,id );
+
+        bool hasData = ( m_datasource->Seek( tocstr(id) ) == IOK && m_datasource->readData( data ) == IOK);
+
+        for( int x=0; x<nCols; ++x ) {
+            auto &field = col(x).field;
+
+            const char *value = hasData ? getMember( data ,tocstr(field.name) ,"" ) : "";
+
+            setCellText( y ,x ,value );
+        }
+    }
+}
+
+//-- IDataEvents
+IAPI_DEF GuiGrid::onDataCommit( IDataSource &source ,Params &data ) {
+    return ENOEXEC; //TODO LATER
+}
+
+IAPI_DEF GuiGrid::onDataChanged( IDataSource &source ,const Params &data ) {
+    return ENOEXEC; //TODO LATER
+}
+
+//-- IGuiEvents
 void GuiGrid::onLayout( const OsRect &clientArea ,OsRect &placeArea )  {
     GuiControl::onLayout( clientArea ,placeArea );
 
@@ -1193,10 +1459,49 @@ void GuiGrid::onLayout( const OsRect &clientArea ,OsRect &placeArea )  {
         col.width = col.coord.get( area().getWidth() );
 
         size().x += col.width; //! sum of cell widths
+
+        //TODO layout cell edit if any ...
     }
 
     //-- calc client area size (nb used for scroll)
     size().y = (int) (m_titleHeight + m_rowHeight * m_rows.size());
+
+    //-- layout edit if any
+    Rect rrow = { 0 ,0 ,size().x ,m_rowHeight };
+
+    if( config().showTitle ) {
+        rrow += Point( 0 ,m_rowHeight );
+    }
+
+    Rect rinner ,region;
+
+    int j=0; for( auto &row : m_rows ) {
+        rrow.bottom = rrow.top + m_rowHeight;
+
+        Rect rcell = rrow;
+
+        int i=0; for( auto &cell : row.m_cells ) {
+            auto &col = m_cols[i];
+
+            rcell.right = rcell.left + col.width;
+
+            rinner = rcell; rinner.Deflate( m_cellMargin );
+
+            if( cell.edit ) {
+                Rect redit = rinner + area().getTopLeft();
+
+                cell.edit->setRoot( root() );
+                cell.edit->coords() = { 0 ,0 ,100.f ,100.f };
+                cell.edit->onLayout( redit ,redit );
+            }
+
+            rcell.left = rcell.right;
+            ++i;
+        }
+
+        rrow.top = rrow.bottom;
+        ++j;
+    }
 }
 
 void GuiGrid::onDraw( const OsRect &updateArea )  {
@@ -1213,10 +1518,11 @@ void GuiGrid::onDraw( const OsRect &updateArea )  {
     Rect rrow = { 0 ,0 ,size().x ,m_rowHeight };
 
     //-- title
-    SetColors( m_colors.title );
-    DrawRectangle( rrow );
 
     if( config().showTitle ) {
+        SetColors( m_colors.title );
+        DrawRectangle( rrow );
+
         rrow.bottom = rrow.top + m_rowHeight;
 
         Rect rcell = rrow;
@@ -1225,7 +1531,7 @@ void GuiGrid::onDraw( const OsRect &updateArea )  {
             rcell.right = rcell.left + col.width;
 
             if( !col.title.empty() ) {
-                DrawTextAlign( col.title.c_str() ,rcell ,config().titleAlign );
+                DrawTextAlign( tocstr(col.title) ,rcell ,config().titleAlign );
             }
 
             rcell.left = rcell.right;
@@ -1257,12 +1563,13 @@ void GuiGrid::onDraw( const OsRect &updateArea )  {
             RegionSetArea( rinner );
 
             //TODO check for col edit
-            if( cell.edit ) {
-                cell.edit->setRoot( root() );
-                cell.edit->area() = rinner;
-                // cell.edit->setValue( cell.text.c_str() ); //TODO not here
-                cell.edit->onDraw( rinner );
 
+            if( cell.edit ) { //TODO only use on the fly placement if col edit ... not for cell edit
+                Rect redit = rinner + area().getTopLeft();
+
+                // cell.edit->setRoot( root() );
+                // cell.edit->area() = redit;
+                cell.edit->onDraw( redit );
             } else {
                 DrawTextAlign( cell.text.c_str() ,rinner ,config().cellAlign );
             }
@@ -1275,7 +1582,7 @@ void GuiGrid::onDraw( const OsRect &updateArea )  {
         ++j;
     }
 
-    root().RegionSetArea( region );
+    root().RegionSetArea( region ,false );
 }
 
 void GuiGrid::onMouse( OsMouseAction mouseAction ,OsKeyState keyState ,OsMouseButton mouseButton ,int points ,const OsPoint *pos ) {
@@ -1286,7 +1593,7 @@ void GuiGrid::onMouse( OsMouseAction mouseAction ,OsKeyState keyState ,OsMouseBu
     Point p = pos[0]; p -= area().getTopLeft();
 
 //-- row
-    int y = (p.y - m_titleHeight) / m_rowHeight;
+    int y = (p.y - (config().showTitle ? m_titleHeight : 0) ) / m_rowHeight;
 
     if( y < 0 || y >= m_rows.size() ) return;
 
@@ -1313,21 +1620,20 @@ void GuiGrid::onMouse( OsMouseAction mouseAction ,OsKeyState keyState ,OsMouseBu
 //-- start edit
     auto &cell = row(y).col(x);
 
+    //TODO col edit if any
+
     if( cell.edit && cell.editable ) {
-        /* r.Deflate( m_cellMargin );
 
-        cell.edit->setRoot( root() );
-        cell.edit->area() = r;
-        */
+        // cell.edit->setValue( cell.text.c_str() ); //TODO should not be here, works with datasource bound control, what if manual feed cell content ? ..check
 
-        // cell.edit->Bind( field ,*this );
-        cell.edit->setValue( cell.text.c_str() );
-
-        if( m_editFocus ) m_editFocus->onLostFocus();
+        SAFECALL(m_editFocus)->onLostFocus();
 
         m_editFocus = cell.edit;
 
-        if( m_editFocus ) m_editFocus->onGotFocus();
+        if( m_editFocus ) {
+            m_editFocus->onGotFocus();
+            m_editFocus->onMouse( mouseAction ,keyState ,mouseButton ,points ,pos );
+        }
     }
 }
 
@@ -1348,29 +1654,10 @@ void GuiGrid::onTimer( OsTimerAction timeAction ,OsEventTime now ,OsEventTime la
 }
 
 //--
-GuiEditBox *GuiGrid::getEditBox( const UUID &editableId ) {
-    GuiEditBox *p = ICreateGuiEdit( editableId );
+GuiDataEdit *GuiGrid::makeEditBox( const char *editable ) {
+    PUID editableId;
 
-
-    /*
-    auto it = m_edits.find( editableId );
-
-    if( it != m_edits.end() ) return it->second.ptr();
-
-    auto &ref = m_edits[editableId];
-
-    GuiEditBox *p = ICreateGuiEdit( editableId );
-
-    ref = p;
-*/
-
-    return p;
-}
-
-GuiEditBox *GuiGrid::getEditBox( const char *editable ) {
-    UUID editableId;
-
-    return getClassIdFromName( editable ,editableId ) ? getEditBox(editableId) : NullPtr;
+    return findClassIdByName( editable ,editableId ) ? ICreateGuiEdit( editableId ) : NullPtr;
 }
 
 //--
@@ -1395,6 +1682,125 @@ void GuiGrid::drawRowLine( int i ,const Rect &r ,bool forceDraw ) {
 
     SetColors( getRowColors(i) );
     DrawRectangle( r );
+}
+
+//////////////////////////////////////////////////////////////////////////
+//! GuiNavBar
+
+static const char *guiNavBar = {
+    "controls = {"
+        "first:GuiLink = { commandId=24; align=left,horizontal; font=large; text=|<; coords={0,0,6%,100%} }"
+        "prev:GuiLink = { commandId=22; align=left,horizontal; font=large; text=<<; coords={0,0,6%,100%} }"
+        "last:GuiLink = { commandId=25; align=right,horizontal; font=large; text=>|; textalign=right; coords={0,0,6%,100%} }"
+        "next:GuiLink = { commandId=23; align=right,horizontal; font=large; text=>>; textalign=right; coords={0,0,6%,100%} }"
+        "label:GuiLabel = { align=center; font=normal; text=; textalign=center; coords={0,0,60%,100%} }"
+    "}"
+};
+
+GuiNavBar::GuiNavBar() {
+    setPropertiesWithString(guiNavBar);
+}
+
+void GuiNavBar::Bind( IGuiMessage &listener ) {
+    getControlAs_<GuiLink>("first")->Subscribe(listener);
+    getControlAs_<GuiLink>("prev")->Subscribe(listener);
+    getControlAs_<GuiLink>("next")->Subscribe(listener);
+    getControlAs_<GuiLink>("last")->Subscribe(listener);
+}
+
+REGISTER_CLASS(GuiNavBar);
+
+//////////////////////////////////////////////////////////////////////////
+//! GuiSheet
+
+bool GuiSheet::hasHeading( const char *field ) {
+    for( auto &heading : m_headings ) {
+        if( heading.field == field ) return true;
+    }
+
+    return false;
+}
+
+void GuiSheet::Bind( IDataSource *datasource ) {
+    Clear(false);
+
+    m_datasource = datasource;
+
+    if( !datasource ) return;
+
+    Params params;
+
+    datasource->readHeader( params ,true );
+
+    bool listAll = false;
+
+    //-- process headings
+    for( auto &heading : headings() ) {
+        if( heading.field == "*" ) {
+            listAll = true; continue;
+        }
+
+        if( heading.label.empty() ) continue;
+
+        NameType decl;
+        String value;
+
+        if( !getDecl( params ,tocstr(heading.field) ,decl ,value ) )
+            continue;
+
+        if( IFAILED(onBindField( decl )) ) continue;
+
+        int iRow = addRow();
+
+        setCellText( iRow ,0 ,tocstr(heading.label) );
+        setCellText( iRow ,1 ,tocstr(value) );
+
+        if( !decl.type.empty() ) {
+            setCellType( iRow ,1 ,tocstr(decl.type) ,true );
+        }
+
+        if( !row(iRow).col(1).edit ) {
+            setCellType( iRow ,1 ,TINY_STRING_PUID ,true );
+        }
+
+        heading.edit = row(iRow).col(1).edit;
+
+        if( heading.edit ) {
+            row(iRow).col(1).edit->Bind( tocstr(decl.name) ,*datasource );
+        }
+    }
+
+    //-- [option] complete with remaining fields from datasource
+    if( !listAll ) return;
+
+    for( const auto &it : params ) {
+        NameType decl;
+
+        fromString( decl ,tocstr(it.first) );
+
+        if( hasHeading(tocstr(decl.name)) ) continue;
+
+        if( IFAILED(onBindField( decl )) ) continue;
+
+        int iRow = addRow();
+
+        setCellText( iRow ,0 ,tocstr(it.first) );
+        setCellText( iRow ,1 ,tocstr(it.second) );
+
+        if( !decl.type.empty() ) {
+            setCellType( iRow ,1 ,tocstr(decl.type) ,true );
+        }
+
+        if( !row(iRow).col(1).edit ) {
+            setCellType( iRow ,1 ,TINY_STRING_PUID ,true );
+        }
+
+        if( row(iRow).col(1).edit ) {
+            row(iRow).col(1).edit->Bind( tocstr(decl.name) ,*datasource );
+        }
+    }
+
+    Update();
 }
 
 //////////////////////////////////////////////////////////////////////////

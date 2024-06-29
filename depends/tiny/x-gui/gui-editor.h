@@ -25,10 +25,17 @@
 #include "controls/gui-grid.h"
 
 //////////////////////////////////////////////////////////////////////////////
-TINY_GUI_NAMESPACE {
+TINY_NAMESPACE {
+
+//////////////////////////////////////////////////////////////////////////////
+TINY_NAMESPACE_GUI {
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
+//! CDesigner
+
+    //! @brief control position & size editor
+
 class CDesigner : GUICONTROL_PARENT {
 public:
     int m_caretSize = 10;
@@ -73,7 +80,7 @@ public: /// drag & drop
 
             case 7: //! left
                 // sizeCoordsX( m_drag ,root().mouseClickPoint().x ,p.x );
-                //? how to fully inverse emplace function ? .. update with a delta ?
+                //? how to fully inverse emplace function ? ... update with a delta ?
                 break;
         }
 
@@ -106,10 +113,11 @@ public:
         if( !control ) return;
 
         Rect r = control->area();
+        bool dragdrop = GuiControlWindow::isDragDropInProgress();
 
         //-- draw box
         if( i == n-1 ) {
-            root().SetForeColor( OS_COLOR_RED );
+            SetForeColor( dragdrop ? OS_COLOR_BLUE : OS_COLOR_RED );
         } else {
             byte color = (byte) (0x0FF * (float) i / (float) n);
 
@@ -120,7 +128,7 @@ public:
         root().DrawRectangle( control->area() );
 
         //-- draw carets
-        if( i == n-1 ) {
+        if( !dragdrop && i == n-1 ) {
             const int &cs = m_caretSize;
 
             //-- corners
@@ -138,12 +146,12 @@ public:
     }
 
 public:
-    void onDraw( const OsRect &uptadeArea ) override {
-        GuiControl::onDraw( uptadeArea );
+    void onDraw( const OsRect &updateArea ) override {
+        GuiControl::onDraw( updateArea );
 
         auto &controls = root().getHitTrackMouse();
 
-        int n = controls.size();
+        int n = (int) controls.size();
 
         int i=0; for( auto &control : controls ) {
             drawSizer( i ,n ,control.ptr() ); ++i;
@@ -166,14 +174,37 @@ public:
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
+//! CControlList
+
+    //! @brief list of available controls (drag and drop)
+
 class CControlList : public GuiList {
 public:
+    static Map_<String,String> &friendlyNames() { return m_friendlyNames; }
+
+    void addFriendly( const char *name ,const char *friendly ) {
+        friendlyNames().addItem( name ,name+3 );
+    }
+
+    const String *findFriendly( const char *name ) {
+        if( name && strimatch(name,"Gui")==0 ) {
+            addFriendly( name ,name+3 );
+        }
+
+        return friendlyNames().findItem( name );
+    }
+
+    const String *digFriendly( const char *name ) const {
+        return friendlyNames().digItem( name );
+    }
+
+public:
     void Initialize() {
-        placement() = placeLine;
-        direction() = directionBottom;
+        placement() = placeZigzag;
+        direction() = (Direction) (directionRight | directionBottom);
         origin() = topLeft;
 
-        itemSize() = Point(75,75);
+        itemSize() = Point(105,105);
 
         makeList();
     }
@@ -181,18 +212,19 @@ public:
     void makeList() {
         auto &factory = Factory_<GuiControl>::getInstance();
 
-        ListOf<UUID> classes;
+        ListOf<PUID> classes;
 
         factory.listClasses( classes );
 
         String name;
 
         for( auto &it : classes ) {
-            if( !getClassNameFromId( it ,name ) ) continue;
+            if( !findClassNameById( it ,name ) ) continue;
 
-            GuiImage *image = Assets::Image().get( name.c_str() );
+            GuiImage *image = Assets::Image().get( tocstr(name) );
+            const String *friendly = findFriendly( tocstr(name) );
 
-            addControl( * new GuiImageBox( image ,name.c_str() ) );
+            addControl( * new GuiImageBox( image ,tocstr( friendly ? *friendly : name ) ) );
         }
     }
 
@@ -204,24 +236,32 @@ public:
 
         operation = dragOpCopy;
 
-        const char *name = image->getText();
+        const char *friendly = image->getText();
 
-        object = ICreateObject_<GuiControl>( name );
+        const String *name = digFriendly( friendly );
+
+        object = ICreateObject_<GuiControl>( name ? tocstr( *name ) : friendly );
 
         return object ? ENOERROR : EFAILED;
     }
 
+    OsError onDropAccept( const OsPoint &p ,IObject *source ,DragOperation operation ,IObject *object ,bool preview ) override {
+        return ENOEXEC;
+    }
+
 protected:
-    //+ Drag & Drag control from here to windows (may accept drop of control directly in GuiSet)
+    static Map_<String,String> m_friendlyNames;
 };
 
 class CEditorControls : public GuiControlWindow ,public Singleton_<CEditorControls> {
 public:
     CEditorControls() : GuiControlWindow( "tiny-editor-controls" ,"Controls" ,360 ,800 ,OS_WINDOWSTYLE_TOOLBOX )
     {
-        gui::Assets::Image().addFromManifest(
-            "GuiImageBox = { file=assets/icon_imagebox.png; }"
-            "GuiLabel = { file=assets/icon_label.png; }"
+        Assets::Image().addFromManifest(
+            "GuiButton = { file=assets/gui-button.png; }"
+            "GuiImageBox = { file=assets/gui-imagebox.png; }"
+            "GuiLabel = { file=assets/gui-label.png; }"
+            "GuiTextBox = { file=assets/gui-textbox.png; }"
         );
 
         m_controlList.Initialize();
@@ -233,6 +273,11 @@ public:
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
+//! CEditProperties
+
+    //! @brief control properties editor
+
+    //TODO use GuiSheet
 class CEditProperties : public GuiGrid {
 public:
     void Initialize() {
@@ -247,88 +292,60 @@ public:
         // auto *theme = theThemeStore().getTheme("editor");
     }
 
-    void makeList( GuiControl *control ) {
+    virtual void Bind( IDataSource *datasource ) {
         Clear(false);
 
-        m_control = control; if( !control ) return;
+        m_datasource = datasource;
+
+        if( !datasource ) return;
 
         Params params;
 
-        control->getProperties( params );
+        datasource->readHeader( params ,true );
 
         for( const auto &it : params ) {
-            int row = addRow();
+            int irow = addRow();
 
             NameType decl;
 
-            fromString( decl ,it.first.c_str() );
+            fromString( decl ,tocstr(it.first) );
 
-            setCellText( row ,0 ,decl.name.c_str() );
-            setCellText( row ,1 ,it.second.c_str() );
+            setCellText( irow ,0 ,tocstr(decl.name) );
+            setCellText( irow ,1 ,tocstr(it.second) );
 
             if( !decl.type.empty() ) {
-                setCellType( row ,1 ,decl.type.c_str() ,true );
+                setCellType( irow ,1 ,tocstr(decl.type) ,true );
             } else {
-                setCellType( row ,1 ,TINY_STRING_UUID ,true );
+                setCellType( irow ,1 ,TINY_STRING_PUID ,true );
             }
+
+            row(irow).col(1).edit->Bind( tocstr(decl.name) ,*datasource );
         }
 
-        Refresh();
+        Update();
     }
 
 protected:
     GuiControlRef m_control;
 };
 
-/* class CEditProperties : public GuiList { // GuiGrid ... => edit
-public:
-    // DECLARE_GUICONTROL(GuiImageBox,TINY_GUIIMAGEBOX_UUID);
-
-    void Initialize() {
-        placement() = placeLine;
-        direction() = directionBottom;
-        origin() = topLeft;
-
-        itemSize() = Point(200,50);
-    }
-
-    GuiControlRef m_control;
-
-    void makeList( GuiControl *control ) {
-        m_control = control; if( !control ) return;
-
-        removeAllControls();
-
-        Params params;
-
-        control->getProperties( params );
-
-        for( const auto &it : params ) {
-            String s;
-
-            Format( s ,"%s = %s" ,256 ,it.first.c_str() ,it.second.c_str() );
-            addControl( * new GuiLabel( s.c_str() ) );
-
-            // addControl( * new GuiLabel( it.second.c_str() ) );
-        }
-
-        root().Update( NullPtr ,refreshResized );
-    }
-}; */
-
 //////////////////////////////////////////////////////////////////////////////
 class CEditorProperties : public GuiControlWindow ,public Singleton_<CEditorProperties> {
 public:
-    CEditorProperties() : GuiControlWindow( "tiny-editor-properties" ,"Properties" ,360 ,800 ,OS_WINDOWSTYLE_TOOLBOX )
-    {
-        m_propertiesList.Initialize();
-        foreground().addControl( m_propertiesList );
-    }
+    CEditorProperties();
 
-    void attachControl( GuiControl *control ) {
-        m_propertiesList.makeList( control );
-    }
+    void makeControlStack( ListOf<GuiControlRef> &controlStack );
+    void selectStackControl( int i );
+    void attachControl( GuiControl *control ,ListOf<GuiControlRef> &controlStack );
 
+public:
+    API_IMPL(void) onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) IOVERRIDE;
+
+protected:
+    PropertiesDataSource m_propertiesData;
+    ListOf<GuiControlRef> m_controlStack;
+
+    GuiComboBox m_propertiesStack;
     CEditProperties m_propertiesList;
 };
 
@@ -338,7 +355,10 @@ public:
     //! LATER EditorEvent
 
 //////////////////////////////////////////////////////////////////////////////
-} //TINY_GUI_NAMESPACE
+} //TINY_NAMESPACE_GUI
+
+//////////////////////////////////////////////////////////////////////////////
+} //TINY_NAMESPACE
 
 //////////////////////////////////////////////////////////////////////////////
 #endif //TINY_GUI_EDITOR_H

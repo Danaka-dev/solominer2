@@ -27,15 +27,16 @@ TINY_NAMESPACE {
 //////////////////////////////////////////////////////////////////////////////
 //! Definitions
 
-#define TINY_GUIGRID_UUID   0x031ecaf6659b9050a
+#define TINY_GUIGRID_PUID   0x031ecaf6659b9050a
+#define TINY_GUIBAR_PUID    0x07de60d82627b3359
 
 //////////////////////////////////////////////////////////////////////////////
 //! GuiGrid
 
-class GuiGrid : public GuiWithFont ,GUICONTROL_PARENT {
+class GuiGrid : public GuiWithFont ,public IDataEvents ,GUICONTROL_PARENT {
 public:
     struct Cell {
-        String text;
+        String text; //! @note if edit present text might not be updated
         GuiEditBoxRef edit;
         bool editable;
     };
@@ -43,6 +44,7 @@ public:
     struct Row {
         Cell &col( int i ) { return m_cells[i]; }
 
+        size_t index; //! @note used as seek id, if using datasource
         ListOf<Cell> m_cells;
     };
 
@@ -51,6 +53,7 @@ public:
         int width; //! placed size
 
         String title;
+        NameType field; //! data field
         GuiEditBoxRef edit;
         bool editable;
     };
@@ -74,14 +77,16 @@ public:
 public:
     GuiGrid();
 
-    DECLARE_GUICONTROL(GuiControl,GuiGrid,TINY_GUIGRID_UUID);
+    DECLARE_GUICONTROL(GuiControl,GuiGrid,TINY_GUIGRID_PUID);
     DECLARE_GUIPROPERTIES;
 
     size_t rowCount() { return m_rows.size(); }
     size_t colCount() { return m_cols.size(); }
 
-    Col &col( int i ) { return m_cols[i]; }
-    Row &row( int i ) { return m_rows[i]; }
+    Col &col( int i ) { return m_cols[(size_t) i]; }
+    Row &row( int i ) { return m_rows[(size_t) i]; }
+
+    size_t baseIndex() { return m_baseIndex; }
 
 public:
     Config &config() { return m_config; }
@@ -101,19 +106,31 @@ public:
     void Reset( bool withRefresh=true );
 
 public:
-    void addCol( const GuiCoord &width ,const char *title=NullPtr );
+    void setCols( int cols ,const ListOf<String> *titles=NullPtr ,const ListOf<String> *fields=NullPtr );
+    void setRows( int rows ,size_t baseIndex=0 );
+
+    void addCol( const GuiCoord &width ,const char *title=NullPtr ,const char *field=NullPtr ,bool editable=false );
     int addRow();
 
     void setCellText( int y ,int x ,const char *text );
-    void setCellEdit( int y ,int x ,GuiEditBox *editor ,bool editable=false );
-    void setCellType( int y ,int x ,const UUID &editableId ,bool editable=false );
+    void setCellEdit( int y ,int x ,GuiDataEdit *editor ,bool editable=false );
+    void setCellType( int y ,int x ,const PUID &editableId ,bool editable=false );
     void setCellType( int y ,int x ,const char *type ,bool editable=false );
 
     // getCellArea() ...
 
     void Clear( bool withRefresh=true );
 
-protected:
+public: ///-- Data
+    //! @note Bind might be override to implement non standard binding between data source and grid layout
+    API_DECL(void) Bind( IDataSource *datasource );
+    API_DECL(void) UpdateData();
+
+protected: ///-- IDataEvents
+    IAPI_IMPL onDataCommit( IDataSource &source ,Params &data ) IOVERRIDE;
+    IAPI_IMPL onDataChanged( IDataSource &source ,const Params &data ) IOVERRIDE;
+
+protected: ///-- IGuiEvents
     API_IMPL(void) onLayout( const OsRect &clientArea ,OsRect &placeArea ) IOVERRIDE;
     API_IMPL(void) onDraw( const OsRect &updateArea ) IOVERRIDE;
     API_IMPL(void) onMouse( OsMouseAction mouseAction ,OsKeyState keyState ,OsMouseButton mouseButton ,int points ,const OsPoint *pos ) IOVERRIDE;
@@ -121,10 +138,7 @@ protected:
     API_IMPL(void) onTimer( OsTimerAction timeAction ,OsEventTime now ,OsEventTime last ) IOVERRIDE;
 
 protected:
-
-//--
-    GuiEditBox *getEditBox( const UUID &editableId );
-    GuiEditBox *getEditBox( const char *editable );
+    GuiDataEdit *makeEditBox( const char *editable );
 
     // void startEdit( int y ,int x );
 
@@ -160,16 +174,74 @@ protected:
     ListOf<Col> m_cols;
     ListOf<Row> m_rows;
 
-//-- edit
-    // MapOf<UUID,GuiEditBoxRef> m_edits;
-        //! @note editors my be set manually per col/cell, or using NameType in title
 
+//-- edit
+    //! @note editors my be set manually per col/cell, or using NameType in title
+    size_t m_baseIndex; //! @note base index (first row index)
+
+    IDataSourceRef m_datasource;
     GuiEditBoxRef m_editFocus;
 };
 
 //--
 template <>
 GuiGrid::Config &Init( GuiGrid::Config &p );
+
+//////////////////////////////////////////////////////////////////////////////
+//! GuiNavBar
+
+class GuiNavBar : public GuiGroup {
+public:
+    GuiNavBar();
+
+    void Bind( IGuiMessage &listener );
+
+    DECLARE_GUICONTROL(GuiGroup,GuiNavBar,TINY_GUIBAR_PUID);
+};
+
+//////////////////////////////////////////////////////////////////////////////
+class GuiSheet : public GuiGrid {
+public:
+    struct Heading {
+        String field; //! @note "*" will also add all fields from datasource
+        String label; //! @note "" empty label will ignore field
+
+        GuiControlRef edit;
+    };
+
+public:
+    GuiSheet() {
+        addCol( 50.f ); // ,"property" );
+        addCol( 50.f ); // ,"value" );
+
+        setCellMargin(4);
+        setTitleHeight( GuiCoord(36) );
+        setRowHeight( GuiCoord(32) );
+
+        config().showTitle = false;
+    }
+
+    ListOf<Heading> &headings() { return m_headings; }
+
+    // Params &headings() { return m_headings; }
+    // ListOf<String> &blacklist() { return m_blacklist; }
+
+    bool hasHeading( const char *field );
+
+public: ///-- interface
+    IAPI_DECL onBindField( NameType &decl ) {
+        return IOK;
+    }
+
+public: ///-- GuiGrid
+    API_IMPL(void) Bind( IDataSource *datasource ) IOVERRIDE;
+
+protected:
+    ListOf<Heading> m_headings;
+
+    // Params m_headings; //! fields name as they appear in
+    // ListOf<String> m_blacklist; //! field blacklist, these won't be added in the sheet
+};
 
 //////////////////////////////////////////////////////////////////////////////
 } //TINY_NAMESPACE

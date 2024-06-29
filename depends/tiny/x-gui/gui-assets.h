@@ -22,7 +22,10 @@
 #define TINY_GUI_ASSETS_H
 
 //////////////////////////////////////////////////////////////////////////////
-TINY_GUI_NAMESPACE {
+TINY_NAMESPACE {
+
+//////////////////////////////////////////////////////////////////////////////
+TINY_NAMESPACE_GUI {
 
 //////////////////////////////////////////////////////////////////////////////
 //! Asset
@@ -31,6 +34,8 @@ template <class TBase ,class T>
 struct AssetStore_ : Store_<String,RefOf<T> > ,Singleton_<TBase> {
 
     GuiImage *get( const char *name ) {
+        if( name && *name ) {} else return NullPtr;
+
         RefOf<T> *p = this->getInstance().findItem( name );
 
         return (p && !p->isNull()) ? p->ptr() : NullPtr;
@@ -87,6 +92,7 @@ struct Assets {
     // static StringStore &String() { return StringStore::getInstance(); }
 };
 #
+
 /*
 const String assetManifest_exemple =
     "header:image = { file=assets/icons/solo-icons.png; }"
@@ -95,7 +101,10 @@ const String assetManifest_exemple =
 */
 
 //////////////////////////////////////////////////////////////////////////////
-} //TINY_GUI_NAMESPACE
+} //TINY_NAMESPACE_GUI
+
+//////////////////////////////////////////////////////////////////////////////
+} //TINY_NAMESPACE
 
 //////////////////////////////////////////////////////////////////////////////
 #endif //TINY_GUI_ASSETS_H

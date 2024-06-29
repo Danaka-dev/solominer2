@@ -84,16 +84,16 @@ UiCoreSettings::UiCoreSettings() : GuiDialog( "core-settings")
 
     //-- data edit
     //TODO bind from manifest ? .. IDataSource as GuiControl ?
-    body->getControl("editFilename")->As_<GuiEditBox>()->Bind( "filename" ,m_data );
-    body->getControl("editLocation")->As_<GuiEditBox>()->Bind( "location" ,m_data );
-    body->getControl("editDatapath")->As_<GuiEditBox>()->Bind( "datapath" ,m_data );
-    body->getControl("editArguments")->As_<GuiEditBox>()->Bind( "arguments" ,m_data );
-    body->getControlAs_<GuiEditBox>("editHost")->Bind( "host" ,m_data );
-    body->getControl("editPort")->As_<GuiEditBox>()->Bind( "port" ,m_data );
-    body->getControl("editUser")->As_<GuiEditBox>()->Bind( "user" ,m_data );
-    body->getControl("editPass")->As_<GuiEditBox>()->Bind( "password" ,m_data );
+    body->getControl("editFilename")->As_<GuiTextBox>()->Bind( "filename" ,m_data );
+    body->getControl("editLocation")->As_<GuiTextBox>()->Bind( "location" ,m_data );
+    body->getControl("editDatapath")->As_<GuiTextBox>()->Bind( "datapath" ,m_data );
+    body->getControl("editArguments")->As_<GuiTextBox>()->Bind( "arguments" ,m_data );
+    body->getControlAs_<GuiTextBox>("editHost")->Bind( "host" ,m_data );
+    body->getControl("editPort")->As_<GuiTextBox>()->Bind( "port" ,m_data );
+    body->getControl("editUser")->As_<GuiTextBox>()->Bind( "user" ,m_data );
+    body->getControl("editPass")->As_<GuiTextBox>()->Bind( "password" ,m_data );
 
-    body->getControl("editAddress")->As_<GuiEditBox>()->Bind( "address" ,*this );
+    body->getControl("editAddress")->As_<GuiTextBox>()->Bind( "address" ,*this );
 
     //-- state
     onCoreCombo(0);
@@ -120,7 +120,7 @@ void UiCoreSettings::setCoreByTicker( const char *ticker ,CConnection &connectio
 
     String &address = m_connection->info().mineCoin.address;
 
-    getControlAs_<GuiGroup>("body")->getControlAs_<GuiEditBox>("editAddress")->setValue( address.c_str() );
+    getControlAs_<GuiGroup>("body")->getControlAs_<GuiTextBox>("editAddress")->setValue( address.c_str() );
 }
 
 //--
@@ -266,14 +266,14 @@ void UiCoreSettings::onConfirm() {
     String port;
 
     if( result == IOK ) {
-        body->getControlAs_<GuiEditBox>("editHost")->getValue( info.connection.host );
-        body->getControlAs_<GuiEditBox>("editPort")->getValue( port );
-        body->getControlAs_<GuiEditBox>("editUser")->getValue( info.credential.user );
-        body->getControlAs_<GuiEditBox>("editPass")->getValue( info.credential.password );
+        body->getControlAs_<GuiTextBox>("editHost")->getValue( info.connection.host );
+        body->getControlAs_<GuiTextBox>("editPort")->getValue( port );
+        body->getControlAs_<GuiTextBox>("editUser")->getValue( info.credential.user );
+        body->getControlAs_<GuiTextBox>("editPass")->getValue( info.credential.password );
         fromString( info.connection.port ,port );
     }
 
-    body->getControlAs_<GuiEditBox>("editAddress")->getValue( info.mineCoin.address );
+    body->getControlAs_<GuiTextBox>("editAddress")->getValue( info.mineCoin.address );
 
     m_connection->adviseEdit( true );
     m_connection->connectionList().saveConfig();
@@ -310,7 +310,7 @@ void UiCoreSettings::onClose() {
 }
 
 //--
-void UiCoreSettings::onCommand( GuiControl &source ,uint32_t commandId ,long param ,Params *params ,void *extra ) {
+void UiCoreSettings::onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) {
     GuiDialog::onCommand( source ,commandId ,param ,params ,extra );
 
     switch( commandId ) {
@@ -394,7 +394,7 @@ UiMainSettings::UiMainSettings() : GuiDialog( "about solominer")
     getControlAs_<GuiButton>("close")->Subscribe(*this);
 }
 
-void UiMainSettings::onCommand( GuiControl &source ,uint32_t commandId ,long param ,Params *params ,void *extra ) {
+void UiMainSettings::onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) {
     GuiDialog::onCommand( source ,commandId ,param ,params ,extra );
 }
 
@@ -402,8 +402,9 @@ void UiMainSettings::onCommand( GuiControl &source ,uint32_t commandId ,long par
 //! Definitions
 
 #define COMMANDID_EARNINGSDIALOG    1001
-#define COMMANDID_SETTINGSDIALOG    1044
 #define COMMANDID_TRADELINK         1002 // TODO to window
+#define COMMANDID_SETTINGSDIALOG    1044
+#define COMMANDID_DELETEOK          1045
 
 //////////////////////////////////////////////////////////////////////////////
 char periodLabelChar( ValuePeriod period ) {
@@ -421,23 +422,22 @@ char periodLabelChar( ValuePeriod period ) {
 //! Header
 
 UiHeader::UiHeader( CDashboardWindow &parent ) :
-    m_parent(parent)
+    m_parent(parent) ,m_totalEarnings(NullPtr)
 {
+    setRoot( parent );
+
     setPropertiesWithString(
         "align=top; anchor=vertical; coords={0,0,100%,122} background=#181818; controls={"
             "banner:GuiImageBox = { image=header; align=none; coords={48,0,628,100%} }"
-            "settings:GuiImageBox = { commandId=1044; image=icons; align=top,left; coords={0,0,48,48} thumbid=7; }"
-            "version:GuiLabel = { text=version 1.99.5 (BETA 1); align=none; textalign=top,left; coords={60,80%,600,100%} background=0; }"
+            "settings:GuiImageBox = { commandId=1044; bind=root; image=icons; align=top,left; coords={0,0,48,48} thumbid=7; }"
+            "version:GuiLabel = { text=version 2.0.1021 (BETA 2); align=none; textalign=top,left; coords={60,80%,600,100%} background=0; }"
             "earnlabel:GuiLabel = { text=earnings; textalign=right; align=top,right; anchor=vertical; textalign=center; coords={0,0,25%,20%} background=0; }"
             "currency:GuiLabel = { text=USD; font=huge; textalign=center; align=right,bottom; anchor=horizontal; coords={0,0,8%,80%} background=0; }"
-            "incomes:GuiLink = { commandId=1001; text=0.00; font=huge; textalign=right+centerv; align=right,bottom; anchor=horizontal; coords={0,0,25%,80%} background=0; }"
+            "incomes:GuiLink = { commandId=1001; bind=root; text=0.00; font=huge; textalign=right+centerv; align=right,bottom; anchor=horizontal; coords={0,0,25%,80%} background=0; }"
         "}"
     );
 
-    getControlAs_<GuiLink>("incomes")->Subscribe( m_parent );
-    getControlAs_<GuiImageBox>("settings")->Subscribe( m_parent );
-
-    //TODO some command to trigger properties save + load properties hereabove
+    m_totalEarnings = getControlAs_<GuiLink>("incomes");
 
     updateTotalIncome();
 }
@@ -449,9 +449,7 @@ void UiHeader::updateTotalIncome() {
 
     toString( total ,s );
 
-    auto *incomes = getControlAs_<GuiLink>("incomes");
-
-    SAFECALL(incomes)->text() = s;
+    SAFECALL(m_totalEarnings)->text() = s;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -495,7 +493,7 @@ void UiFooter::onClickTradeLink() {
     m_parent.ShowModal( m_dialog ); */
 }
 
-void UiFooter::onCommand( GuiControl &source ,uint32_t commandId ,long param ,Params *params ,void *extra ) {
+void UiFooter::onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) {
     switch( commandId ) {
         case COMMANDID_TRADELINK:
             onClickTradeLink(); break;
@@ -519,7 +517,7 @@ void UiFooter::onCommand( GuiControl &source ,uint32_t commandId ,long param ,Pa
 #define CONNECTION_REFRESH_DELAY    (10000) //TODO TEST // (10*1000)
 #define CONNECTION_RETRY_DELAY      (60000)
 
-struct UiConnection : public GuiGroup ,public IMinerListener ,public IGuiCommandEvent {
+struct UiConnection : public GuiGroup ,public IMinerListener {
 ///-- members
     CDashboardWindow &m_parent;
     CConnection &m_connection;
@@ -527,9 +525,9 @@ struct UiConnection : public GuiGroup ,public IMinerListener ,public IGuiCommand
     uint32_t m_retryTimer;
 
 ///-- controls
-    GuiThumbnail coinThumbnail;
+    GuiImageBox coinThumbnail;
     GuiImageBox tradeIcon;
-    GuiThumbnail tradeThumbnail;
+    GuiImageBox tradeThumbnail;
 
     // stats
     GuiLabel hpsLabel;
@@ -565,12 +563,30 @@ struct UiConnection : public GuiGroup ,public IMinerListener ,public IGuiCommand
         ,m_startWalletBox( *this ,"Core" ,"Would like to start core or configure it first?" ,{  {"Cancel","3"} ,{"Configure","1005"} ,{"Start","1006"} } )
         ,m_noMiningAddressBox( *this ,"Core" ,"No mining address was set for this coin, do you want to configure it?" ,{ {"No","3"} ,{"Configure","1005"} } )
     {
+        setRoot(parent);
+        // root().addBinding( "self" ,this );
+
+        Params vars;
+
+        toString( m_connection.getIndex() ,vars["index"] );
+
+        setPropertiesWithString( "controls={"
+                "tools:GuiGroup = { align=right,horizontal; coords={0,0,32,100%} controls= {"
+                    "grab:GuiImageBox = { commandId=27,${index}; bind=list; image=minis; align=top,right,vertical; coords={0,0,32,32} thumbid=25; }"
+                    "edit:GuiImageBox = { commandId=29,${index}; bind=list; image=minis; align=top,right,vertical; coords={0,0,32,32} thumbid=7; }"
+                    "delete:GuiImageBox = { commandId=30,${index}; bind=list; image=minis; align=top,right,vertical; coords={0,0,32,32} thumbid=8; }"
+                "}"
+            "}"
+            ,vars
+        );
+
         connection.setMinerListener( this );
         m_refreshTimer = parent.addTimer( *this ,CONNECTION_REFRESH_DELAY );
         m_retryTimer  = parent.addTimer( *this ,CONNECTION_RETRY_DELAY );
 
         coords() = { 0 ,0 ,100.f ,UI_CONNECTION_HEIGHT  };
         align() = (GuiAlign) (GuiAlign::alignTop | GuiAlign::alignAnchor);
+        // colors().fillColor = OS_COLOR_ORANGE; // get from theme
 
         const char *coinName = connection.info().mineCoin.coin.c_str();
         const char *tradeName = connection.info().tradeCoin.coin.c_str();
@@ -582,8 +598,10 @@ struct UiConnection : public GuiGroup ,public IMinerListener ,public IGuiCommand
         int statLeftPos = (int) (UI_CONNECTION_HEIGHT*0.8f);
 
         { //! coin icon
-            coinThumbnail.image().setImage( getAssetCoinImage( coinName ) );
-            coinThumbnail.label().setText( coinName );
+            coinThumbnail.commandId() = GUI_MESSAGEID_EDIT;
+            coinThumbnail.Subscribe( *this );
+            coinThumbnail.setImage( getAssetCoinImage( coinName ) );
+            coinThumbnail.text() = coinName;
             coinThumbnail.align() = (GuiAlign) (alignLeft | alignAnchor);
             coinThumbnail.coords() =  { 0 ,0 ,(int) (UI_CONNECTION_HEIGHT*0.8f) ,90.f  };
             addControl( coinThumbnail );
@@ -596,8 +614,8 @@ struct UiConnection : public GuiGroup ,public IMinerListener ,public IGuiCommand
 
                 statLeftPos += 16;
 
-                tradeThumbnail.image().setImage( getAssetCoinImage( tradeName ) );
-                tradeThumbnail.label().setText( tradeName );
+                tradeThumbnail.setImage( getAssetCoinImage( tradeName ) );
+                tradeThumbnail.text() = tradeName;
                 tradeThumbnail.align() = (GuiAlign) (alignLeft | alignAnchor);
                 tradeThumbnail.coords() =  { 0 ,0 ,(int) (UI_CONNECTION_HEIGHT*0.8f) ,90.f  };
                 addControl( tradeThumbnail );
@@ -667,7 +685,7 @@ struct UiConnection : public GuiGroup ,public IMinerListener ,public IGuiCommand
             balanceLabel.setCommandId( COMMAND_BALANCE );
             balanceLabel.textAlign() = (TextAlign) (textalignRight | textalignCenterV);
             balanceLabel.setFont( getFontLarge() );
-            balanceLabel.coords() = { balanceLeftPos ,0 ,98.f ,80.f };
+            balanceLabel.coords() = { balanceLeftPos ,0 ,97.f ,80.f };
             balanceLabel.hooverColor() = OS_RGB(160,160,250);
             addControl( balanceLabel );
 
@@ -676,7 +694,7 @@ struct UiConnection : public GuiGroup ,public IMinerListener ,public IGuiCommand
             earningLabel.setCommandId( COMMAND_EARNINGS );
             earningLabel.textAlign() = (TextAlign) (textalignRight | textalignCenterV);
             earningLabel.setFont( getFontSmall() );
-            earningLabel.coords() = { balanceLeftPos ,60.f ,98.f ,100.f };
+            earningLabel.coords() = { balanceLeftPos ,60.f ,97.f ,100.f };
             earningLabel.hooverColor() = OS_RGB(160,160,250);
             addControl( earningLabel );
         }
@@ -686,15 +704,15 @@ struct UiConnection : public GuiGroup ,public IMinerListener ,public IGuiCommand
 
 ///-- shorthands
     const char *mineCoinName() {
-        return m_connection.info().mineCoin.coin.c_str();
+        return tocstr( m_connection.info().mineCoin.coin );
     }
 
     const char *mineCoinAddress() {
-        return m_connection.info().mineCoin.address.c_str();
+        return tocstr( m_connection.info().mineCoin.address );
     }
 
     const char *tradeCoinName() {
-        return m_connection.info().tradeCoin.coin.c_str();
+        return tocstr( m_connection.info().tradeCoin.coin );
     }
 
 ///-- functions
@@ -1086,8 +1104,21 @@ struct UiConnection : public GuiGroup ,public IMinerListener ,public IGuiCommand
         }
     }
 
+///-- edit
+    /* void onEditConnection( int page ) {
+        const int *index = parent().connections().connections().digItem( m_connection );
+
+        assert(index);
+
+        parent().connectionList().onEditConnection( *index );
+    }
+
+    void onDeleteConnection() {
+        parent().showConfirmDelete();
+    } */
+
 ///-- ICommandListener
-    void onCommand( GuiControl &source ,uint32_t commandId ,long param ,Params *params ,void *extra ) override {
+    void onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) override {
         switch( commandId ) {
             case COMMAND_BALANCE:
                 onClickBalanceLabel(); break;
@@ -1101,6 +1132,17 @@ struct UiConnection : public GuiGroup ,public IMinerListener ,public IGuiCommand
                 onMiningCommand(); break;
             case COMMAND_AUTO:
                 onMiningAuto( (bool) param ); break;
+
+            /* case GUI_MESSAGEID_MOVE:
+                //TODO drag & drop
+                break;
+
+            case GUI_MESSAGEID_EDIT:
+                onEditConnection(0);
+            case GUI_MESSAGEID_DELETE:
+                onDeleteConnection(0);
+                */
+
             default:
                 break;
         }
@@ -1210,31 +1252,18 @@ struct UiConnection : public GuiGroup ,public IMinerListener ,public IGuiCommand
 //////////////////////////////////////////////////////////////////////////////
 //! ConnectionList
 
-CConnectionAdder::CConnectionAdder( UiConnectionList &parent ) : m_parent(parent)
-{
-    coords() = { 0 ,0 ,100.f ,UI_CONNECTION_HEIGHT  };
-    align() = (GuiAlign) (GuiAlign::alignTop | GuiAlign::alignAnchor);
-
-    m_addButton.setCommandId(GUI_COMMANDID_ADD);
-    m_addButton.coords() = { 0 ,0 ,75 ,75 };
-    m_addButton.align() = GuiAlign::alignCenter;
-    m_addButton.setImage( getAssetIconImage( UIICONS_MAIN ) );
-
-    m_addButton.thumbnail() = Rect( 5,111*7 ,75+5,75+111*7 );
-    // m_addButton.origin() = { 5,111*7 };
-    // m_addButton.size() = { 75 ,75 };
-
-    addControl(m_addButton);
-}
-
-///--
 UiConnectionList::UiConnectionList( CDashboardWindow &parent ,CConnectionList &connections ) : GuiGroup(true)
-    ,m_parent(parent) ,m_connections(connections) ,m_addConnection(*this)
+    ,m_parent(parent) ,m_connections(connections) ,m_connectionWizard(parent)
 {
+    setRoot( parent );
+    parent.addBinding( "list" ,this );
+
+//-- connection controls
     coords() = { 0 ,0 ,100.f ,100.f  };
     align() = GuiAlign::alignFill;
-
     colors().fillColor = OS_COLOR_BLACK;
+
+    String name ,s;
 
     for( auto &it : m_connections.connections().map() ) {
         CConnection *p = it.second.ptr();
@@ -1243,21 +1272,28 @@ UiConnectionList::UiConnectionList( CDashboardWindow &parent ,CConnectionList &c
 
         auto *pui = new UiConnection(parent,*p);
 
-        addControl( *pui );
+        int index = it.first;
+        s = ""; toString( index ,s );
+        name = "connection"; name += s;
+
+        addControl( tocstr(name) ,*pui );
     }
 
-//-- add connection emplacement
-    //TODO complete wizard
+//-- connection adder
+    makeConnectionAdder();
+}
 
-    /* m_addConnection.command().Subscribe( *this );
-
-    addControl( m_addConnection ); */
+void UiConnectionList::makeConnectionAdder() {
+    setPropertiesWithString(
+        "controls={"
+            "adder:GuiImageBox = { commandId=28; bind=list; image=icons; align=top,center; coords={0,0,48,48} thumbid=56; }"
+        "}"
+    );
 }
 
 //-- command
 void UiConnectionList::onAddConnection() {
-    m_connectionWizard.setConnectionAdd();
-    m_parent.ShowModal( m_connectionWizard );
+    m_connectionWizard.showAddConnection( m_parent );
 }
 
 void UiConnectionList::onEditConnection( int index ) {
@@ -1267,9 +1303,8 @@ void UiConnectionList::onEditConnection( int index ) {
         assert(false); return;
     }
 
-
-    m_connectionWizard.setConnectionEdit( index ,connection->info() );
-    m_parent.ShowModal( m_connectionWizard );
+    m_editIndex = index;
+    m_connectionWizard.showEditConnection( m_parent ,index ,connection->info() );
 }
 
 void UiConnectionList::onMoveConnection( int previousIndex ,int newIndex ) {
@@ -1277,30 +1312,67 @@ void UiConnectionList::onMoveConnection( int previousIndex ,int newIndex ) {
 }
 
 void UiConnectionList::onDeleteConnection( int index ) {
-
+    m_editIndex = index;
+    m_parent.showConfirmDelete( index );
 }
 
 //-- callback
-void UiConnectionList::onCreateConnection() {
-    //! here from onPost
+void UiConnectionList::onAddConnectionOk( Params &settings ) {
+    CConnectionRef ref;
+
+    m_connections.addConnection( settings ,ref );
+    m_connections.saveConfig();
+
+    assert( ref ); if( !ref ) return; //! LOG this ... should not happen
+
+    auto *pui = new UiConnection( m_parent ,ref.get() );
+
+    removeControl("adder");
+
+    addControl( *pui );
+
+    makeConnectionAdder();
 }
 
-void UiConnectionList::onUpdateConnection() {
+void UiConnectionList::onEditConnectionOk( int index ,Params &settings ) {
+    m_connections.editConnection( m_editIndex ,settings );
+    m_connections.saveConfig();
+}
 
+void UiConnectionList::onDeleteConnectionOk( int index ) {
+    index = m_editIndex; //! @note fix for missing index from MessageBox
+
+    String name ,s;
+
+    s = ""; toString( index ,s );
+    name = "connection"; name += s;
+
+    removeControl( tocstr(name) );
+
+    m_connections.deleteConnection( index );
+    m_connections.saveConfig(); //TODO HERE need to remove missing section in saveConfig
 }
 
 //--
-void UiConnectionList::onCommand( GuiControl &source ,uint32_t commandId ,long param ,Params *params ,void *extra ) {
+void UiConnectionList::onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) {
     switch( commandId ) {
-        case GUI_COMMANDID_ADD:
+        case GUI_MESSAGEID_ADD:
             onAddConnection();
             break;
-        case GUI_COMMANDID_EDIT:
+        case GUI_MESSAGEID_EDIT:
             onEditConnection( (int) param );
             break;
-        case GUI_COMMANDID_REMOVE:
+        case GUI_MESSAGEID_DELETE:
             onDeleteConnection( (int) param );
             break;
+
+        case GUI_MESSAGEID_OK:
+            if( param < 0 )
+                onAddConnectionOk( *params );
+            else
+                onEditConnectionOk( (int) param ,*params );
+            break;
+
         default:
             assert(false);
             break;
@@ -1312,28 +1384,47 @@ void UiConnectionList::onCommand( GuiControl &source ,uint32_t commandId ,long p
 //! Dashboard
 
 CDashboardWindow::CDashboardWindow( CConnectionList &connections ) :
-    GuiControlWindow( SOLOMINER_UI_MAINNAME ,"SOLOMiner - Dashboard v0.98.1" ,1280 ,800 )
+    GuiControlWindow( SOLOMINER_UI_MAINNAME ,"SOLOMINER2 - Dashboard" ,1280 ,800 )
     ,m_connections(connections)
     ,m_uiHeader(*this)
     ,m_uiFooter(*this)
     ,m_uiConnectionList(*this,connections)
     ,m_uiEarningsDialog( connections.earnings() )
+    ,m_confirmDelete( *this ,"Delete Connection" ,"Are your sure you want to delete this connection?" ,{ {"No" ,"3"} ,{"Yes","1045"} } )
 {
     foreground().addControl( m_uiHeader );
     foreground().addControl( m_uiFooter );
     foreground().addControl( m_uiConnectionList );
 }
 
-void CDashboardWindow::onCommand( GuiControl &source ,uint32_t commandId ,long param ,Params *params ,void *extra ) {
+//--
+void CDashboardWindow::onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) {
+
+    //-- connection
+    if( params && extra && strimatch( "connection" ,(const char*) extra ) == 0 ) {
+        m_uiConnectionList.onCommand( source ,commandId ,param ,params ,extra );
+        return;
+    }
+
+    //-- local
     switch( commandId ) {
         case COMMANDID_SETTINGSDIALOG:
             showMainSettings(); break;
         case COMMANDID_EARNINGSDIALOG:
             showEarningsDialog(); break;
+
+        case COMMANDID_DELETEOK:
+            m_uiConnectionList.onDeleteConnectionOk( (int) param );
+            break;
+
         default:
-            assert(false);
+            GuiControlWindow::onCommand( source ,commandId ,param ,params ,extra );
             break;
     }
+}
+
+void CDashboardWindow::onNotify( IObject *source ,messageid_t notifyId ,long param ,Params *params ,void *extra ) {
+    GuiControlWindow::onNotify( source ,notifyId ,param ,params ,extra );
 }
 
 //////////////////////////////////////////////////////////////////////////////

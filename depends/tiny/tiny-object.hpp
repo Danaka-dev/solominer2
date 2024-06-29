@@ -25,7 +25,7 @@
 //! tiny implementation of fundamental interface
 
     //! @note this header can be detached from tiny-for-c++ to be used on tis own
-    //TODO redef macro here for this
+    //! (requires definitions from 'tiny-defs.h')
 
 ///////////////////////////////////////////////////////////////////////////////
 TINY_NAMESPACE {
@@ -34,7 +34,8 @@ TINY_NAMESPACE {
 ///////////////////////////////////////////////////////////////////////////////
 //! Reference
 
-    //!IE reference counted pointer (NB object enables reference counting (!= std::share_ptr)
+    //!IE reference counted pointer (@note it is the object that enables reference
+    //!     counting, so ref != std::share_ptr
 
 typedef ASYNCH_TYPE ref_t;
 
@@ -47,8 +48,10 @@ protected:
     T *m_ptr;
 
 public:
+    ref_() : m_ptr(NullPtr) {}
+
     //! Initializing with a new ptr (use along with new, taking ownership of the initial reference, no AddRef)
-    explicit ref_( T *p=NullPtr ) : m_ptr(p) {}
+    explicit ref_( T *p ) : m_ptr(p) {}
 
     //! Initializing with an existing object (adding a reference)
     ref_( T &p ) : m_ptr(&p) { AddRef(); }
@@ -57,8 +60,8 @@ public:
     ref_( const ref_<T> &ref ) : m_ptr(ref.m_ptr) { AddRef(); }
 
     //! move constructor (adding a reference, ... )
-    //! @note while it doesn't seems logical to AddRef on a move, destructor will be called off the donating object
-    //! which will Release() and remove a reference... so we need to AddRef here )
+        //! @note while it doesn't seems logical to AddRef on a move, destructor will be called off the donating object
+        //! which will Release() and remove a reference... so AddRef is needed here
     ref_( ref_<T> &&ref ) NoExcept : m_ptr(ref.m_ptr) { AddRef(); }
 
     //! destructor
@@ -77,8 +80,9 @@ public: ///-- accessors
     const T *ptr() const { return m_ptr; }
     T *ptr() { return m_ptr; }
 
+    //! @note get doesn't check if ptr is non null, should only be used if certain the pointer is set
     const T &get() const { assert(m_ptr); return *m_ptr; }
-    T &get() { assert(m_ptr); return *m_ptr; } //! @note no check, only use if certain the pointer will not be null
+    T &get() { assert(m_ptr); return *m_ptr; }
 
     explicit operator bool() const { return !isNull(); }
 
@@ -88,7 +92,7 @@ public: ///-- accessors
     T * operator *() { return m_ptr; }
     T * operator ->() { return m_ptr; }
 
-    bool isNull() const { return m_ptr == NullPtr; }
+    NoDiscard bool isNull() const { return m_ptr == NullPtr; }
 
 public: ///-- operators
     ref_<T> &operator =( T *p ) { Assign( p ); return *this; } //! NB adds a reference, for 'new' assignment use constructor
@@ -131,7 +135,7 @@ public: ///-- object interface query
 
     template <class Ty>
     ref_<T> &operator =( ref_<Ty> &ref ) {
-        return this->operator =( ref.template As_<T>() ); return *this;
+        return this->operator =( ref.template As_<T>() );
     }
 
 public:
@@ -153,7 +157,7 @@ protected:
 ///-- interface
 
 struct IReferable {
-    virtual ~IReferable() DEFAULT;
+    virtual ~IReferable() DEFAULT
 
     API_DECL(ref_t) AddRef() = 0;
     API_DECL(ref_t) Release() = 0;
@@ -189,125 +193,157 @@ private:
 };
 
 //////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////
-//! Ptr
+//! Shared Ptr
 
-#define INSTANCEID uint64_t
+template <class T>
+struct Ptr_ {
+protected:
+    T *m_ptr;
 
-#define INSTANCE_NOID   0
+    volatile ref_t m_refs;
 
-// template <> getStore() => singleton
+public:
+    Ptr_() : m_ptr(NullPtr) ,m_refs(0)
+    {}
 
-    //... TODO
-    // ptr_ indirection + relink of serialized object instance (define instance id ...)
+    ~Ptr_()
+    {}
+
     //TODO
-    //=> getObject( INSTANCEID id );
+};
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //! Definitions
 
-#define IOBJECT_UUID    0x0fffa000100010001
-    //? TODO UUID from GUID ? so ok to use both ?
+//TODO use
+// #define GUIDtoPUID(__guid__)        ( ((PUID*) __guid) ^ ((PUID*) (__guid+8)) )
+//TODO OR
+// PUID MakePUID( const guid_t &guid ,const guid_t &appGuid = APPLICATION_GUID );
 
-#ifndef UUID
- #define UUID uint64_t
+typedef uint64_t puid_t;
+
+///-- class
+
+    //! @note program unique id
+
+#ifndef PUID //TODO rename to PUID
+ #define PUID puid_t
 #endif
 
-// typedef UUID uuid_t; //TODO @note and solve, clashing UUID from libuuid ...
+#define PUID_NIL    ((PUID) 0 )
+#define PUID_MAX    ((PUID) 0xffffffffffffffff )
+#define PUID_OMNI   ((PUID) 0xffffffffffffffff )
 
-//////////////////////////////////////////////////////////////////////////////
-//! Declaration
+//-- instance
 
-template <typename T>
-const UUID classId_();
+    //! @note program instance id
 
-template <typename T>
-const char *className_();
+#define PIID puid_t
 
-#define DECLARE_TCLASS(__class,__uid) \
-    template <> inline const UUID classId_<__class>() { return __uid; } \
-    template <> inline const char *className_<__class>() { return TINY_STR(__class); }
-
-//--
-
-//TODO change all declaration from below macro to above template
-
-//! @brief declare an object class id
-#define DECLARE_CLASSID(__uid) \
-    static const UUID classId() { return __uid; }
-
-//! @brief declare an object class name
-#define DECLARE_CLASSNAME(__name) \
-    static const char *className() { return __name; }
-
-//! @brief declare an object class identity (id & name)
-#define DECLARE_CLASS(__class,__uid) \
-    DECLARE_CLASSID(__uid) \
-    DECLARE_CLASSNAME( TINY_STR(__class) ) \
-
-//! @brief declare an IObject class identity (i.e. with dynamic UUID get)
-#define DECLARE_ICLASS(__class,__uid) \
-    DECLARE_CLASS(__class,__uid) \
-    IAPI_IMPL getClassId( UUID &id ) IOVERRIDE { id = classId(); return IOK; }
+#define PIID_NOINSTANCE  ((PIID) 0 )
 
 //////////////////////////////////////////////////////////////////////////////
 //! Class identity
 
-bool registerClassName( const UUID &id ,const char *name );
+///-- common registry
+bool registerClassName( const PUID &id ,const char *name );
 
-//TODO findClassIdByName ?
+// void listClassNames( ListOf<String> &names );
+// void listClassIds( ListOf<PUID> &ids );
 
-bool getClassIdFromName( const char *name ,UUID &id );
-bool getClassNameFromId( const UUID &id ,String &name );
+bool findClassIdByName( const char *name ,PUID &id );
+bool findClassNameById( const PUID &id ,String &name );
 
-//--
+///-- structure
+
+    //! @brief structure identity declared with an out of scope template declaration
+
 template <typename T>
-bool RegisterTClassName_() {
+PUID classId_();
+
+template <typename T>
+const char *className_();
+
+//! @brief declare a structure id
+#define DECLARE_STRUCTID(__class,__uid) \
+    template <> inline PUID classId_<__class>() { return __uid; }
+
+//! @brief declare a structure's name
+#define DECLARE_STRUCTNAME(__class,__name) \
+    template <> inline const char *className_<__class>() { return __name; }
+
+//! @brief declare a structure's identity (id & name)
+#define DECLARE_STRUCT(__class,__uid) \
+    DECLARE_STRUCTID(__class,__uid) \
+    DECLARE_STRUCTNAME(__class,TINY_STR(__class) )
+
+//! @brief register a structure's identity
+template <typename T>
+bool registerStructName_() {
     return registerClassName( classId_<T>() ,className_<T>() );
 }
 
-//--
-#define REGISTER_TCLASSNAME(__class) \
-    static bool g_##__class##_registered = RegisterTClassName_<__class>();
+#define REGISTER_STRUCTNAME(__class) \
+    static bool g_##__class##_registered = registerStructName_<__class>();
 
-//--
+///-- classes
+
+    //! @brief class identity declared with an in scope member declaration
+
+//! @brief declare a class's id
+#define DECLARE_CLASSID(__uid) \
+    static PUID classId() { return __uid; }
+
+//! @brief declare a class's name
+#define DECLARE_CLASSNAME(__name) \
+    static const char *className() { return __name; }
+
+//! @brief declare an class's identity (id & name)
+#define DECLARE_CLASS(__class,__uid) \
+    DECLARE_CLASSID(__uid) \
+    DECLARE_CLASSNAME( TINY_STR(__class) ) \
+
+    //! @note using 'DECLARE' an not 'MEMBERS' as it is a static function declaration, not member functions
+
+//! @brief register a class's identity
 template <typename T>
-bool RegisterClassName_() {
+bool registerClassName_() {
     return registerClassName( T::classId() ,T::className() );
 }
 
-//--
 #define REGISTER_CLASSNAME(__class) \
     static bool g_##__class##_registered = RegisterClassName_<__class>();
 
 //////////////////////////////////////////////////////////////////////////////
 //! IObject
 
+#define IOBJECT_PUID    0x0fffa000100010001
+
 class IObject : public virtual IReferable {
 public:
-    virtual ~IObject() DEFAULT;
+    API_IMPL() ~IObject() IOVERRIDE DEFAULT;
 
-    static const UUID classId() { return IOBJECT_UUID; };
+    static PUID classId() { return IOBJECT_PUID; };
 
     bool operator == ( IObject &object ) const { return this == &object; }
     bool operator != ( IObject &object ) const { return this != &object; }
 
 public:
-    IAPI_DECL getClassId( UUID &id ) { return classId(); };
-    IAPI_DECL getInterface( UUID id ,void **ppv ) = 0;
+    IAPI_DECL getClassId( PUID &id ) { id = classId(); return IOK; };
+    IAPI_DECL getInterface( PUID id ,void **ppv ) = 0;
 
 public: //-- identity
-    UUID getMyClassId() {
-        UUID id; getClassId(id); return id;
+    PUID getMyClassId() {
+        PUID id; getClassId(id); return id;
     }
 
-    bool getClassName( String &name ) {
-        return getClassNameFromId( getMyClassId() ,name );
+    bool getMyClassName( String &name ) {
+        return findClassNameById( getMyClassId() ,name );
     }
 
     String myClassName() {
-        String name; getClassName(name); return name;
+        String name; getMyClassName( name ); return name;
     }
 
 public: //-- interface
@@ -319,29 +355,25 @@ public: //-- interface
         return getInterface_<T>();
     }
 
-public: //-- name resolution
-        /*
-    // static void listClassNames( ListOf<String> &names ); //TODO
-    static bool registerClassName( const UUID &id ,const char *name );
-
-    static bool getClassIdFromName( const char *name ,UUID &id );
-    static bool getClassNameFromId( const UUID &id ,String &name );
-    */
-
 protected:
-    static MapOf<String,UUID> m_classNames;
+    static MapOf<String,PUID> m_classNames;
 };
 
 typedef RefOf<IObject> IObjectRef;
 
+//! @brief support macro to derive from IObject
 #define IOBJECT_PARENT    virtual public IObject
 
-#define MyUUID  this->getMyClassId()
-#define MyNAME  this->getClassName()
+//! @brief shorthands to get own id and name from an object member function
+#define MyPUID  this->getMyClassId()
+#define MyNAME  this->getMyClassName()
 
-//-- helper to honor an interface for getInterface implementation
+//////////////////////////////////////////////////////////////////////////////
+//! interface support helpers
+
+//! @brief helper function to honor an interface in getInterface implementation
 template <class T>
-bool honorInterface_( T *object ,UUID id ,void **ppv ) {
+bool honorInterface_( T *object ,PUID id ,void **ppv ) {
     if( T::classId() == id ) {
         *ppv = object; SAFECALL(object)->AddRef(); return true;
     }
@@ -349,20 +381,20 @@ bool honorInterface_( T *object ,UUID id ,void **ppv ) {
     return false;
 }
 
-//-- out of class function to get an object's interface (NB template inference identify the object)
+//! @brief out of class function to get an object's interface (NB template inference identify the object)
 template <class T>
-bool getInterface_( T &object ,UUID iid ,void **ppv ) {
+bool getInterface_( T &object ,PUID iid ,void **ppv ) {
     return object.getInterface( iid ,ppv ) == IOK;
 }
 
-//-- idem, for a pointer
+//! idem, for a pointer
 template <class T>
-bool getInterface_( T *object ,UUID iid ,void **ppv ) {
-    return object && getInterface_<T>( *object ,iid ,ppv );
+bool getInterface_( T *p ,PUID iid ,void **ppv ) {
+    return p && getInterface_<T>( *p ,iid ,ppv );
 }
 
-//-- idem, using template type to infer uuid and return proper typed pointer
-    //! NB this is the safer and preferred way to get an interface from an object
+//! idem, typed
+    //! @note this is the safer and preferred way to get an interface from an object
 
 template <class T ,class Ty>
 Ty *getInterface_( T &object ) {
@@ -370,15 +402,148 @@ Ty *getInterface_( T &object ) {
 }
 
 template <class T ,class Ty>
-T *getInterface_( T *object ) {
-    return object ? getInterface_<T,Ty>( *object ) : NullPtr;
+T *getInterface_( T *p ) {
+    return p ? getInterface_<T,Ty>( *p ) : NullPtr;
 }
 
-//-- register class
+//////////////////////////////////////////////////////////////////////////////
+//! CObject
+
+    //! @brief base for a IObject implementation
+
+class CObject : IOBJECT_PARENT ,public CReferable {
+public:
+    CObject() DEFAULT
+
+public: ///-- IObject
+    IAPI_IMPL getInterface( PUID id ,void **ppv ) IOVERRIDE {
+        return (!ppv || *ppv) ? IBADARGS :
+            honorInterface_<IObject>(this,id,ppv)
+            ? IOK : INODATA
+        ;
+    }
+};
+
+//! @brief support macro to derive from CObject
+#define COBJECT_PARENT    public virtual CObject
+
+//! @brief declare IObject class identity (static & dynamic gets)
+#define DECLARE_ICLASS(__class,__uid) \
+    DECLARE_CLASS(__class,__uid) \
+    IAPI_IMPL getClassId( PUID &id ) IOVERRIDE { id = classId(); return IOK; }
+
+//! @brief declare IObject class identity and interface
+#define DECLARE_OBJECT(__class,__uid) \
+    DECLARE_ICLASS(__class,__uid )    \
+    IAPI_IMPL getInterface( PUID id ,void **ppv ) IOVERRIDE
+
+//! @brief declare IObject class identity and default getInterface for single inheritance
+#define DECLARE_OBJECT_STD(__super,__class,__uid) \
+    DECLARE_OBJECT(__class,__uid) { \
+        return (!ppv || *ppv) ? IBADARGS : honorInterface_<__class>(this,id,ppv) ? IOK : __super::getInterface( id ,ppv ); \
+    }
+
+//////////////////////////////////////////////////////////////////////////////
+//! Named Pointers
+
+void registerInstance( PIID &id ,IObject *p );
+void revokeInstance( PIID &id );
+
+IObject *getInstance( PIID &id );
+PIID digInstanceId( IObject *p );
+
 template <class T>
-bool registerClassName_() {
-    return registerClassName( T::classId() ,T::className() );
+inline T *getInstance( PIID &id ) {
+    IObject *p = getInstance( id );
+
+    return p ? p->As_<T>() : NullPtr;
 }
+
+//////////////////////////////////////////////////////////////////////////////
+//! Locking Pointers
+
+/* static MapOf<PIID,int> g_objectLocks;
+
+struct PtrLock {
+    explicit PtrLock( PIID id ) : m_piid(id) {}
+
+    IObject *exclusive();
+
+    IObject *lock() {
+        auto it = g_objectLocks.find( m_piid );
+
+        // CS.lock
+        if( it->second < 0 ) return NullPtr;
+
+        ++it->second;
+    }
+
+    IObject *unlock();
+
+    // static CriticalSection m_cs;
+
+    PIID m_piid;
+};
+
+template <class T>
+struct PtrLock_ : PtrLock {
+};
+*/
+
+//////////////////////////////////////////////////////////////////////////////
+//! Instance
+
+//! @note base class for object with identifiable instance
+class CWithInstance : IOBJECT_PARENT {
+public:
+    CWithInstance( PIID id=PIID_NOINSTANCE ) : m_piid(id) {
+        registerInstance( id ,this );
+    }
+
+    API_IMPL() ~CWithInstance() IOVERRIDE {
+        revokeInstance( m_piid );
+    }
+
+    NoDiscard PIID getInstanceId() const { return m_piid; }
+
+protected:
+    PIID m_piid; //! instance id
+};
+
+//////////////////////////////////////////////////////////////////////////////
+//! Factory
+
+//? ALSO / LATER
+
+/* struct IFactory : IOBJECT_PARENT {
+    // DECLARE_CLASS(IFactory,IFACTORY_PUID);
+
+    API_DECL(IObject*) CreateInstance( PIID id ) = 0;
+};
+
+API_IMPL(IObject*) CreateInstance( PIID id ) { return (IObject*) new __class(); }
+*/
+
+#define DECLARE_FACTORY(__class) \
+    template <class T> static T *Create_( PIID id=PIID_NOINSTANCE ) { return (T*) new __class(); } \
+    static bool m_registered; \
+    static bool RegisterClass()
+
+#define DECLARE_FACTORY_IOBJECT(__class) \
+    DECLARE_FACTORY(__class) { \
+        IObject::registerClassName( getClassId() ,getClassName() ); \
+        return RegisterClass_<IObject>( getClassId() ,Create<IObject> ); \
+    }
+
+#define DECLARE_FACTORY_STD(__super,__class) \
+    DECLARE_FACTORY(__class) { \
+        registerClassName( classId() ,className() ); \
+        return RegisterClass_<__super>( classId() ,Create_<__super> ) && RegisterClass_<IObject>( classId() ,Create_<IObject> ); \
+    }
+
+//! @brief register a class with factory capabilities
+#define REGISTER_CLASS(__class) \
+    bool __class::m_registered = __class::RegisterClass();
 
 //////////////////////////////////////////////////////////////////////////////
 //! IException
@@ -386,155 +551,14 @@ bool registerClassName_() {
 class IException : public Exception {
 public:
     IException( IObject *object=NullPtr ,iresult_t id=IERROR ,const char *msg=NullPtr ) :
-        Exception(id,msg) ,m_object(object)
+            Exception(id,msg) ,m_object(object)
     {}
 
-    IObject *object() const { return m_object; }
+    NoDiscard IObject *object() const { return m_object; }
 
 protected:
     IObject *m_object;
 };
-
-//////////////////////////////////////////////////////////////////////////////
-//! CObject
-
-    //! @brief base for IObject implementation
-
-class CObject : IOBJECT_PARENT ,public CReferable {
-public:
-/* //LATER see ptr
-    INSTANCEID m_id;
-
-    CObject( INSTANCEID id=NO_INSTANCE_ID );
-
-    ~CObject() override;
-
-    INSTANCEID getId() { return m_id; }
-*/
-
-public: ///-- IObject
-    IAPI_IMPL getInterface( UUID id ,void **ppv ) IOVERRIDE {
-        return (!ppv || *ppv) ? IBADARGS : honorInterface_<IObject>(this,id,ppv) ? IOK : INODATA;
-    }
-};
-
-#define COBJECT_PARENT    public virtual CObject
-
-//TODO remove IMPORT_IOBJECT_API and only use DECLARE_xxx
-#define IMPORT_IOBJECT_API(__uid) \
-    static UUID classId() { return __uid; } \
-    IAPI_IMPL getInterface( UUID id ,void **ppv ) IOVERRIDE
-
-///--
-/* #define DECLARE_OBJECT_API(__class,__uid) \
-    DECLARE_CLASS(__class,__uid ) \
-    IAPI_IMPL getInterface( UUID id ,void **ppv ) IOVERRIDE */
-
-#define DECLARE_OBJECT(__class,__uid) \
-    DECLARE_ICLASS(__class,__uid ) \
-    IAPI_IMPL getInterface( UUID id ,void **ppv ) IOVERRIDE
-
-#define DECLARE_OBJECT_IOBJECT(__class,__uid) \
-    DECLARE_ICLASS(__class,__uid ) \
-    IAPI_IMPL getInterface( UUID id ,void **ppv ) IOVERRIDE { \
-        return (!ppv || *ppv) ? IBADARGS : honorInterface_<__class>(this,id,ppv) ? IOK : CObject::getInterface( id ,ppv ); \
-    }
-
-#define DECLARE_OBJECT_STD(__super,__class,__uid) \
-    DECLARE_OBJECT(__class,__uid) { \
-        return (!ppv || *ppv) ? IBADARGS : honorInterface_<__class>(this,id,ppv) ? IOK : __super::getInterface( id ,ppv ); \
-    }
-
-///--
-#define DECLARE_FACTORY_API(__class) \
-    template <class T> static T *Create( const char *name=NullPtr ) { return (T*) new __class(); } \
-    static bool m_registered; \
-    static bool RegisterClass()
-
-#define DECLARE_FACTORY_IOBJECT(__class) \
-    DECLARE_FACTORY_API(__class) { \
-        IObject::registerClassName( getClassId() ,getClassName() ); \
-        return RegisterClass_<IObject>( getClassId() ,Create<IObject> ); \
-    }
-
-#define DECLARE_FACTORY_STD(__super,__class) \
-    DECLARE_FACTORY_API(__class) { \
-        registerClassName( classId() ,className() ); \
-        return RegisterClass_<__super>( classId() ,Create<__super> ) && RegisterClass_<IObject>( classId() ,Create<IObject> ); \
-    }
-
-///--
-#define REGISTER_CLASS(__class) \
-    bool __class::m_registered = __class::RegisterClass();
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-//! View ... => ptr
-
-    //TODO ... see ptr note above
-
-/* template <class T>
-struct Viewable_ {
-    typedef unsigned long id_t;
-
-    void Register();
-    void Release();
-};
-
-template <class T>
-class View_ {
-protected:
-    Viewable_<T>::id_t m_viewId;
-
-public:
-    void set( Viewable_<T> &viewable ) {
-        m_viewId = viewable.id();
-    }
-
-    T *ptr() {
-        return g_viewRoot.get( m_viewId );
-    }
-};
-
-#define View_ ViewOf
-
-ViewOf<myobject> m_myview;
-
-struct View { // ViewRoot .. Views_
-    //? observer pattern built-in ?
-
-    // Tree to view_ ...
-    //Ok for view should only be obejct UUID classes (ie not any pointer) ...
-
-    typedef unsigned int id_t; //! or void* .. a pointer to ptr ... but then not compact + not recyclable and not indexable ...
-    typedef void* ptr_t;
-
-    static ArrayOf<uint32_t,ptr_t> root;
-
-///--
-    id_t Register( ptr_t p );
-    void Release( id_t id ) { objects[id] = NullPtr; }
-
-    ptr_t Get( id_t id ) { return objects[id]; }
-
-    template <class T>
-    T *Get_( id_t id ) { return (T*) objects[id]; }
-
-    id_t Dig( ptr_t p );
-};
-
-struct Observer {
-    virtual void onUpdate( IBase &object );
-
-    virtual void onRelease( IBase &object );
-};
-
-// template <class T>
-struct Observable {
-    //id from viewable
-
-    static ArrayOf<id_t,Observer> observers;
-}; */
 
 ///////////////////////////////////////////////////////////////////////////////
 } //TINY_NAMESPACE

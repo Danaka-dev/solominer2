@@ -136,6 +136,11 @@ Config &getConfig() {
     return g_config;
 }
 
+//-- global
+Config::Section &getGlobalConfig() {
+    return getConfig().getSection( "global" );
+}
+
 //-- pools.conf
 static Config g_poolsConfig;
 
@@ -153,7 +158,7 @@ Config &getServiceConfig() {
 //////////////////////////////////////////////////////////////////////////////
 //! Pools
 
-CPoolList g_pools;
+static CPoolList g_pools;
 
 CPoolList &getPoolListInstance() {
     return g_pools;
@@ -342,13 +347,15 @@ void mainAppLoop() {
 
         getConnectionList().updateConnections();
 
-        OsSleep(250);
+        OsSleep(10);
     }
 }
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //! Main
+
+// #include "test-graph.hpp"
 
 #define ERROR_OK            0
 #define ERROR_ARGS          -1
@@ -364,6 +371,19 @@ int main( int argc ,char *argv[] ) {
     using namespace solominer;
 
     void *A = NullPtr;
+
+    //////////////////////////////////////////////////////////////////////////////
+    //! TEST
+
+    /* OsTimerGetResolution();
+
+    algo::test_graph();
+
+    while( OsSystemDoEvents() == ENOERROR ) {
+        OsSleep(10);
+    }
+
+    return 0; */
 
     //////////////////////////////////////////////////////////////////////////////
     //! prepare
@@ -385,15 +405,20 @@ int main( int argc ,char *argv[] ) {
     //////////////////////////////////////////////////////////////////////////////
     //! config
 
-    //! @note keeping on even if config was not found
-    loadConfigFile( getConfig() ,getOptConfigFile().c_str() );
+    Config &config = getConfig();
 
-    //TODO get filename for other config from global config
-    // loadConfigFile( getPoolsConfig() ,"pools.conf" );
-    loadConfigFile( getServiceConfig() ,"service.conf" );
+    //! @note keeping on even if config was not found
+    loadConfigFile( config ,tocstr(getOptConfigFile()) );
+
+    auto &configSection = config.getSection( "config" );
+
+    const char *serviceConf = getMember( configSection.params ,"service" ,"./service.conf" );
+    //TODO wallet ,pools
 
     //////////////////////////////////////////////////////////////////////////////
     //! services
+
+    loadConfigFile( getServiceConfig() ,serviceConf );
 
     PLOGI << LogCategory::config << "Starting services";
 

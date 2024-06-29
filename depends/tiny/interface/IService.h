@@ -76,6 +76,7 @@ class IService : IOBJECT_PARENT
 {
 public: ///-- IObject
     DECLARE_ICLASS(IService,ISERVICE_UUID);
+    //TODO probably should not have an implement in an interface ?
 
 public: ///-- IService
     IAPI_DECL getInfo( ServiceInfo &info ) = 0;

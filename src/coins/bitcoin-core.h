@@ -65,6 +65,7 @@ public: ///-- IWallet
     //...
 
 ///-- addresses
+    IAPI_IMPL listAddresses( const char *accountId ,ListOf<String> &addresses ) IOVERRIDE;
     IAPI_IMPL getNewAddress( const char *accountId ,String &address ) IOVERRIDE;
     IAPI_IMPL getAddressBalance( const char *address ,AmountValue &balance ) IOVERRIDE;
 

@@ -39,11 +39,11 @@ struct StatsEarnings {
 };
 
 //////////////////////////////////////////////////////////////////////////////
-#define CONNECTIONINFO_UUID    0x0047ac054d8a00a6b
-#define EARNING_UUID           0x07b92e7fa8dd5a535
+#define CONNECTIONINFO_PUID    0x0047ac054d8a00a6b
+#define EARNING_PUID           0x07b92e7fa8dd5a535
 
-#define CCONNECTIONLIST_UUID   0x00e10cbb7b698ee56
-#define CCONNECTION_UUID       0x0aae57e3b443c7464
+#define CCONNECTIONLIST_PUID   0x00e10cbb7b698ee56
+#define CCONNECTION_PUID       0x0aae57e3b443c7464
 
 class CConnectionList;
 class CConnection;
@@ -53,10 +53,8 @@ enum PowDevice {
     deviceAuto=0 ,deviceCpu ,deviceGpu ,deviceFpga ,deviceAsic
 };
 
-/*
-template <> PowDevice &fromString( PowDevice &p ,const String &s ,size_t &size );
-template <> String &toString( const PowDevice &p ,String &s );
-*/
+//! @note Enum_ facility for to/from string
+
 //TODO getDevice ...
 
 //////////////////////////////////////////////////////////////////////////////
@@ -64,10 +62,7 @@ enum PowTopology {
     topoAuto=0 ,topoIntel ,topoRyzen ,topoCuda ,topoOpencl //...
 };
 
-/*
-template <> PowTopology &fromString( PowTopology &p ,const String &s ,size_t &size );
-template <> String &toString( const PowTopology &p ,String &s );
-*/
+//! @note Enum_ facility for to/from string
 
 bool getNativeTopology( PowDevice device ,PowTopology &topology ); //! this pc topology
 
@@ -75,7 +70,8 @@ bool getNativeTopology( PowDevice device ,PowTopology &topology ); //! this pc t
 //! Connection info
 
 struct ConnectionInfo {
-    DECLARE_CLASSID(CONNECTIONINFO_UUID)
+    DECLARE_CLASSID(CONNECTIONINFO_PUID)
+    DECLARE_SCHEMA
 
     struct Status {
         bool isStarted;
@@ -116,8 +112,6 @@ struct ConnectionInfo {
     } options;
 
     String args;
-
-    DECLARE_SCHEMA
 };
 
 template <> ConnectionInfo &Zero( ConnectionInfo &p );
@@ -144,33 +138,32 @@ CLASS_SCHEMA(ConnectionInfo);
 
 DEFINE_WITHSCHEMA_API(ConnectionInfo);
 
-//-- Manifest
-/* template <>
-ConnectionInfo &fromManifest( ConnectionInfo &p ,const Params &manifest );
+//-- Data source
+struct CDataConnectionInfo : CDataSource {
+    ConnectionInfo &info;
 
-template <>
-Params &toManifest( const ConnectionInfo &p ,Params &manifest );
+    CDataConnectionInfo( ConnectionInfo &a_info ) : info(a_info)
+    {}
 
-//-- String
-template <>
-inline ConnectionInfo &fromString( ConnectionInfo &p ,const String &s ,size_t &size ) {
-    Params params;
-    fromString( params ,s ,size );
-    return fromManifest( p ,params );
-}
+    IAPI_IMPL readHeader( Params &data ,bool requireValues=false ) IOVERRIDE {
+        toParamsWithSchema( info ,data ,true ); return IOK;
+    }
 
-template <>
-inline String &toString( const ConnectionInfo &p ,String &s ) {
-    Params params;
-    toManifest( p ,params );
-    return toString( params ,s );
-} */
+    IAPI_IMPL readData( Params &data ) IOVERRIDE {
+        fromManifest( info ,data ); return IOK;
+    }
+
+    IAPI_IMPL onDataEdit( Params &data ) IOVERRIDE {
+        toManifest( info ,data ); return IOK;
+    }
+};
 
 //////////////////////////////////////////////////////////////////////////////
 //! Earnings
 
 struct Earning : BookEntry {
-    DECLARE_CLASSID(EARNING_UUID)
+    DECLARE_CLASSID(EARNING_PUID)
+    DECLARE_SCHEMA
 
     static size_t sizeofEntry() { return 1024; };
 
@@ -185,8 +178,6 @@ struct Earning : BookEntry {
     double tradeAmount;
 
     TimeSec tradePlacedAt;
-
-    DECLARE_SCHEMA
 };
 
 CLASS_SCHEMA(Earning);
@@ -194,6 +185,28 @@ CLASS_SCHEMA(Earning);
 DEFINE_WITHSCHEMA_API(Earning);
 
 typedef CBookFile_<Earning> CEarningBook;
+typedef CBookDataSource_<Earning,Earning> CEarningDataSource;
+
+
+///-- @brief Earning as flat data fields
+struct Earning2 : Earning {
+    DECLARE_CLASSID(EARNING_PUID)
+    DECLARE_SCHEMA
+
+    Earning2 &operator =( const Earning &a ) {
+        Earning *p = this;
+
+        *p = a;
+
+        return *this;
+    }
+};
+
+CLASS_SCHEMA(Earning2);
+
+DEFINE_WITHSCHEMA_API(Earning2);
+
+typedef CBookDataSource_<Earning,Earning2> CEarning2DataSource;
 
 ///--
 struct EarningSums {
@@ -205,14 +218,17 @@ struct EarningSums {
 
 class CConnection : public IWalletEvents ,COBJECT_PARENT {
 public:
-    CConnection( CConnectionList &list ) :
-        m_connectionList(list) ,m_hasEdit(false)
+    CConnection( CConnectionList &list ,int index ) :
+        m_connectionList(list) ,m_index(index) ,m_hasEdit(false)
         ,m_miner(NullPtr) ,m_minerListener(NullPtr)
     {
         Init(m_info);
     }
 
-    DECLARE_OBJECT_IOBJECT(CConnection,CCONNECTION_UUID)
+    DECLARE_OBJECT_STD(CObject,CConnection,CCONNECTION_PUID)
+
+    int getIndex() { return m_index; }
+    void setIndex( int index ) { m_index = index; }
 
     const ConnectionInfo &info() const { return m_info; }
     ConnectionInfo &info() { return m_info; }
@@ -274,6 +290,7 @@ protected:
 protected:
     CConnectionList &m_connectionList; //! back reference to connection list
     ConnectionInfo m_info;
+    int m_index;
     bool m_hasEdit;
 
 //--
@@ -303,7 +320,7 @@ public: //-- definitions
     typedef Map_<int,CConnectionRef> connections_t;
 
 public: //-- instance
-    CConnectionList() : m_config(NullPtr) ,m_updateTime(0) {
+    CConnectionList() : m_config(NullPtr) ,m_updateTime(0) ,m_hasEdit(false) {
         loadHps();
     }
 
@@ -311,7 +328,7 @@ public: //-- instance
         saveHps();
     }
 
-    DECLARE_OBJECT_IOBJECT(CConnectionList,CCONNECTIONLIST_UUID)
+    DECLARE_OBJECT_STD(CObject,CConnectionList,CCONNECTIONLIST_PUID)
 
     NoDiscard size_t getCount() const {
         return m_connections.getCount();
@@ -325,7 +342,9 @@ public: //-- instance
         return m_connections;
     }
 
-//-- earnings
+    // int findConnectionIndex( CConnection *connection );
+
+    //-- earnings
     CEarningBook &earnings() {
         return m_earnings;
     }
@@ -338,11 +357,19 @@ public: //-- instance
         return earnings().updateHeader();
     }
 
+    void adviseEdit( bool hasEdit=true ) {
+        m_hasEdit = hasEdit;
+    }
+
 public: //-- interface
     IAPI_DECL loadConfig( Config &config );
     IAPI_DECL saveConfig();
 
     IAPI_DECL getConnection( int id ,CConnectionRef &connection );
+    IAPI_DECL addConnection( Params &settings ,CConnectionRef &connection );
+    IAPI_DECL editConnection( int index ,Params &settings );
+    IAPI_DECL deleteConnection( int index );
+
     IAPI_DECL updateConnections();
 
 //-- all connections
@@ -372,6 +399,8 @@ protected: //-- members
     Map_<PowAlgorithm,Avg> m_hostHps;
 
     time_t m_updateTime;
+
+    bool m_hasEdit; //! list was edited (number of connection...)
 };
 
 //////////////////////////////////////////////////////////////////////////////

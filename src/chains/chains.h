@@ -17,9 +17,9 @@
 namespace solominer {
 
 //////////////////////////////////////////////////////////////////////////////
-#define CCHAINSERVICEBASE_UUID  0x09121d9603c5f26bb
-#define CCHAINSETUPBASE_UUID    0x06677a3201d3aa63f
-#define CCHAINSTORE_UUID        0x00641c1db7e92b418
+#define CCHAINSERVICEBASE_PUID  0x09121d9603c5f26bb
+#define CCHAINSETUPBASE_PUID    0x06677a3201d3aa63f
+#define CCHAINSTORE_PUID        0x00641c1db7e92b418
 
 ///--
 class CChainService;
@@ -51,7 +51,7 @@ public:
         this->info().category = CHAIN_SERVICE_CATEGORY;
     }
 
-    IMPORT_IOBJECT_API( CCHAINSERVICEBASE_UUID );
+    DECLARE_OBJECT(CChainService,CCHAINSERVICEBASE_PUID);
 
     static const char *category() { return "chain"; }
 
@@ -70,7 +70,7 @@ typedef RefOf<CChainService> CChainServiceRef;
 class CChainSetup : public IChainSetup ,public CServiceSetup
 {
 public: ///-- IBase
-    IMPORT_IOBJECT_API( CCHAINSETUPBASE_UUID );
+    DECLARE_OBJECT(CChainSetup,CCHAINSETUPBASE_PUID);
 
 public: ///-- IServiceSetup
     //...
@@ -90,7 +90,7 @@ class CChainStore : public IChainStore
     ,public Singleton_<CChainStore>
 {
 public: ///-- IBase
-    IMPORT_IOBJECT_API(CCHAINSTORE_UUID);
+    DECLARE_OBJECT(CChainStore,CCHAINSTORE_PUID);
 
 public: ///-- IServiceStore
     //..

@@ -34,7 +34,7 @@ MarketConfig &fromString( MarketConfig &p ,const String &s ,size_t &size ) {
 //////////////////////////////////////////////////////////////////////////////
 //! CMarketBase
 
-IAPI_DEF CMarketService::getInterface( UUID id ,void **ppv ) {
+IAPI_DEF CMarketService::getInterface( PUID id ,void **ppv ) {
     if( !ppv || *ppv ) return IBADARGS;
 
     if( id == classId() ) {
@@ -50,7 +50,7 @@ IAPI_DEF CMarketService::getInterface( UUID id ,void **ppv ) {
 //////////////////////////////////////////////////////////////////////////////
 //! CMarketSetupBase
 
-IAPI_DEF CMarketSetup::getInterface( UUID id ,void **ppv ) {
+IAPI_DEF CMarketSetup::getInterface( PUID id ,void **ppv ) {
     if( !ppv || *ppv ) return IBADARGS;
 
     if( id == classId() ) {
@@ -66,7 +66,7 @@ IAPI_DEF CMarketSetup::getInterface( UUID id ,void **ppv ) {
 //////////////////////////////////////////////////////////////////////////////
 //! CMarketStore
 
-IAPI_DEF CMarketStore::getInterface( UUID id ,void **ppv ) {
+IAPI_DEF CMarketStore::getInterface( PUID id ,void **ppv ) {
     if( !ppv || *ppv ) return IBADARGS;
 
     if( id == classId() ) {

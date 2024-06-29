@@ -22,7 +22,10 @@
 #define TINY_GUI_THEME_H
 
 //////////////////////////////////////////////////////////////////////////////
-TINY_GUI_NAMESPACE {
+TINY_NAMESPACE {
+
+//////////////////////////////////////////////////////////////////////////////
+TINY_NAMESPACE_GUI {
 
 //////////////////////////////////////////////////////////////////////////////
 //! Theme
@@ -112,10 +115,10 @@ public: ///-- per control
         Map_<index_t,Params> properties;
     };
 
-    Map_<UUID,Controls*> m_controls;
+    Map_<PUID,Controls*> m_controls;
     ColorQuad m_defaultColors;
 
-    const ColorQuad &getColors( const UUID &id ,index_t i ) {
+    const ColorQuad &getColors( const PUID &id ,index_t i ) {
         auto **control = m_controls.findItem(id);
 
         auto *p = control && *control ? (*control)->colors.findItem(i) : NullPtr;
@@ -123,7 +126,7 @@ public: ///-- per control
         return p ? *p : m_defaultColors;
     }
 
-    const Point &getSize( const UUID &id ,index_t i ) {
+    const Point &getSize( const PUID &id ,index_t i ) {
         static Point dummy;
 
         auto **control = m_controls.findItem(id);
@@ -133,7 +136,7 @@ public: ///-- per control
         return p ? *p : dummy;
     }
 
-    const Params &getProperties( const UUID &id ,index_t i ) {
+    const Params &getProperties( const PUID &id ,index_t i ) {
         static Params dummy;
 
         auto **control = m_controls.findItem(id);
@@ -144,7 +147,7 @@ public: ///-- per control
     }
 
     //--
-    const ColorQuad &getColors( const UUID &id ,const char *name ) {
+    const ColorQuad &getColors( const PUID &id ,const char *name ) {
         static ColorQuad dummy;
 
         auto *it = m_names.findItem(name);
@@ -152,7 +155,7 @@ public: ///-- per control
         return it ? getColors( id ,*it ) : dummy;
     }
 
-    const Point &getSize( const UUID &id ,const char *name  ) {
+    const Point &getSize( const PUID &id ,const char *name  ) {
         static Point dummy;
 
         auto *it = m_names.findItem(name);
@@ -160,7 +163,7 @@ public: ///-- per control
         return it ? getSize( id ,*it ) : dummy;
     }
 
-    const Params &getProperties( const UUID &id ,const char *name ) {
+    const Params &getProperties( const PUID &id ,const char *name ) {
         static Params dummy;
 
         auto *it = m_names.findItem(name);
@@ -169,7 +172,7 @@ public: ///-- per control
     }
 
     //! using named color from theme
-    void makeColorSet( const UUID &id ,ColorSet &colorSet );
+    void makeColorSet( const PUID &id ,ColorSet &colorSet );
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -211,11 +214,7 @@ inline ThemeStore &theThemeStore() { return ThemeStore::getInstance(); }
 inline VisualTheme &theTheme() { return theThemeStore().getCurrent(); }
 
 //////////////////////////////////////////////////////////////////////////////
-} //TINY_GUI_NAMESPACE
-
-//////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////
-TINY_NAMESPACE {
+} //TINY_NAMESPACE_GUI
 
 //////////////////////////////////////////////////////////////////////////////
 //! String
@@ -225,8 +224,8 @@ TINY_NAMESPACE {
 //////////////////////////////////////////////////////////////////////////////
 //! Manifest
 
-CLASS_MANIFEST(TINY_NAMESPACE_GUI::VisualTheme::Controls,Params);
-CLASS_MANIFEST(TINY_NAMESPACE_GUI::VisualTheme,Params);
+CLASS_MANIFEST(TINY_NAMESPACE_GUI_NAME::VisualTheme::Controls,Params);
+CLASS_MANIFEST(TINY_NAMESPACE_GUI_NAME::VisualTheme,Params);
 
 //////////////////////////////////////////////////////////////////////////////
 //! Binary

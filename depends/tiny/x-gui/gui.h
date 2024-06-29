@@ -24,51 +24,65 @@
 //////////////////////////////////////////////////////////////////////////////
 //! @file "x-gui/gui.h"
 //! @brief tiny-for-c++ GUI extension
-//! @author the NExTwave developers
+//! @author the NEXTWave developers
 //////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////
-#ifndef TINY_NAMESPACE_GUI
- #define TINY_NAMESPACE_GUI gui
+#ifndef TINY_NAMESPACE_GUI_NAME
+ #define TINY_NAMESPACE_GUI_NAME gui
 #endif
 
-#define TINY_GUI_NAMESPACE TINY_NAMESPACE::TINY_NAMESPACE_GUI
+#define TINY_NAMESPACE_GUI \
+    namespace TINY_NAMESPACE_GUI_NAME
 
 //////////////////////////////////////////////////////////////////////////////
 TINY_NAMESPACE {
 
-    //! TODO namespace gui + rename all subclass
+    TINY_NAMESPACE_GUI {}
+
+    using TINY_NAMESPACE_GUI;
+    //! TODO (maybe later) namespace gui + rename all subclass
 
 //////////////////////////////////////////////////////////////////////////////
 //! Interface
 
-#define TINY_IGUICONTROLEVENTS_UUID   0x0c69e82d1b186ca9d
-#define TINY_IGUIPROPERTIES_UUID      0x08fe381ed09c02626
-#define TINY_IGUICOMMANDEVENT_UUID    0x07f584175924526c3
+#define TINY_IGUICONTROLEVENTS_PUID   0x0c69e82d1b186ca9d
+#define TINY_IGUIMESSAGEEVENTS_PUID   0x07f584175924526c3
+#define TINY_IGUIPROPERTIES_PUID      0x08fe381ed09c02626
 
-class IGuiControlEvents;
-class IGuiProperties;
-class IGuiCommandEvent;
+struct IGuiControlEvents;
+struct IGuiMessageEvents;
+struct IGuiProperties;
+
+//////////////////////////////////////////////////////////////////////////////
+//! Struct
+
+#define TINY_GUIALIGN_PUID          0x084f607186f639ada
 
 //////////////////////////////////////////////////////////////////////////////
 //! Class
 
-#define TINY_GUICONTROL_UUID          0x001d19d4782da5133
-#define TINY_GUILAYER_UUID            0x02a2268cb68b22621
-#define TINY_GUITAB_UUID              0x0ce669856891313b6
-#define TINY_GUIGROUP_UUID            0x03738884453df6435
-#define TINY_GUITABBAR_UUID           0x0f6524432b75a5ed1
-#define TINY_GUIMENU_UUID             0x05a27c3b2b902d95f
-#define TINY_GUICONTROLWINDOW_UUID    0x0911441da7a69fe53
+#define TINY_GUICONTROL_PUID          0x001d19d4782da5133
+#define TINY_GUISET_PUID              0x09eaa23e28319942a
+#define TINY_GUILAYER_PUID            0x02a2268cb68b22621
+#define TINY_GUITAB_PUID              0x0ce669856891313b6
+#define TINY_GUIGROUP_PUID            0x03738884453df6435
+#define TINY_GUITABBAR_PUID           0x0f6524432b75a5ed1
+#define TINY_GUIMENU_PUID             0x05a27c3b2b902d95f
+#define TINY_GUICONTROLWINDOW_PUID    0x0911441da7a69fe53
 
 class GuiControl;
-class GuiSet; //! @note base class only, no UUID
+class GuiSet;
 class GuiLayer;
 class GuiTab;
 class GuiGroup;
 class GuiTabBar;
 class GuiMenu;
 class GuiControlWindow;
+
+namespace gui {
+    struct VisualTheme;
+}
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
@@ -86,21 +100,17 @@ struct GuiCoord {
     Unit unit;
 
 //--
-    GuiCoord( int v=0 ) : value( (int) v ) ,unit(unitPixel) {}
+    GuiCoord( int v=0 ) : value( (float) v ) ,unit(unitPixel) {}
     GuiCoord( float v ) : value( v ) ,unit(unitPercent) {}
 
 //--
     template <typename T>
     int get( T ref ) const {
-        return (unit==unitPercent) ? ((value / 100) * ref) : value;
+        return (int) ( (unit==unitPercent) ? ((value / 100.f) * (float) ref) : value );
     }
 };
 
-template <>
-GuiCoord &fromString( GuiCoord &p ,const String &s ,size_t &size );
-
-template <>
-String &toString( const GuiCoord &p ,String &s );
+DEFINE_STRING_API(GuiCoord);
 
 //--
 struct GuiCoords {
@@ -123,14 +133,10 @@ struct GuiCoords {
     }
 };
 
-template <>
-GuiCoords &fromString( GuiCoords &p ,const String &s ,size_t &size );
-
-template <>
-String &toString( const GuiCoords &p ,String &s );
+DEFINE_STRING_API(GuiCoords);
 
 //////////////////////////////////////////////////////////////////////////////
-//! Direction
+//! Orientation
 
 enum Orientation {
     orientNone=0
@@ -143,9 +149,9 @@ enum Orientation {
 
 //TODO to/from String
 
-//TODO EnumFlags_
+//////////////////////////////////////////////////////////////////////////////
+//! Direction
 
-///--
 enum Direction {
     directionNone=0
     ,directionLeft=1 ,directionRight=2 ,directionHorizontal=(directionLeft|directionRight)
@@ -185,17 +191,10 @@ enum GuiAlign {
     ,alignAnchor = (alignAnchorH | alignAnchorV)
 };
 
-//TODO separate align and Anchor (still allow merge for placement calc ?)
-
-template <>
-GuiAlign &fromString( GuiAlign &p ,const String &s ,size_t &size );
-    //TODO remove, use enumFromString
-
-//TODO toString
+DEFINE_STRING_API(GuiAlign);
+DECLARE_STRUCT(GuiAlign,TINY_GUIALIGN_PUID);
 
 ///--
-// void calc_placement( GuiAlign align ,int &a ,int &b ,int &A ,int &B );
-
 void Emplace( GuiAlign align ,int &a ,int &b ,int &A ,int &B );
 
 OsRect Emplace( GuiAlign align ,const GuiCoords &coords ,const OsRect &clientArea ,OsRect &area );
@@ -231,10 +230,10 @@ void OsGuiSetTextColors( IGuiDisplay &display ,const ColorPair &colors );
 //! ColorQuad
 
 struct ColorQuad {
-    OsColorRef foreColor;
-    OsColorRef fillColor;
-    OsColorRef textColor;
-    OsColorRef backColor;
+    OsColorRef foreColor; //! foreground color
+    OsColorRef fillColor; //! background color
+    OsColorRef textColor; //! text color
+    OsColorRef backColor; //! text back color
 };
 
 ColorQuad &setDrawColors( ColorQuad &q ,const ColorPair &p );
@@ -343,12 +342,89 @@ inline DragOperation setDragOpUser( DragOperation op ,int i ) { return (DragOper
 inline int getDragOpUser( DragOperation op ) { return (op >> 5); }
 
 //////////////////////////////////////////////////////////////////////////////
+//! Messaging
+
+///-- message class
+#define TINY_MESSAGE_COMMAND        0x01
+#define TINY_MESSAGE_NOTIFY         0x02
+#define TINY_MESSAGE_DATA           0x03
+#define TINY_MESSAGE_ASSETS         0x04
+#define TINY_MESSAGE_THEME          0x05
+
+//--
+#define GUI_COMMAND(__id)           TINY_MESSAGE(TINY_MESSAGE_COMMAND,__id)
+#define GUI_ISCOMMAND(__msg)        TINY_ISMESSAGE(TINY_MESSAGE_COMMAND,__msg)
+#define GUI_GETCOMMAND(__msg)       TINY_GETMESSAGE(TINY_MESSAGE_COMMAND,__msg)
+
+#define GUI_NOTIFY(__id)            TINY_MESSAGE(TINY_MESSAGE_NOTIFY,__id)
+#define GUI_ISNOTIFY(__msg)         TINY_ISMESSAGE(TINY_MESSAGE_NOTIFY,__msg)
+#define GUI_GETNOTIFY(__msg)        TINY_GETMESSAGE(TINY_MESSAGE_NOTIFY,__msg)
+
+#define GUI_DATAMEDSSAGE(__id)      TINY_MESSAGE(TINY_MESSAGE_DATA,__id)
+#define GUI_ISDATAMESSAGE(__msg)    TINY_ISMESSAGE(TINY_MESSAGE_DATA,__msg)
+#define GUI_GETDATAMESSAGE(__msg)   TINY_GETMESSAGE(TINY_MESSAGE_DATA,__msg)
+
+///-- message id
+#define GUI_MESSAGEID_NONE          0       //! no/invalid message id
+#define GUI_MESSAGEID_ACTION        1       //! generic message, call to action
+#define GUI_MESSAGEID_OK            2
+#define GUI_MESSAGEID_CANCEL        3
+#define GUI_MESSAGEID_OPEN          16
+#define GUI_MESSAGEID_UPDATE        17
+#define GUI_MESSAGEID_REFRESH       18
+#define GUI_MESSAGEID_CLOSE         19
+#define GUI_MESSAGEID_START         20
+#define GUI_MESSAGEID_STOP          21
+#define GUI_MESSAGEID_PREV          22
+#define GUI_MESSAGEID_NEXT          23
+#define GUI_MESSAGEID_FIRST         24
+#define GUI_MESSAGEID_LAST          25
+#define GUI_MESSAGEID_MOVE          27
+#define GUI_MESSAGEID_ADD           28
+#define GUI_MESSAGEID_EDIT          29
+#define GUI_MESSAGEID_DELETE        30
+#define GUI_MESSAGEID_HELP          31
+#define GUI_MESSAGEID_ENTER         32
+#define GUI_MESSAGEID_LEAVE         33
+
+#define GUI_COMMANDID_MENU          5001 //! @note base command id for menu command (default, if none provided)
+#define GUI_COMMANDID_MENUMAX       5499 //! @note maximum command id for default menu command
+
+
+/*
+#define GUI_MESSAGEID_ACTION        1   //! generic message, call to action // ought to be dispatched to 'onCommand'
+#define GUI_MESSAGEID_ASSETS        2   //! assets has changed, object should update accordingly
+#define GUI_MESSAGEID_THEME         3   //! theme changed
+#define GUI_MESSAGEID_PROPS         4   //! properties changed
+#define GUI_MESSAGEID_OPENED        8   //! child element opened
+#define GUI_MESSAGEID_CLOSED        9   //! child element closed
+*/
+
+//--
+class GuiPublisher : public CPublisher_<IGuiMessage> ,IOBJECT_PARENT {
+public:
+    void Post( message_t msg ,long param ,Params *params=NullPtr ,void *extra=NullPtr ) {
+        for( auto &it : m_subscribers ) {
+            it->onPost( this ,msg ,param ,params ,extra );
+        }
+    }
+
+    void PostCommand( messageid_t commandId ,long param ,Params *params=NullPtr ,void *extra=NullPtr ) {
+        Post( GUI_COMMAND(commandId) ,param ,params ,extra );
+    }
+
+    void PostNotify( messageid_t commandId ,long param ,Params *params=NullPtr ,void *extra=NullPtr ) {
+        Post( GUI_NOTIFY(commandId) ,param ,params ,extra );
+    }
+};
+
+//////////////////////////////////////////////////////////////////////////////
 //! Interface
 
-class IGuiControlEvents {
-    DECLARE_CLASSID(TINY_IGUICONTROLEVENTS_UUID);
+struct IGuiControlEvents : IOBJECT_PARENT {
+    DECLARE_CLASSID(TINY_IGUICONTROLEVENTS_PUID);
 
-public: ///-- mouse events
+    ///-- mouse events
     virtual void onClick( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) = 0;
     virtual void onDoubleClick( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) = 0;
     virtual void onMouseDown( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) = 0;
@@ -358,61 +434,36 @@ public: ///-- mouse events
     virtual void onMouseEnter( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) = 0;
     virtual void onMouseLeave( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) = 0;
 
-    //-- drag & drop
+    ///-- drag & drop
     virtual OsError onGrab( const OsPoint &p ,OsKeyState keyState ,DragOperation &operation ,IObjectRef &object ) = 0;
     virtual void onDrag( const OsPoint &p ,DragOperation operation ,IObject *object ,IObject *target ,OsError result ) = 0;
     virtual void onDrop( const OsPoint &p ,DragOperation operation ,IObject *object ,IObject *target ,OsError result ) = 0;
     virtual OsError onDropAccept( const OsPoint &p ,IObject *source ,DragOperation operation ,IObject *object ,bool preview ) = 0;
 
-public: ///-- focus events
+    ///-- focus events
     virtual void onGotFocus() = 0;
     virtual void onLostFocus() = 0;
 
-public: ///-- key events
+    ///-- key events
     virtual void onKeyChar( OsKeyState keyState ,OsKeyCode keyCode ,char_t c ) = 0;
     virtual void onKeyDown( OsKeyState keyState ,OsKeyCode keyCode ,char_t c ) = 0;
     virtual void onKeyUp( OsKeyState keyState ,OsKeyCode keyCode ,char_t c ) = 0;
 };
 
-struct IGuiProperties {
-    DECLARE_CLASSID(TINY_IGUIPROPERTIES_UUID);
+//! @note separable interface
+
+struct IGuiMessageEvents : IOBJECT_PARENT {
+    DECLARE_CLASSID(TINY_IGUIMESSAGEEVENTS_PUID);
+
+    virtual void onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) = 0;
+    virtual void onNotify( IObject *source ,messageid_t notifyId ,long param ,Params *params ,void *extra ) = 0;
+};
+
+struct IGuiProperties : IOBJECT_PARENT {
+    DECLARE_CLASSID(TINY_IGUIPROPERTIES_PUID);
 
     virtual void getProperties( Params &params ) const = 0;
     virtual void setProperties( const Params &properties ) = 0;
-};
-
-//////////////////////////////////////////////////////////////////////////////
-//! Messaging
-
-#define TINY_MESSAGE_USER           0x08000
-#define TINY_USERMSG(__id)          TINY_MESSAGE(TINY_MESSAGE_USER,__id)
-
-#define TINY_MESSAGE_ACTION         0x01
-#define TINY_MESSAGE_EVENT          0x02
-#define TINY_MESSAGE_DATA           0x03
-#define TINY_MESSAGE_ASSETS         0x04
-#define TINY_MESSAGE_THEME          0x05
-//? EDIT
-
-//TODO fix messaging below, from here
-#define GUI_MESSAGEID_NONE          0
-
-#define GUI_MESSAGEID_ACTION        1   //! generic message, call to action // ought to be dispatched to 'onCommand'
-#define GUI_MESSAGEID_ASSETS        2   //! assets has changed, object should update accordingly
-#define GUI_MESSAGEID_THEME         3   //! theme changed
-#define GUI_MESSAGEID_PROPS         4   //! properties changed
-#define GUI_MESSAGEID_OPENED        8   //! child element opened
-#define GUI_MESSAGEID_CLOSED        9   //! child element closed
-//TODO fo here
-
-//--
-class GuiPublisher : public CPublisher_<IGuiEvents> ,IOBJECT_PARENT {
-public:
-    void Post( uint64_t msg ,long param ,Params *params=NullPtr ,void *extra=NullPtr ) {
-        for( auto &it : m_subscribers ) {
-            it->onPost( this ,msg ,param ,params ,extra );
-        }
-    }
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -422,17 +473,19 @@ public:
 #define GUICONTROL_PARENT   public virtual GuiControl
 
 #define CONTROLID_NONE      0
+#define CONTROLID_AUTOID    1001 //! first id from auto id
 
 typedef uint32_t controlid_t;
 
-class GuiControl : public IGuiEvents ,public IGuiControlEvents ,public IGuiProperties ,COBJECT_PARENT {
+class GuiControl : public IGuiEvents ,public IGuiControlEvents ,public IGuiMessageEvents ,public IGuiProperties ,COBJECT_PARENT {
 public: ///-- instance
     GuiControl( GuiControlWindow *root=NullPtr );
 
-    DECLARE_OBJECT_STD(CObject,GuiControl,TINY_GUICONTROL_UUID);
+    DECLARE_OBJECT(GuiControl,TINY_GUICONTROL_PUID);
+    // DECLARE_OBJECT_STD(CObject,GuiControl,TINY_GUICONTROL_PUID);
 
 public: ///-- getter/setter
-    void setControlId( controlid_t id ) { m_id = id; }
+    void setControlId( controlid_t id ) { m_id = id; } //TODO make sure id is unique ?
     NoDiscard controlid_t id() const { return m_id; } //TODO rename to controlId() ?
 
     GuiCoords &coords() { return m_coords; }
@@ -456,6 +509,7 @@ public: ///-- getter/setter
 
     bool isOrphan() const { return !m_root; }
     GuiControlWindow &root() { return *m_root; }
+    const GuiControlWindow &root() const { return *m_root; }
     void setRoot( GuiControlWindow &root ) { m_root = &root; }
 
     bool shouldDraw( const OsRect &updateArea ) const;
@@ -466,6 +520,7 @@ public: ///-- IProperties
     API_IMPL(void) setProperties( const Params &properties ) IOVERRIDE;
 
     void setPropertiesWithString( const char *properties );
+    void setPropertiesWithString( const char *properties ,const Params &vars );
 
     bool loadProperties( const char *filename ,const char *path=NullPtr );
     bool saveProperties( const char *filename ,const char *path=NullPtr ); //? path ?
@@ -480,8 +535,8 @@ public: ///-- IGuiContext (replication, not inherited)
     void SetColors( const ColorQuad &q );
 
     void SetFont( const GuiFont &font );
-    void RegionSetArea( OsRect &r ); //? useOffset
-    // void RegionGetArea( OsRect &r ); //? not here ? ... TOOD check if we should use a stack facilities in window to help with areas
+    void RegionSetArea( OsRect &r );
+    // void RegionGetArea( OsRect &r ); //! @note coords in this api are transformed, ? how proper transform area here ?
     void RegionSetOffset( int x ,int y );
     void RegionSetScale( float x ,float y );
 
@@ -497,42 +552,46 @@ public: ///-- IGuiSurface (replication, not inherited)
 public: ///-- IDisplay (replication, not inherited)
     void SetCursor( int cursorId );
 
-    void Refresh( bool noArea=false );
-    void Update( bool noArea=false );
+    void Refresh( bool noArea=false ,RefreshFlags flags=refreshNormal );
+    void Update( bool noArea=false ,RefreshFlags flags=refreshNormal );
 
 public: ///-- IGuiControlEvents
 
 //-- mouse events
-    void onClick( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) override {}
-    void onDoubleClick( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) override {}
-    void onMouseDown( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) override {}
-    void onMouseUp( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) override {}
+    API_IMPL(void) onClick( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) IOVERRIDE {}
+    API_IMPL(void) onDoubleClick( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) IOVERRIDE {}
+    API_IMPL(void) onMouseDown( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) IOVERRIDE {}
+    API_IMPL(void) onMouseUp( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) IOVERRIDE {}
 
-    void onMouseMove( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) override {}
-    void onMouseEnter( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) override {}
-    void onMouseLeave( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) override {}
+    API_IMPL(void) onMouseMove( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) IOVERRIDE {}
+    API_IMPL(void) onMouseEnter( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) IOVERRIDE {}
+    API_IMPL(void) onMouseLeave( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) IOVERRIDE {}
 
-    OsError onGrab( const OsPoint &p ,OsKeyState keyState ,DragOperation &operation ,IObjectRef &object ) override { return ENOEXEC; }
-    void onDrag( const OsPoint &p ,DragOperation operation ,IObject *object ,IObject *target ,OsError result ) override {}
-    void onDrop( const OsPoint &p ,DragOperation operation ,IObject *object ,IObject *target ,OsError result ) override {}
-    OsError onDropAccept( const OsPoint &p ,IObject *source ,DragOperation operation ,IObject *object ,bool preview ) override { return ENOEXEC; }
+    API_IMPL(OsError) onGrab( const OsPoint &p ,OsKeyState keyState ,DragOperation &operation ,IObjectRef &object ) IOVERRIDE { return ENOEXEC; }
+    API_IMPL(void) onDrag( const OsPoint &p ,DragOperation operation ,IObject *object ,IObject *target ,OsError result ) IOVERRIDE {}
+    API_IMPL(void) onDrop( const OsPoint &p ,DragOperation operation ,IObject *object ,IObject *target ,OsError result ) IOVERRIDE {}
+    API_IMPL(OsError) onDropAccept( const OsPoint &p ,IObject *source ,DragOperation operation ,IObject *object ,bool preview ) IOVERRIDE { return ENOEXEC; }
 
 //-- focus events
     API_IMPL(void) onGotFocus() IOVERRIDE {}
     API_IMPL(void) onLostFocus() IOVERRIDE {}
 
 //-- key events
-    void onKeyChar( OsKeyState keyState ,OsKeyCode keyCode ,char_t c ) override {}
-    void onKeyDown( OsKeyState keyState ,OsKeyCode keyCode ,char_t c ) override {}
-    void onKeyUp( OsKeyState keyState ,OsKeyCode keyCode ,char_t c ) override {}
+    API_IMPL(void) onKeyChar( OsKeyState keyState ,OsKeyCode keyCode ,char_t c ) IOVERRIDE {}
+    API_IMPL(void) onKeyDown( OsKeyState keyState ,OsKeyCode keyCode ,char_t c ) IOVERRIDE {}
+    API_IMPL(void) onKeyUp( OsKeyState keyState ,OsKeyCode keyCode ,char_t c ) IOVERRIDE {}
+
+//-- messaging
+    API_IMPL(void) onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) IOVERRIDE {}
+    API_IMPL(void) onNotify( IObject *source ,messageid_t notifyId ,long param ,Params *params ,void *extra ) IOVERRIDE {}
 
 public: ///-- IGuiEvents
-    void onLayout( const OsRect &clientArea ,OsRect &placeArea ) override;
-    void onDraw( const OsRect &uptadeArea ) override;
-    void onMouse( OsMouseAction mouseAction ,OsKeyState keyState ,OsMouseButton mouseButton ,int points ,const OsPoint *pos ) override;
-    void onKey( OsKeyAction keyAction ,OsKeyState keyState ,OsKeyCode keyCode ,char_t c ) override;
-    void onTimer( OsTimerAction timeAction ,OsEventTime now ,OsEventTime last ) override;
-    void onPost( IObject *source ,uint64_t msg ,long param ,Params *params ,void *extra ) override {}
+    API_IMPL(void) onLayout( const OsRect &clientArea ,OsRect &placeArea ) IOVERRIDE;
+    API_IMPL(void) onDraw( const OsRect &uptadeArea ) IOVERRIDE;
+    API_IMPL(void) onMouse( OsMouseAction mouseAction ,OsKeyState keyState ,OsMouseButton mouseButton ,int points ,const OsPoint *pos ) IOVERRIDE;
+    API_IMPL(void) onKey( OsKeyAction keyAction ,OsKeyState keyState ,OsKeyCode keyCode ,char_t c ) IOVERRIDE;
+    API_IMPL(void) onTimer( OsTimerAction timeAction ,OsEventTime now ,OsEventTime last ) IOVERRIDE;
+    API_IMPL(void) onPost( IObject *source ,uint64_t msg ,long param ,Params *params ,void *extra ) IOVERRIDE;
 
 protected:
     uint32_t m_id = CONTROLID_NONE;
@@ -546,7 +605,7 @@ protected:
     bool m_enabled = true;
 
     Point m_size; //! natural dimension of the control
-    Rect m_area; //! area of the control as layout in the display
+    Rect m_area; //! area of the control as calculated by layout for the display
 };
 
 typedef RefOf<GuiControl> GuiControlRef;
@@ -580,122 +639,69 @@ inline GuiControl *ICreateGuiControl( const char *name ) {
 }
 
 //////////////////////////////////////////////////////////////////////////////
-//! ICommand interface
+//! Command control helper
 
-    //TODO review this with proper message struct
-
-#define GUICOMMAND_ID           0x0b9faf354
-#define GUICOMMAND_MASK         INT64_MAKE(GUICOMMAND_ID,0)
-
-#define GUICOMMAND_IS(_x_)      (INT64_HIPART(_x_) == GUIMESSAGE_ID) // (((_x_ & 0x0fffffff00000000) ^ MSGID_GUICOMMAND_MASK) == 0)
-#define GUICOMMAND_GET(_x_)     (GUICOMMAND_IS(_x_) ? INT64_LOPART(_x_) : 0)
-#define GUICOMMAND(_x_)         INT64_MAKE(GUICOMMAND_ID,_x_)
-
-#define GUI_COMMANDID_NONE          0
-#define GUI_COMMANDID_ACTION        1
-#define GUI_COMMANDID_OK            2
-#define GUI_COMMANDID_CANCEL        3
-#define GUI_COMMANDID_OPEN          16
-#define GUI_COMMANDID_UPDATE        17
-#define GUI_COMMANDID_REFRESH       18
-#define GUI_COMMANDID_CLOSE         19
-#define GUI_COMMANDID_START         20
-#define GUI_COMMANDID_STOP          21
-#define GUI_COMMANDID_PREV          22
-#define GUI_COMMANDID_NEXT          23
-#define GUI_COMMANDID_FIRST         24
-#define GUI_COMMANDID_LAST          25
-#define GUI_COMMANDID_MOVE          27
-#define GUI_COMMANDID_ADD           28
-#define GUI_COMMANDID_EDIT          29
-#define GUI_COMMANDID_REMOVE        30
-#define GUI_COMMANDID_HELP          31
-//.. select ...
-
-#define GUI_COMMANDID_MENU          5001 //! @note base command for menu if none are provided
-#define GUI_COMMANDID_MENU_MAX      5099
-
-///--
-struct IGuiCommandEvent : IOBJECT_PARENT {
-    DECLARE_CLASSID(TINY_IGUICOMMANDEVENT_UUID);
-
-    struct IParams {
-        long param;
-        Params params;
-        void *extra;
-    };
-
-    virtual void onCommand( GuiControl &source ,uint32_t commandId ,long param ,Params *params ,void *extra ) = 0;
-};
-
-class GuiCommandPublisher : public CPublisher_<IGuiCommandEvent> ,GUICONTROL_PARENT {
+class GuiCommandOnClick : public GuiPublisher ,GUICONTROL_PARENT {
 public:
-    typedef IGuiCommandEvent::IParams params_t;
-
-    void PostCommand( uint32_t commandId ,long param ,Params *params=NullPtr ,void *extra=NullPtr ) {
-        for( auto &it : subscribers() ) {
-            it->onCommand( *this ,commandId ,param ,params ,extra );
-        }
-    }
-
-    void PostCommand( uint32_t commandId ,params_t &params ) {
-        PostCommand( commandId ,params.param ,params.params.empty() ? NullPtr : &params.params ,params.extra );
-    }
-};
-
-class GuiCommandOnClick : public GuiCommandPublisher ,GUICONTROL_PARENT {
-public:
-    GuiCommandOnClick() : m_commandId(0)
-    {
-        m_commandParams.param = 0;
-        m_commandParams.extra = NullPtr;
-    }
+    GuiCommandOnClick() : m_commandId(0) ,m_commandParam(0) {}
 
     DECLARE_GUIPROPERTIES;
 
-    uint32_t &commandId() { return m_commandId; }
-    params_t &commandParam() { return m_commandParams; }
+    messageid_t &commandId() { return m_commandId; }
 
-    //--
-    uint32_t getCommandId() const { return m_commandId; }
-    void setCommandId( uint32_t id ) { m_commandId = id; }
-
-    virtual bool makeCommandParam( params_t &params ) {
-        params = m_commandParams;
-        return true; //! @note return false to not send the command (e.g. invalid state)
-    }
+    messageid_t getCommandId() const { return m_commandId; }
+    void setCommandId( messageid_t id ) { m_commandId = id; }
 
 public:
     API_IMPL(void) onClick( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) IOVERRIDE {
-        params_t params;
+        PostCommand();
+    }
 
-        if( !makeCommandParam( params ) ) return;
-
-        GuiCommandPublisher::PostCommand( m_commandId ,params );
+    virtual void PostCommand() {
+        GuiPublisher::PostCommand( m_commandId ,m_commandParam );
     }
 
 protected:
-    uint32_t m_commandId;
-    params_t m_commandParams;
+    messageid_t m_commandId;
+    long m_commandParam;
 };
 
 //////////////////////////////////////////////////////////////////////////////
-//! IData interface
+//! PropertiesDataSource
 
-#define TINY_DATAMSG(__id)          TINY_MESSAGE(TINY_MESSAGE_DATA,__id)
-#define TINY_ISDATAMSG(__id)        TINY_ISMESSAGE(TINY_MESSAGE_DATA,__id)
+    //! @brief Properties as a data source
 
-inline bool isDataMessage( msgid_t id ) {
-    return TINY_ISDATAMSG(id);
-}
+class PropertiesDataSource : public CDataSource {
+public:
+    void BindProperties( IGuiProperties *properties ) {
+        m_properties = properties;
+    }
+
+public: ///-- IDataSource
+
+//-- control
+    IAPI_IMPL Commit() IOVERRIDE;
+    IAPI_IMPL Discard() IOVERRIDE;
+
+//-- client
+    IAPI_IMPL readHeader( Params &data ,bool requireValues=false ) IOVERRIDE;
+    IAPI_IMPL readData( Params &data ) IOVERRIDE;
+    IAPI_IMPL onDataEdit( Params &data ) IOVERRIDE;
+
+protected:
+    RefOf<IGuiProperties> m_properties;
+};
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //! composites
 
-class GuiSet : GUICONTROL_PARENT {
-    //! @brief GuiSet : a variable size set of controls, foundation for the different geometries of group
+//////////////////////////////////////////////////////////////////////////////
+//! GuiSet
 
+    //! @brief a variable size set of controls, foundation for the different geometries of group
+
+class GuiSet : GUICONTROL_PARENT {
 public:
     typedef ListOf<GuiControlRef> controlset_t;
 
@@ -705,6 +711,7 @@ protected:
     Map_<String,int> m_names;
 
 public:
+    DECLARE_OBJECT_STD(GuiControl,GuiSet,TINY_GUISET_PUID);
     DECLARE_GUIPROPERTIES;
 
     //! @note prefer using interface below instead of directly use the control set
@@ -712,7 +719,7 @@ public:
     controlset_t &controls() { return m_controls; }
 
     int index( int i ) const {
-        return CLAMP( i ,0 ,m_controls.size()-1 );
+        return CLAMP( i ,0 ,(int) m_controls.size()-1 );
     }
 
 public:
@@ -723,23 +730,23 @@ public:
     }
 
     bool hasControl( int i ) const {
-        return ( i >= 0 && i < m_controls.size() );
+        return ( i >= 0 && i < (int) m_controls.size() );
     }
 
     GuiControl *getControl() { //! topmost
-        int n = getControlCount(); return n > 0 ? getControl(n-1) : nullptr;
+        int n = (int) getControlCount(); return n > 0 ? getControl(n-1) : nullptr;
     }
 
     const GuiControl *getControl() const { //! topmost
-        int n = getControlCount(); return n > 0 ? getControl(n-1) : nullptr;
+        int n = (int) getControlCount(); return n > 0 ? getControl(n-1) : nullptr;
     }
 
     GuiControl *getControl( int i ) { //! by index (not by controlId)
-        return hasControl(i) ? m_controls.at(index(i)).ptr() : NullPtr;
+        return hasControl(i) ? m_controls.at( (size_t) index(i) ).ptr() : NullPtr;
     }
 
     const GuiControl *getControl( int i ) const { //! by index (not by controlId)
-        return hasControl(i) ? m_controls.at(index(i)).ptr() : NullPtr;
+        return hasControl(i) ? m_controls.at( (size_t) index(i) ).ptr() : NullPtr;
     }
 
     GuiControl *getControl( const char *name ) {
@@ -770,7 +777,18 @@ public:
     GuiControl *findControlById( controlid_t id );
     GuiControl *findControlByName( const char *name );
 
+    template <typename T>
+    T *findControlByIdAs_( controlid_t id ) {
+        GuiControl *control = findControlById(id);
+
+        return control ? control->As_<T>() : NullPtr;
+    }
+
     const char *digControlName( int i );
+
+    const char *digControlName( GuiControl &control ) {
+        return digControlName( findControlIndex(control) );
+    }
 
 public:
     OsError onDropAccept( const OsPoint &p ,IObject *source ,DragOperation operation ,IObject *object ,bool preview ) override;
@@ -796,11 +814,13 @@ public:
         memset( (byte*) m_controls ,0 ,sizeof(GuiControl*) * TCount );
     }
 
+    // DECLARE_GUIPROPERTIES; //! not declared by design, its a template
+
 public:
     API_IMPL(void) onLayout( const OsRect &clientArea ,OsRect &placeArea ) IOVERRIDE {
         GuiControl::onLayout( clientArea ,placeArea );
 
-        Rect r = area();
+        Rect r = area(); //! sub area
 
         for( int i=0; i<TCount; ++i ) if( m_controls[i] ) {
             m_controls[i]->setRoot( root() );
@@ -819,15 +839,18 @@ public:
     }
 
     API_IMPL(void) onMouse( OsMouseAction mouseAction ,OsKeyState keyState ,OsMouseButton mouseButton ,int points ,const OsPoint *pos ) IOVERRIDE {
-        GuiControl *control;
-
-        for( int i=TCount; i>=0; --i ) {
-            if( (control = m_controls[i]) && (control->area() & pos[0]) ) {} else continue;
-
-            control->onMouse( mouseAction ,keyState ,mouseButton ,points ,pos );
-        }
-
         GuiControl::onMouse( mouseAction ,keyState ,mouseButton ,points ,pos );
+
+        for( int i=TCount-1; i>=0; --i ) {
+            GuiControl *control = m_controls[i];
+
+            if( control && control->visible() && (control->area() & pos[0]) ) {} else continue;
+
+            if( control->enabled() )
+                control->onMouse( mouseAction ,keyState ,mouseButton ,points ,pos );
+
+            break;
+        }
     }
 
 protected:
@@ -841,54 +864,71 @@ protected:
 //////////////////////////////////////////////////////////////////////////////
 class GuiLayer : public GuiSet {
 public:
-    DECLARE_GUICONTROL(GuiControl,GuiLayer,TINY_GUILAYER_UUID);
+    GuiLayer();
+
+    DECLARE_GUICONTROL(GuiSet,GuiLayer,TINY_GUILAYER_PUID);
 
 public:
-    virtual void onLayout( const OsRect &clientArea ,OsRect &placeArea );
-    virtual void onDraw( const OsRect &updateArea );
-    virtual void onMouse( OsMouseAction mouseAction ,OsKeyState keyState ,OsMouseButton mouseButton ,int points ,const OsPoint *pos );
-    virtual void onKey( OsKeyAction keyAction ,OsKeyState keyState ,OsKeyCode keyCode ,char_t c );
+    API_IMPL(void) onLayout( const OsRect &clientArea ,OsRect &placeArea ) IOVERRIDE;
+    API_IMPL(void) onDraw( const OsRect &updateArea ) IOVERRIDE;
+    API_IMPL(void) onMouse( OsMouseAction mouseAction ,OsKeyState keyState ,OsMouseButton mouseButton ,int points ,const OsPoint *pos ) IOVERRIDE;
+    API_IMPL(void) onKey( OsKeyAction keyAction ,OsKeyState keyState ,OsKeyCode keyCode ,char_t c ) IOVERRIDE;
 };
 
 //////////////////////////////////////////////////////////////////////////////
 class GuiTab : public GuiSet {
-protected:
-    int m_tab = 0; //! currently selected tab
-
 public:
-    DECLARE_GUICONTROL(GuiControl,GuiTab,TINY_GUITAB_UUID);
+    GuiTab();
 
-    int getTabCount() const { return getControlCount(); }
+    DECLARE_GUICONTROL(GuiSet,GuiTab,TINY_GUITAB_PUID);
 
-    void selectTab( int at ) { m_tab = MIN( at ,getTabCount()-1 ); }
+    int getTabCount() const {
+        return (int) getControlCount();
+    }
 
-    int getCurrentTabIndex() const { return m_tab; }
+    int getCurrentTabIndex() const {
+        return m_tab;
+    }
 
     GuiControl *getCurrentTab() {
         return getControl(m_tab);
     }
 
+    void selectTab( int at );
+
 public:
-    virtual void onLayout( const OsRect &clientArea ,OsRect &placeArea );
-    virtual void onDraw( const OsRect &updateArea );
-    virtual void onMouse( OsMouseAction mouseAction ,OsKeyState keyState ,OsMouseButton mouseButton ,int points ,const OsPoint *pos );
-    virtual void onKey( OsKeyAction keyAction ,OsKeyState keyState ,OsKeyCode keyCode ,char_t c );
+    API_IMPL(void) onLayout( const OsRect &clientArea ,OsRect &placeArea ) IOVERRIDE;
+    API_IMPL(void) onDraw( const OsRect &updateArea ) IOVERRIDE;
+    API_IMPL(void) onMouse( OsMouseAction mouseAction ,OsKeyState keyState ,OsMouseButton mouseButton ,int points ,const OsPoint *pos ) IOVERRIDE;
+    API_IMPL(void) onKey( OsKeyAction keyAction ,OsKeyState keyState ,OsKeyCode keyCode ,char_t c ) IOVERRIDE;
+
+protected:
+    int m_tab; //! currently selected tab
+};
+
+class CGuiTabControl : GUICONTROL_PARENT {
+public: //! tab events
+    API_DECL(void) onTabEnter( int fromTabIndex ) {}
+    API_DECL(void) onTabLeave( int toTabIndex ) {}
+
+public: //! tab notify dispatch
+    API_IMPL(void) onNotify( IObject *source ,messageid_t notifyId ,long param ,Params *params ,void *extra ) IOVERRIDE;
 };
 
 //////////////////////////////////////////////////////////////////////////////
-class GuiScroll : GUICONTROL_PARENT { //! TODO listener for SCROLL event POST
+class GuiScroll : GUICONTROL_PARENT {
 public:
     GuiScroll( GuiControl &group );
 
     NoDiscard int offset() const { return m_offset; }
 
 public:
-    void onMouseDown( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) override;
-    void onMouseUp( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) override;
-    void onMouseMove( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) override;
+    API_IMPL(void) onMouseDown( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) IOVERRIDE;
+    API_IMPL(void) onMouseUp( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) IOVERRIDE;
+    API_IMPL(void) onMouseMove( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) IOVERRIDE;
 
-    void onLayout( const OsRect &clientArea ,OsRect &placeArea ) override;
-    void onDraw( const OsRect &updateArea ) override;
+    API_IMPL(void) onLayout( const OsRect &clientArea ,OsRect &placeArea ) IOVERRIDE;
+    API_IMPL(void) onDraw( const OsRect &updateArea ) IOVERRIDE;
 
 protected:
     GuiControl &m_control;
@@ -907,12 +947,14 @@ class GuiGroup : public GuiSet {
 
 public:
     GuiGroup( bool autoscroll=false ) : m_scrollV(NullPtr) {
+
+        m_colors.fillColor = m_colors.foreColor = OS_COLOR_TRANSPARENT;
         if( autoscroll ) {
             m_scrollV = new GuiScroll( *this );
         }
     }
 
-    DECLARE_GUICONTROL(GuiControl,GuiGroup,TINY_GUIGROUP_UUID);
+    DECLARE_GUICONTROL(GuiSet,GuiGroup,TINY_GUIGROUP_PUID);
 
     GuiControl *getFocus() { return m_focus.ptr(); }
 
@@ -925,10 +967,10 @@ public:
     API_IMPL(void) onLostFocus() IOVERRIDE;
 
 protected:
-    virtual void onLayout( const OsRect &clientArea ,OsRect &placeArea );
-    virtual void onDraw( const OsRect &updateArea );
-    virtual void onMouse( OsMouseAction mouseAction ,OsKeyState keyState ,OsMouseButton mouseButton ,int points ,const OsPoint *pos );
-    virtual void onKey( OsKeyAction keyAction ,OsKeyState keyState ,OsKeyCode keyCode ,char_t c );
+    API_IMPL(void) onLayout( const OsRect &clientArea ,OsRect &placeArea ) IOVERRIDE;
+    API_IMPL(void) onDraw( const OsRect &updateArea ) IOVERRIDE;
+    API_IMPL(void) onMouse( OsMouseAction mouseAction ,OsKeyState keyState ,OsMouseButton mouseButton ,int points ,const OsPoint *pos ) IOVERRIDE;
+    API_IMPL(void) onKey( OsKeyAction keyAction ,OsKeyState keyState ,OsKeyCode keyCode ,char_t c ) IOVERRIDE;
 
 protected:
     GuiControlRef m_focus;
@@ -940,16 +982,16 @@ protected:
 //////////////////////////////////////////////////////////////////////////////
 //! TabBar
 
-class GuiTabBar : public IGuiCommandEvent ,public GuiGroup {
+class GuiTabBar : public GuiGroup {
 public:
     GuiTabBar() DEFAULT
 
-    DECLARE_GUICONTROL(GuiGroup,GuiTabBar,TINY_GUITABBAR_UUID);
+    DECLARE_GUICONTROL(GuiGroup,GuiTabBar,TINY_GUITABBAR_PUID);
 
     void Bind( GuiTab &tabs );
 
 protected:
-    void onCommand( GuiControl &source ,uint32_t commandId ,long param ,Params *params ,void *extra ) override;
+    API_IMPL(void) onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) IOVERRIDE;
 
     RefOf<GuiTab> m_tabs;
 };
@@ -961,18 +1003,25 @@ class GuiMenu : public GuiCommandOnClick ,GUICONTROL_PARENT {
 public:
     GuiMenu();
 
-    DECLARE_GUICONTROL(GuiControl,GuiMenu,TINY_GUIMENU_UUID);
+    DECLARE_GUICONTROL(GuiControl,GuiMenu,TINY_GUIMENU_PUID);
     DECLARE_GUIPROPERTIES;
 
-    void addItem( int id ,const char *text ,GuiShortcut *shortcut );
+    void clear() {
+        m_root.clear();
+    }
 
-    virtual bool makeCommandParam( params_t &params );
+    void addItem( int id ,const char *text ,GuiShortcut *shortcut );
+    const char *getItemText( int id );
+
+    // virtual bool makeCommandParam( params_t &params );
 
 public:
     API_IMPL(void) onLayout( const OsRect &clientArea ,OsRect &placeArea ) IOVERRIDE;
     API_IMPL(void) onDraw( const OsRect &updateArea ) IOVERRIDE;
     API_IMPL(void) onMouse( OsMouseAction mouseAction ,OsKeyState keyState ,OsMouseButton mouseButton ,int points ,const OsPoint *pos ) IOVERRIDE;
     API_IMPL(void) onKey( OsKeyAction keyAction ,OsKeyState keyState ,OsKeyCode keyCode ,char_t c ) IOVERRIDE;
+
+    API_IMPL(void) PostCommand() IOVERRIDE;
 
 protected:
     struct Item {
@@ -1019,17 +1068,17 @@ protected:
 //////////////////////////////////////////////////////////////////////////////
 //! TitleBar
 
-class GuiTitlebar : public GuiGroup {
+class GuiTitleBar : public GuiGroup {
 public:
-    GuiTitlebar();
+    GuiTitleBar();
 
-    void Bind( IGuiCommandEvent &owner );
+    void Bind( IGuiMessage &owner );
 };
 
 //////////////////////////////////////////////////////////////////////////////
 //! GuiDialog
 
-class GuiDialog : public GuiPublisher ,public IGuiCommandEvent ,public GuiGroup {
+class GuiDialog : public GuiPublisher ,public GuiGroup {
     //! @note base class to derive dialog from, show with GuiControlWindow::showModal
 
 public:
@@ -1040,28 +1089,31 @@ public:
     virtual void Close();
 
 public:
-    void onKey( OsKeyAction keyAction ,OsKeyState keyState ,OsKeyCode keyCode ,char_t c ) override;
+    API_IMPL(void) onKey( OsKeyAction keyAction ,OsKeyState keyState ,OsKeyCode keyCode ,char_t c ) IOVERRIDE;
 
-    void onCommand( GuiControl &source ,uint32_t commandId ,long param ,Params *params ,void *extra ) override;
+    API_IMPL(void) onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) IOVERRIDE;
 
 protected:
-    GuiTitlebar m_title;
+    GuiTitleBar m_title;
 };
 
-//TODO + support for common dialog
+//////////////////////////////////////////////////////////////////////////////
+//! Common
+
+    //TODO + support for common dialog
 
 //////////////////////////////////////////////////////////////////////////////
 //! GuiMessageBox
 
-class GuiMessageBox : public GuiPublisher ,public GuiCommandPublisher ,public IGuiCommandEvent ,public GuiGroup {
+class GuiMessageBox : public GuiPublisher ,public GuiGroup {
 public:
-    GuiMessageBox( IGuiCommandEvent &listener ,const char *title ,const char *text ,const Params &options );
+    GuiMessageBox( IGuiMessage &listener ,const char *title ,const char *text ,const Params &options );
 
     virtual void Open();
     virtual void Close();
 
 public:
-    void onCommand( GuiControl &source ,uint32_t commandId ,long param ,Params *params ,void *extra ) override;
+    API_IMPL(void) onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) IOVERRIDE;
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -1071,15 +1123,17 @@ public:
 #define GUI_MOUSE_MOTION_DETECT     2
 #define GUI_MOUSE_DRAG_DETECT       5
 
-namespace gui {
-    struct VisualTheme;
-}
-
-class GuiControlWindow : public GuiWindow {
+class GuiControlWindow : public IGuiMessageEvents ,public GuiWindow {
 public:
-    GuiControlWindow( const char_t *name ,const char_t *title ,int width ,int height ,int style=OS_WINDOWSTYLE_NORMAL ,int flags=OS_WINDOWFLAG_NORMAL ,OsColorRef backgroundColor=OS_COLOR_BLACK );
+    GuiControlWindow( const char_t *name ,const char_t *title ,int width ,int height ,int style= OS_WINDOWSTYLE_SIZEABLE,int flags=OS_WINDOWFLAG_NORMAL ,OsColorRef backgroundColor=OS_COLOR_BLACK );
 
-    DECLARE_OBJECT_STD(GuiWindow,GuiControlWindow,TINY_GUICONTROLWINDOW_UUID);
+    DECLARE_OBJECT(GuiControlWindow,TINY_GUICONTROLWINDOW_PUID);
+
+    //-- properties
+    ColorQuad &colors() 
+    { 
+        return m_colors; 
+    }
 
     //-- layers
     GuiGroup &background() { return m_background; }
@@ -1095,7 +1149,7 @@ public:
     void HitTrackMouseEnter( GuiControl &control ,const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState );
 
     //-- drag & drop
-    bool isDragDropInProgress() const { return m_dragOperation!= dragOpNone; }
+    static bool isDragDropInProgress() { return m_dragOperation != dragOpNone; }
     // const Point &mouseClickPoint() const { return m_mouseClickPoint; }
 
     //-- theme
@@ -1103,9 +1157,10 @@ public:
     gui::VisualTheme &setTheme( gui::VisualTheme &theme ) { m_theme = &theme; return theme; }
 
 public: ///-- GuiControlWindow
+    virtual void ShowDialog( uint32_t id ) {}
+
     void ShowModal( GuiDialog &dialog );
     void ShowPopup( GuiPopup &popup );
-    // void ClosePopup( GuiControl &control );
 
     void ShowMessageBox( GuiMessageBox &messagebox );
 
@@ -1117,17 +1172,30 @@ public: ///-- GuiControlWindow
     void EndDragDrop( const OsPoint &p ,OsKeyState keyState ,GuiControl *target ,bool cancel=false );
     void CancelDragDrop();
 
+    void addBinding( const char *name ,IObject *binding );
+    IObject *getBinding( const char *name );
+    const char *digBinding( IObject *binding ) const;
+
+    template <class T>
+    T *getBindingAs_( const char *name ) {
+        IObject *p = getBinding(name); return p ? p->As_<T>() : NullPtr;
+    }
+
     void EnableEditor( bool enabled=true );
     void StartEditor();
     void StopEditor();
 
 public: ///-- IGuiEvents
-    virtual void onLayout( const OsRect &clientArea ,OsRect &placeArea );
-    virtual void onDraw( const OsRect &uptadeArea );
-    virtual void onMouse( OsMouseAction mouseAction ,OsKeyState keyState ,OsMouseButton mouseButton ,int points ,const OsPoint *pos );
-    virtual void onKey( OsKeyAction keyAction ,OsKeyState keyState ,OsKeyCode keyCode ,char_t c );
-    virtual void onTimer( OsTimerAction timeAction ,OsEventTime now ,OsEventTime last );
-    virtual void onPost( IObject *source ,uint64_t msg ,long param ,Params *params ,void *extra );
+    API_IMPL(void) onLayout( const OsRect &clientArea ,OsRect &placeArea ) IOVERRIDE;
+    API_IMPL(void) onDraw( const OsRect &updateArea ) IOVERRIDE;
+    API_IMPL(void) onMouse( OsMouseAction mouseAction ,OsKeyState keyState ,OsMouseButton mouseButton ,int points ,const OsPoint *pos ) IOVERRIDE;
+    API_IMPL(void) onKey( OsKeyAction keyAction ,OsKeyState keyState ,OsKeyCode keyCode ,char_t c ) IOVERRIDE;
+    API_IMPL(void) onTimer( OsTimerAction timeAction ,OsEventTime now ,OsEventTime last ) IOVERRIDE;
+    API_IMPL(void) onPost( IObject *source ,message_t msg ,long param ,Params *params ,void *extra ) IOVERRIDE;
+
+public: ///-- IGuiMessageEvents
+    API_IMPL(void) onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) IOVERRIDE;
+    API_IMPL(void) onNotify( IObject *source ,messageid_t notifyId ,long param ,Params *params ,void *extra ) IOVERRIDE;
 
 protected:
     ColorQuad m_colors;
@@ -1149,7 +1217,7 @@ protected:
     static DragOperation m_dragOperation;
 
     gui::VisualTheme *m_theme;
-    GuiControlRef m_editor;
+    GuiControlRef m_editor; //TODO designer
     bool m_enableEditor;
 
 private:
@@ -1157,6 +1225,9 @@ private:
 
     //! call from parent window mouse move event function
     void HitTrackMouseLeave( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState );
+
+    //! object bindings available in this windows context (root will be set)
+    MapOf<String,IObjectRef> m_bindings;
 };
 
 //////////////////////////////////////////////////////////////////////////

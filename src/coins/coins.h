@@ -20,7 +20,7 @@
 namespace solominer {
 
 //////////////////////////////////////////////////////////////////////////////
-#define CCOIN_UUID           0x0a35b6d2dfc7bbf24
+#define CCOIN_PUID           0x0a35b6d2dfc7bbf24
 
 ///--
 class CCoin;
@@ -61,7 +61,7 @@ public:
         m_name(name) ,m_ticker(ticker) ,m_algorithm(algorithm) ,m_devAddress(devAddress)
     {}
 
-    IMPORT_IOBJECT_API(CCOIN_UUID);
+    DECLARE_OBJECT(CCoin,CCOIN_PUID);
 
 public:
     const String &getName() const { return m_name; } //! TODO return const char* ?

@@ -23,16 +23,16 @@
 
 //////////////////////////////////////////////////////////////////////////////
 #include <algorithm>
+#include <memory>
+
 #include <cassert>
 #include <cctype>
 #include <cfloat>
-#include <memory>
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //! Type mapping
 
-    /// #define TINY_NO_TYPES //! tiny should not use tiny types
     /// #define TINY_USE_TYPES //! tiny should use tiny types
     /// #define TINY_USE_STD //! tiny should use std types
 
@@ -43,7 +43,7 @@
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
-//!TODO use proper naming and mapping (vector, list ,tape .. arrray etc)
+//!TODO use proper naming and mapping (vector, list ,tape .. array etc)
 
 ///-- using tiny types
 #ifdef TINY_TYPES_TINY
@@ -68,13 +68,16 @@
 
 ///-- types
 typedef std::string String;
+
 typedef std::stringstream StringStream;
 typedef std::iostream Stream;
 typedef std::istream InStream;
 typedef std::ostream OutStream;
 
 //-- helpers
-//TODO tocstr
+inline const char *tocstr( const std::string &s ) {
+    return s.c_str();
+}
 
 std::string &toupper( std::string &s );
 std::string &tolower( std::string &s );
@@ -94,7 +97,8 @@ inline void trim( String &s ) {
  #define TINY_NAMESPACE_NAME tiny
 #endif
 
-#define TINY_NAMESPACE namespace TINY_NAMESPACE_NAME
+#define TINY_NAMESPACE \
+    namespace TINY_NAMESPACE_NAME
 
 //////////////////////////////////////////////////////////////////////////////
 TINY_NAMESPACE {
@@ -109,34 +113,40 @@ TINY_NAMESPACE {
  #define NullPtr    NULL
  #define NoExcept
 #else
- #define DEFAULT {}
  #define NullPtr    nullptr
  #define NoExcept   noexcept
 #endif
 
-#if __cplusplus < CXX_17
+#if __cplusplus < CXX_11
+ #define DEFAULT {}
+ #define NoDiscard
+#elif __cplusplus < CXX_17
  #define DEFAULT = default;
  #define NoDiscard
 #else
+ #define DEFAULT = default;
  #define NoDiscard [[nodiscard]]
 #endif
 
-///-- c++ helper macros
+///-- pointer macros
 #define SAFEDELETE( __p_ )          {if(__p_!=NullPtr) { delete __p_; __p_=NullPtr; }}
 #define SAFEDELETEARRAY( __p_ )     {if(__p_!=NullPtr) { delete [] __p_; __p_=NullPtr; }}
 #define SAFERELEASE( __p_ )         {if(__p_!=NullPtr) { __p_->Release(); __p_=NullPtr; }}
 
+//-- assert macro
 #define _TODO        assert(1==0)
+#define _NOTIMPL     { assert(1==0); return INOEXEC; }
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 //! Common definitions & helpers
 
-#define INT64_LOPART(__x)       (__x & 0x0fffffff)
-#define INT64_HIPART(__x)       (__x >> 32)
-#define INT64_MAKE(__x,__y)     ((__x << 32) | __y)
+#define INT64_LOPART(__x)       ((__x) & 0x0fffffff)
+#define INT64_HIPART(__x)       ((__x) >> 32)
+#define INT64_MAKE(__x,__y)     ( ( (uint64_t) INT64_LOPART(__x) << 32) | INT64_LOPART(__y) )
 
 #define __thread		__declspec(thread)
+    //TODO not here ?
 
 // enum AccessMode { modeUnknown=0 ,modeRead=1 ,modeWrite=2 ,modeReadWrite=3 ,modeCreate=4 ,modeNew=8 };
     //! create : if doesn't exist
@@ -151,7 +161,7 @@ typedef int32_t iresult_t;
 #define IRESULT iresult_t
 
 //--
-#define IAPI virtual iresult_t
+#define IAPI virtual iresult_t //? OUT
 
 #if __cplusplus <= CXX_11
  #define API_DECL(__x)  virtual __x
@@ -165,14 +175,15 @@ typedef int32_t iresult_t;
 
 #endif
 
-#define IAPI_DECL  API_DECL(iresult_t)
-#define IAPI_IMPL  API_IMPL(iresult_t)
-#define IAPI_DEF   iresult_t
+#define IAPI_DECL  API_DECL(IRESULT)
+#define IAPI_IMPL  API_IMPL(IRESULT)
+#define IAPI_DEF   IRESULT
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //! Results
 
+///-- success
 #define ISUCCESS( __iresult__ ) \
     ((__iresult__) >= IOK)
 
@@ -182,7 +193,7 @@ typedef int32_t iresult_t;
 #define IF_ISUCCESS_RETURN( __iresult__ ) \
     IF_ISUCCESS(__iresult__) return __iresult__;
 
-///--
+///-- failure
 #define IFAILED( __iresult__ ) \
     ((__iresult__) < IOK)
 
@@ -192,7 +203,7 @@ typedef int32_t iresult_t;
 #define IF_IFAILED_RETURN( __result__ ) \
     IF_IFAILED(__result__) return __result__;
 
-///--
+///-- return codes
 #define IOK         ((iresult_t)0)
 
 ///-- errors --///
@@ -211,20 +222,20 @@ typedef int32_t iresult_t;
 #define IFATAL      ((iresult_t)-255)   //! fatal error, program should abort
 
 // (operation carried out with error)
-#define INODATA     ((iresult_t)-256)     //! no data found when executing the request
-//! more error here (<0)
-//...
+#define INODATA     ((iresult_t)-256)    //! data missing for executing the request
+    //TODO check this
+
+//! user error (<255)
 
 ///-- status --///
 //! (operation carried out with specific status)
 #define IAGAIN      ((iresult_t) 1)     //! operation can be called again
 #define ICONTINUE   ((iresult_t) 2)     //! operation should be called again
 #define IPARTIAL    ((iresult_t) 3)     //! operation was completed but partially (e.g. some data were missing)
-#define INOTHING    ((iresult_t) 4)     //! operation completed, but there was nothing todo
-#define IWARNING    ((iresult_t) 255)   //! warning raised (operation was completed)
-
-//! more status here (>0)
+#define INOTHING    ((iresult_t) 4)     //! operation completed, but there was nothing to do
 //...
+#define IWARNING    ((iresult_t) 255)   //! warning raised (operation was completed)
+//! user status (>255)
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
@@ -236,9 +247,9 @@ public:
         m_result(id) ,m_message(msg)
     {}
 
-    iresult_t result() const { return m_result; }
+    NoDiscard iresult_t result() const { return m_result; }
 
-    const char *message() const { return m_message; }
+    NoDiscard const char *message() const { return m_message; }
 
 protected:
     iresult_t m_result;

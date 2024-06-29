@@ -36,14 +36,6 @@ struct TimerInfo {
 //! String helpers
 
 std::string &toupper( std::string &s ) {
-    /* char *p = (char*) s.c_str();
-
-    while( *p ) {
-        *p = (char) toupper(*p); ++p;
-    }
-
-    return s; */
-
     std::transform( s.begin() ,s.end() ,s.begin()
         ,[](unsigned char c){ return std::toupper(c); }
     );
@@ -52,14 +44,6 @@ std::string &toupper( std::string &s ) {
 }
 
 std::string &tolower( std::string &s ) {
-    /* char *p = (char*) s.c_str();
-
-    while( *p ) {
-        *p = (char) tolower(*p); ++p;
-    }
-
-    return s; */
-
     std::transform( s.begin() ,s.end() ,s.begin()
         ,[](unsigned char c){ return std::tolower(c); }
     );
@@ -90,6 +74,78 @@ std::string &rtrim( std::string &s ) {
 
 //////////////////////////////////////////////////////////////////////////////
 TINY_NAMESPACE {
+
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//! Objects
+
+//////////////////////////////////////////////////////////////////////////////
+//! Class identity
+
+static MapOf<String,PUID> &getClassNameStore() {
+    static MapOf<String,PUID> g_classNames;
+
+    return g_classNames;
+}
+
+bool registerClassName( const PUID &id ,const char *name ) {
+    getClassNameStore()[name] = id; return true;
+}
+
+bool findClassIdByName( const char *name ,PUID &id ) {
+    const auto &it = getClassNameStore().find( name );
+
+    if( it == getClassNameStore().end() ) return false;
+
+    id = it->second;
+
+    return true;
+}
+
+bool findClassNameById( const PUID &id ,String &name ) {
+    for( const auto &it : getClassNameStore() ) {
+        if( it.second == id ) {
+            name = it.first;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+//! Named Pointers
+
+static MapOf<PIID,IObject*> g_objectInstances;
+
+void registerInstance( PIID &id ,IObject *p ) {
+    assert( g_objectInstances.find(id) == g_objectInstances.end() );
+
+    g_objectInstances[id] = p;
+}
+
+void revokeInstance( PIID &id ) {
+    auto it = g_objectInstances.find(id);
+
+    if( it != g_objectInstances.end() )
+        g_objectInstances.erase(it);
+}
+
+IObject *getInstance( PIID &id ) {
+    auto it = g_objectInstances.find(id);
+
+    if( it == g_objectInstances.end() ) return NullPtr;
+
+    return it->second;
+}
+
+PIID digInstanceId( IObject *p ) {
+    for( auto &it : g_objectInstances ) {
+        if( it.second == p ) return it.first;
+    }
+
+    return PIID_NOINSTANCE;
+}
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
@@ -164,8 +220,7 @@ template <> unsigned short &fromString( unsigned short &p ,const String &s ,size
 ///--
 template <>
 String &toString( const bool &p ,String &s ) {
-    s = (p ? "true" : "false");
-    return s;
+    s = (p ? "true" : "false"); return s;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -239,7 +294,7 @@ KeyValue &fromString( KeyValue &p ,const String &s ,size_t &size ) {
 
 template <>
 std::string &toString( const KeyValue &p ,std::string &s ) {
-    if( /*p.value.find('=') != String::npos ||*/ p.value.find(';') != String::npos ) {
+    if( p.value.find(';') != String::npos ) {
         Format( s ,_T("%s={%s}") ,p.key.size() + p.value.size() + 4 ,(const char*) p.key.c_str() ,(const char*) p.value.c_str() );
     } else {
         Format( s ,_T("%s=%s;") ,p.key.size() + p.value.size() + 4 ,(const char*) p.key.c_str() ,(const char*) p.value.c_str() );
@@ -307,6 +362,19 @@ Params &addMembers( Params &p ,const Params &params ,bool addEmpty ) {
     }
 
     return p;
+}
+
+bool getDecl( const Params &params ,const char *name ,NameType &decl ,String &value ) {
+    for( const auto &it : params ) {
+        fromString( decl ,it.first );
+
+        if( decl.name == name ) {
+            value = it.second;
+            return true;
+        }
+    }
+
+    return false;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -433,8 +501,6 @@ int getMemberId( const char *name ,const Schema &schema ) {
         ++i;
     }
 
-    assert(false); //! should probably not happen
-
     return -1;
 }
 
@@ -508,92 +574,6 @@ std::istream &operator >>( std::istream &in ,Bits<String&> p ) {
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-//! Types
-
-    //TODO
-
-//////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////
-//! Objects
-
-//////////////////////////////////////////////////////////////////////////////
-//! Class identity
-
-static MapOf<String,UUID> g_classNames;
-
-bool registerClassName( const UUID &id ,const char *name ) {
-    g_classNames[name] = id; return true;
-}
-
-bool getClassIdFromName( const char *name ,UUID &id ) {
-    const auto &it = g_classNames.find( name );
-
-    if( it == g_classNames.end() ) return false;
-
-    id = it->second;
-
-    return true;
-}
-
-bool getClassNameFromId( const UUID &id ,String &name ) {
-    for( const auto &it : g_classNames ) {
-        if( it.second == id ) {
-            name = it.first;
-            return true;
-        }
-    }
-
-    return false;
-}
-
-//////////////////////////////////////////////////////////////////////////////
-//! ptr
-
-//? ptr work on a store
-/* LATER
-template <class T>
-class ptr_ {
-protected:
-    INSTANCEID m_instanceId;
-
-    static Store_<T> store;
-
-public:
-    T *get() {
-        return getInstanceStore_<T>()[ m_instanceId ];
-    }
-
-    void set( T &p ) {
-        m_instanceId = p.getInstanceId();
-
-        return getInstanceStore_<T>()[ m_instanceId ];
-    }
-};
-
-template <class T>
-Store_<T> &getInstanceStore_() {
-    return ptr_::store;
-}
-
-////---
-static Store<INSTANCEID,PtrOf<IObject>> __storeObject;
-
-PtrOf<IObject> getObjectStore() {
-    return __storeObject.getInstance();
-}
-
-CObject::CObject( INSTANCEID id=NO_INSTANCE_ID ) {
-        //! NB make an ID if doesn't exist //... NB should be manipulable
-    getObjectStore().Register( m_id ,*this );
-}
-
-~CObject() override {
-    m_store.Revoke( *this );
-}
-*/
-
-//////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////
 //! Core (tiny-os wrapper)
 
 //////////////////////////////////////////////////////////////////////////////
@@ -648,7 +628,7 @@ template <> String &toString( const OsRect &p ,String &s ) {
 }
 
 //-- color
-REGISTER_TCLASSNAME(ColorRef);
+REGISTER_STRUCTNAME( ColorRef );
 
 static const MapOf<String,ColorRef> g_colorNames = {
     { "none" ,OS_COLOR_NONE }
@@ -713,6 +693,9 @@ template <> String &toString( const ColorRef &p ,String &s ) {
 
     return s;
 }
+
+///-- native
+REGISTER_STRUCTNAME( bool );
 
 //////////////////////////////////////////////////////////////////////////////
 //! class wrappers
@@ -911,12 +894,6 @@ ThumbMap &fromString( ThumbMap &p ,const String &s ,size_t &size ) {
         return p;
     }
 
-    /* StringList list;
-
-    fromString( list ,s );
-
-    ListOf<Rect> rects; */
-
     return p;
 }
 
@@ -1021,15 +998,18 @@ OsError GuiWindowFunction( const struct OsEventMessage *msg ,void *userData ) {
 }
 
 //--
-/* IAPI_DEF GuiWindow::getInterface( UUID id ,void **ppv ) {
-    if( !ppv || *ppv ) return IBADARGS;
+IRESULT GuiWindow::getInterface( puid_t id ,void **ppv ) {
+    if( !ppv || *ppv) return IBADARGS;
 
     return
-        honorInterface_<GuiWindow>(this,id,ppv) ? IOK
-        : CObject::getInterface( id ,ppv )
+        honorInterface_<GuiWindow>(this,id,ppv)
+        || honorInterface_<IGuiEvents>(this,id,ppv) || honorInterface_<IGuiMessage>(this,id,ppv)
+        || honorInterface_<IGuiDisplay>(this,id,ppv) || honorInterface_<IGuiSurface>(this,id,ppv) || honorInterface_<IGuiContext>(this,id,ppv)
+        ? IOK : CObject::getInterface( id ,ppv )
     ;
-} */
+}
 
+//--
 OsError GuiWindow::Create( int guiSystemId ,bool visible ) {
 	if( _hwindow != OS_INVALID_HANDLE ) return EEXIST;
 	

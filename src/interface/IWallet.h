@@ -20,9 +20,9 @@ namespace solominer {
 #define WALLET_SERVICE_CATEGORY   "wallet"
 
 //////////////////////////////////////////////////////////////////////////////
-#define IWALLET_UUID           0x011d7e32de9b2d514
-#define IWALLETSETUP_UUID      0x0de2942a3e855889c
-#define IWALLETSTORE_UUID      0x05b97e803e4b39ca2
+#define IWALLET_PUID           0x011d7e32de9b2d514
+#define IWALLETSETUP_PUID      0x0de2942a3e855889c
+#define IWALLETSTORE_PUID      0x05b97e803e4b39ca2
 
 //!
 ///--
@@ -138,7 +138,7 @@ public:
 class IWallet : public virtual IPublisher_<IWalletEvents> ,IOBJECT_PARENT
 {
 public: ///-- IBase
-    static UUID getClassId() { return IWALLET_UUID; };
+    static PUID getClassId() { return IWALLET_PUID; };
 
 public: ///-- IWallet
     IAPI_DECL getCoinList( ListOf<String> &coins ) = 0;
@@ -218,7 +218,7 @@ typedef RefOf<IWallet> IWalletRef;
 class IWalletSetup : IOBJECT_PARENT
 {
 public: ///-- IBase
-    static UUID getClassId() { return IWALLETSETUP_UUID; };
+    static PUID getClassId() { return IWALLETSETUP_PUID; };
 
 public: ///-- IWalletSetup
     //...
@@ -232,7 +232,7 @@ typedef RefOf<IWalletSetup> IWalletSetupRef;
 class IWalletStore : IOBJECT_PARENT
 {
 public: ///-- IBase
-    static UUID getClassId() { return IWALLETSTORE_UUID; };
+    static PUID getClassId() { return IWALLETSTORE_PUID; };
 
 public: ///-- IWalletStore
     //...

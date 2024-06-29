@@ -20,9 +20,9 @@ namespace solominer {
 #define MARKET_SERVICE_CATEGORY   "market"
 
 //////////////////////////////////////////////////////////////////////////////
-#define IMARKET_UUID           0x0aca9c6676d47bdf2
-#define IMARKETSETUP_UUID      0x0f9e4b02224f700cb
-#define IMARKETSTORE_UUID      0x09fdeb05ad29bf531
+#define IMARKET_PUID           0x0aca9c6676d47bdf2
+#define IMARKETSETUP_PUID      0x0f9e4b02224f700cb
+#define IMARKETSTORE_PUID      0x09fdeb05ad29bf531
 
 ///--
 class IMarket;
@@ -171,7 +171,7 @@ struct MarketConfig {
 class IMarket : IOBJECT_PARENT
 {
 public: ///-- IBase
-    static UUID getClassId() { return IMARKET_UUID; };
+    static PUID getClassId() { return IMARKET_PUID; };
 
 public: ///-- IMarket
     // loadConfig
@@ -225,7 +225,7 @@ typedef RefOf<IMarket> IMarketRef;
 class IMarketSetup : IOBJECT_PARENT
 {
 public: ///-- IBase
-    static UUID getClassId() { return IMARKETSETUP_UUID; };
+    static PUID getClassId() { return IMARKETSETUP_PUID; };
 
 public: ///-- IMarketSetup
     //...
@@ -237,7 +237,7 @@ typedef RefOf<IMarketSetup> IMarketSetupRef;
 class IMarketStore : IOBJECT_PARENT
 {
 public: ///-- IBase
-    static UUID getClassId() { return IMARKETSTORE_UUID; };
+    static PUID getClassId() { return IMARKETSTORE_PUID; };
 
 public: ///-- IMarketStore
     //...

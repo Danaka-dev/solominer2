@@ -31,8 +31,7 @@
 //! @note template definition below in global space to allow in place specialization
 //!   from within any namespace
 
-//TODO append '_' to all names below
-//TODO capitalize all
+//TODO append '_' to all template names below
 
 //////////////////////////////////////////////////////////////////////////////
 TINY_NAMESPACE {
@@ -74,9 +73,9 @@ inline bool Equals( const double &a ,const double &b ) {
 }
 
 //////////////////////////////////////////////////////////////////////////////
-//! Class helper
+//! Private
 
-//! @brief decorate a class with a private (hidden) structure
+    //! @brief decorate a class with a private (hidden) structure
 
 template <class T>
 struct Private_; //! @note no default, must be defined for each instantiation
@@ -129,9 +128,9 @@ inline double RoundDecimal( double v ,int decimal ) {
 //////////////////////////////////////////////////////////////////////////////
 //! String
 
-#define TINY_STRING_UUID    0x0ef344caa2feef6b1
+#define TINY_STRING_PUID    0x0ef344caa2feef6b1
 
-DECLARE_TCLASS(String,TINY_STRING_UUID);
+DECLARE_STRUCT(String,TINY_STRING_PUID);
 
 template <> inline String &Zero( String &p ) { p.clear(); return p; }
 template <> inline String &Copy( String &a ,const String &b ) { a = b; return a; }
@@ -155,20 +154,20 @@ T fromString( const String &s ) {
     T value; fromString( value ,s ); return value;
 }
 
-//-- function
+//-- function helpers
 #define INLINE_FROMSTRING(__class) \
     template <> inline __class &fromString( __class &p ,const String &s ,size_t &size )
 
 #define DEFINE_FROMSTRING(__class) \
     template <> __class &fromString( __class &p ,const String &s ,size_t &size )
 
-//-- class
+//-- class helpers
 #define DECLARE_FROMSTRING(__class) \
     __class &fromString( const String &s ) { size_t size; return this->fromString( s ,size ); } \
     __class &fromString( const String &s ,size_t &size )
 
 #define CLASS_FROMSTRING(__class) \
-    IMPLEMENT_FROMSTRING(__class) { p.fromString( s ,size ); }
+    INLINE_FROMSTRING(__class) { p.fromString( s ,size ); }
 
 ///-- to
 template <typename T>
@@ -191,7 +190,7 @@ String toString( const T &p ) {
     String &toString( String &s ) const
 
 #define CLASS_TOSTRING(__class) \
-    IMPLEMENT_TOSTRING(__class) { p.toString( s ); }
+    INLINE_TOSTRING(__class) { p.toString( s ); }
 
 ///--
 #define DEFINE_STRING_API(__class) \
@@ -205,11 +204,11 @@ String toString( const T &p ) {
 //////////////////////////////////////////////////////////////////////////////
 //! native support
 
-template <> inline String &fromString( String &p ,const String &s ,size_t &size ) {
+INLINE_FROMSTRING(String) {
     p = s; size = p.size(); return p;
 }
 
-template <> inline String &toString( const String &p ,String &s ) {
+INLINE_TOSTRING(String) {
     return s = p;
 }
 
@@ -291,11 +290,7 @@ struct NameType {
     String type;
 };
 
-template <>
-NameType &fromString( NameType &p ,const String &s ,size_t &size );
-
-template <>
-std::string &toString( const NameType &p ,String &s );
+DEFINE_STRING_API(NameType);
 
 //////////////////////////////////////////////////////////////////////////////
 //! Pair
@@ -307,38 +302,56 @@ struct KeyValue {
 
 //! @brief <key> '=' <value> // ';' ending // quoted text // {} recursive block
 
-template <>
-KeyValue &fromString( KeyValue &p ,const String &s ,size_t &size );
-
-template <>
-std::string &toString( const KeyValue &p ,String &s );
+DEFINE_STRING_API(KeyValue);
 
 //////////////////////////////////////////////////////////////////////////////
 //! Params
 
-// struct Params : MapOf<String,String> {}; //TODO ?
+    //! @brief a set of KeyValue
 
 typedef MapOf<String,String> Params;
 
-//! @brief a set of KeyValue
+DEFINE_STRING_API(Params);
 
-template <>
-Params &fromString( Params &p ,const String &s ,size_t &size );
-
-template <>
-String &toString( const Params &p ,String &s );
-
+//--
 bool hasMember( const Params &p ,const char *key );
+
 const String *peekMember( const Params &p ,const char *key );
 const char *getMember( const Params &p ,const char *key ,const char *defaultValue="" );
+
 Params &addMembers( Params &p ,const Params &params ,bool addEmpty=true );
 
+//--
 template <typename T>
-T getMember_( const Params p ,const char *key ,const char *defaultValue="" ) {
+T getMember_( const Params &p ,const char *key ,const char *defaultValue="" ) {
     String s = getMember( p ,key ,defaultValue );
 
     T v; return fromString( v ,s );
 }
+
+//--
+template <typename T>
+T &fromMember( T &v ,const Params &p ,const char *key ) {
+    const String *s = peekMember( p ,key );
+
+    if( s )
+        fromString( v ,*s );
+
+    return v;
+}
+
+template <typename T>
+Params &toMember( const T &v ,Params &p ,const char *key ) {
+    String s; toString( v ,s );
+
+    if( key && *key && !s.empty() )
+        p[key] = tocstr(s);
+
+    return p;
+}
+
+//--
+bool getDecl( const Params &params ,const char *name ,NameType &decl ,String &value );
 
 //////////////////////////////////////////////////////////////////////////////
 //! ParamList
@@ -347,25 +360,16 @@ T getMember_( const Params p ,const char *key ,const char *defaultValue="" ) {
 
 struct ParamList : ListOf<KeyValue> {};
 
-template <>
-ParamList &fromString( ParamList &p ,const String &s ,size_t &size );
-
-template <>
-String &toString( const ParamList &p ,String &s );
+DEFINE_STRING_API(ParamList);
 
 //////////////////////////////////////////////////////////////////////////////
 //! StringList
 
+    //! @brief comma separated list //  ';' ending // quoted text // {} recursive block
+
 struct StringList : ListOf<String> {};
 
-//! @brief comma separated list //  ';' ending // quoted text // {} recursive block
-
-///-- string
-template <>
-StringList &fromString( StringList &p ,const String &s ,size_t &size );
-
-template <>
-String &toString( const StringList &p ,String &s );
+DEFINE_STRING_API(StringList);
 
 //////////////////////////////////////////////////////////////////////////////
 //! Manifest
@@ -374,11 +378,11 @@ String &toString( const StringList &p ,String &s );
 template <typename T ,class TManifest>
 T &fromManifest( T &p ,const TManifest &manifest );
 
-#define DEFINE_FROMMANIFEST(__class,__manifest) \
-    template <> __class &fromManifest( __class &p ,const __manifest &manifest )
-
 #define INLINE_FROMMANIFEST(__class,__manifest) \
     template <> inline __class &fromManifest( __class &p ,const __manifest &manifest )
+
+#define DEFINE_FROMMANIFEST(__class,__manifest) \
+    template <> __class &fromManifest( __class &p ,const __manifest &manifest )
 
 #define DECLARE_FROMMANIFEST(__class,__manifest) \
     __class &fromManifest( const __manifest &manifest )
@@ -390,11 +394,11 @@ T &fromManifest( T &p ,const TManifest &manifest );
 template <typename T ,class TManifest>
 TManifest &toManifest( const T &p ,TManifest &manifest );
 
-#define DEFINE_TOMANIFEST(__class,__manifest) \
-    template <> __manifest  &toManifest( const __class &p ,__manifest &manifest )
-
 #define INLINE_TOMANIFEST(__class,__manifest) \
     template <> inline __manifest  &toManifest( const __class &p ,__manifest &manifest )
+
+#define DEFINE_TOMANIFEST(__class,__manifest) \
+    template <> __manifest  &toManifest( const __class &p ,__manifest &manifest )
 
 #define DECLARE_TOMANIFEST(__class,__manifest) \
     __manifest toManifest() const { __manifest m; return toManifest( m ); } \
@@ -445,19 +449,21 @@ DEFINE_STRING_API(Schema);
 template <class T>
 void setMember( T &p ,int m ,const String &s );
 
-#define DEFINE_SETMEMBER(__class) \
-    template <> void setMember( __class &p ,int m ,const String &s )
 #define INLINE_SETMEMBER(__class) \
     template <> inline void setMember( __class &p ,int m ,const String &s )
+
+#define DEFINE_SETMEMBER(__class) \
+    template <> void setMember( __class &p ,int m ,const String &s )
 
 //--
 template <class T>
 String &getMember( const T &p ,int m ,String &s );
 
-#define DEFINE_GETMEMBER(__class) \
-    template <> String &getMember( const __class &p ,int m ,String &s )
 #define INLINE_GETMEMBER(__class) \
     template <> inline String &getMember( const __class &p ,int m ,String &s )
+
+#define DEFINE_GETMEMBER(__class) \
+    template <> String &getMember( const __class &p ,int m ,String &s )
 
 //--
 #define DEFINE_MEMBER_API(__class) \
@@ -483,17 +489,6 @@ int getMemberId( const char *name ,const Schema &schema );
 
 Params &listToParams( Params &manifest ,const Schema &schema ,const StringList &values );
 StringList &paramsToList( StringList &values ,const Schema &schema ,Params &manifest );
-
-//TODO OUT
-template <typename T>
-T &fromStringWithSchema( T &p ,const String &s ,const StringList &schema ,size_t size ) {
-    _TODO; return p;
-}
-
-template <typename T>
-String &toStringWithSchema( const T &p ,String &s ,const StringList &schema ) {
-    _TODO; return s;
-}
 
 ///-- String
 template <typename T>
@@ -543,13 +538,13 @@ T &fromParamsWithSchema( T &p ,const Params &manifest ) {
 }
 
 template <typename T>
-Params &toParamsWithSchema( const T &p ,Params &manifest ) {
+Params &toParamsWithSchema( const T &p ,Params &manifest ,bool listEmpty=false ) {
     String s;
 
     int m=0; for( auto &it : Schema_<T>::schema ) {
         getMember( p ,m ,s );
 
-        if( !s.empty() ) //TODO check if we need to make this an option ?
+        if( !s.empty() || listEmpty )
             manifest[it.name] = s;
 
         ++m;

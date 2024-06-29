@@ -18,9 +18,9 @@
 namespace solominer {
 
 //////////////////////////////////////////////////////////////////////////////
-#define CWALLETSERVICEBASE_UUID 0x00236b0c954ecfd79
-#define CWALLETSETUPBASE_UUID   0x0d7273d720086e132
-#define CWALLETSTORE_UUID       0x08defd967b95050c0
+#define CWALLETSERVICEBASE_PUID 0x00236b0c954ecfd79
+#define CWALLETSETUPBASE_PUID   0x0d7273d720086e132
+#define CWALLETSTORE_PUID       0x08defd967b95050c0
 
 ///--
 class CWalletService;
@@ -65,7 +65,7 @@ public:
         this->info().category = WALLET_SERVICE_CATEGORY;
     }
 
-    IMPORT_IOBJECT_API(CWALLETSERVICEBASE_UUID);
+    DECLARE_OBJECT(CWalletService,CWALLETSERVICEBASE_PUID);
 
     static const char *category() { return "wallet"; }
 
@@ -124,7 +124,7 @@ typedef RefOf<CWalletService> CWalletServiceRef;
 class CWalletSetupBase : public IWalletSetup ,public CServiceSetup
 {
 public: ///-- IBase
-    IMPORT_IOBJECT_API( CWALLETSETUPBASE_UUID );
+    DECLARE_OBJECT(CWalletSetupBase,CWALLETSETUPBASE_PUID);
 
 public: ///-- IWalletSetup
     //...
@@ -140,7 +140,7 @@ class CWalletStore : public IWalletStore
     ,public Singleton_<CWalletStore>
 {
 public: ///-- IBase
-    IMPORT_IOBJECT_API(CWALLETSTORE_UUID);
+    DECLARE_OBJECT(CWalletStore,CWALLETSTORE_PUID);
 
 public: ///-- IServiceStore
     //..
@@ -167,6 +167,7 @@ inline bool getWallet( const char *name ,CWalletServiceRef &service ) {
 //! coin book
 
 bool listWalletForCoin( const char *ticker ,ListOf<String> &walletNames );
+void listAddressForWallet( IWalletRef &wallet ,ListOf<String> &addresses );
 
 bool findWalletForAddress( const char *address ,IWalletRef &wallet );
 void noteWalletHasAddress( const char *address ,IWalletRef &wallet );

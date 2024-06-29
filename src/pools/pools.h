@@ -30,7 +30,7 @@
 namespace solominer {
 
 //////////////////////////////////////////////////////////////////////////////
-#define CPOOL_UUID      0x05daa7ce872c20c1e
+#define CPOOL_PUID      0x05daa7ce872c20c1e
 
 struct PoolInfo;
 struct PoolConnectionInfo; //! Rename to pool info
@@ -71,6 +71,9 @@ struct PoolConnectionInfo {
     String args;
 };
 
+template <>
+PoolConnectionInfo &Zero( PoolConnectionInfo &p );
+
 //-- Manifest
 template <>
 PoolConnectionInfo &fromManifest( PoolConnectionInfo &p ,const Params &manifest );
@@ -101,7 +104,7 @@ public:
     CPool( const char *name ) : m_name(name)
     {}
 
-    IMPORT_IOBJECT_API(CPOOL_UUID);
+    DECLARE_OBJECT(CPool,CPOOL_PUID);
 
     const String &getName() {
         return m_name;
@@ -125,7 +128,7 @@ public:
      * @param mode
      * @return
      */
-    bool hasPoolConnections( const char *coin=nullptr ,MiningMode mode=MiningMode::mmUnknown );
+    bool hasPoolConnections( const char *coin=NullPtr ,MiningMode mode=MiningMode::mmUnknown );
         //TODO return index
 
     /**
@@ -135,7 +138,7 @@ public:
      * @param mode
      * @return
      */
-    // bool findPoolConnections( std::vector<PoolConnectionRef> &connections ,const char *coin=nullptr ,MiningMode mode=MiningMode::mmUnknown );
+    bool findPoolConnections( ListOf<PoolConnectionInfo> &infos ,const char *coin=NullPtr ,MiningMode mode=MiningMode::mmUnknown );
 
     /**
      * @brief configure a connection info
@@ -175,7 +178,7 @@ public:
 public:
     bool findPoolByName( const char *name ,CPoolRef &pool );
 
-    bool listPools( ListOf<String> &pools ,const char *coin=nullptr ,MiningMode mode=MiningMode::mmUnknown );
+    bool listPools( ListOf<String> &pools ,const char *coin=NullPtr ,MiningMode mode=MiningMode::mmUnknown );
 };
 
 //////////////////////////////////////////////////////////////////////////////

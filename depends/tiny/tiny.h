@@ -23,11 +23,17 @@
 #define TINY_H
 
 //////////////////////////////////////////////////////////////////////////////
+//! @file "tiny.h"
+//! @brief tiny-for-c++ main header
+//! @author the NEXTWave developers
+//////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //! tiny for C
 
-#define TINY_VERSION		"3.01.2002"
-#define TINY_VERSIONNUM		3012001
+#define TINY_VERSION		"3.01.2018"
+#define TINY_VERSIONNUM		3012018
 #define TINY_DEVCYCLE		"BETA"
 
 //! BOSS - Basic OS Service
@@ -42,6 +48,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //! tiny foundation
 
+//! Basic definitions
 #include "tiny-defs.h"
 
 //! Basic C++ types implementation
@@ -52,7 +59,7 @@
 //! Basic C++ object & interface
 #include "tiny-object.hpp"
 
-//! Basic definition & helpers
+//! Basic methodology & helpers
 #include "tiny-base.hpp"
 
 //! Basic C++ BOSS wrappers
@@ -79,6 +86,7 @@
  #include "x-app/app-config.h"
  #include "x-app/app-test.h"
  #include "x-app/app-service.h"
+ // #include "x-app/app-sim.h"
 #endif
 
  //! x-data (all)
@@ -91,6 +99,7 @@
  //TODO gui -> gui-core ... gui.h pack include below
 
  #include "x-gui/gui.h"
+ // #include "x-gui/gui-core.h"
  #include "x-gui/gui-assets.h"
  #include "x-gui/gui-theme.h"
 
@@ -110,6 +119,7 @@
  //...
 
 //////////////////////////////////////////////////////////////////////////////
+
 #endif // __cplusplus
 
 //////////////////////////////////////////////////////////////////////////////

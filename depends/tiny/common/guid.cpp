@@ -210,11 +210,11 @@ guid_t &Make( guid_t &a ) {
 
 ///-- Mac & ios
 #ifdef PLATFORM_APPLE
-#include <CoreFoundation/CFUUID.h>
+#include <CoreFoundation/CFPUID.h>
 
 Guid newGuid() {
-	auto newId = CFUUIDCreate(NULL);
-	auto bytes = CFUUIDGetUUIDBytes(newId);
+	auto newId = CFPUIDCreate(NULL);
+	auto bytes = CFPUIDGetPUIDBytes(newId);
 	CFRelease(newId);
 
 	std::array<unsigned char, 16> byteArray =
@@ -242,13 +242,15 @@ Guid newGuid() {
 
 ///-- Windows
 #ifdef PLATFORM_WINDOWS
-#include <objbase.h>
+/*#include <objbase.h>
+#include <array>
+#include <algorithm>*/
 
-Guid newGuid() {
-	GUID newId;
-	CoCreateGuid(&newId);
+guid_t& Make(guid_t& newId) {
 
-	std::array<unsigned char, 16> bytes =
+	CoCreateGuid((GUID*) &newId);
+
+	/*std::array<unsigned char, 16> bytes =
 	{
 		(unsigned char)((newId.Data1 >> 24) & 0xFF),
 		(unsigned char)((newId.Data1 >> 16) & 0xFF),
@@ -271,7 +273,8 @@ Guid newGuid() {
 		(unsigned char)newId.Data4[7]
 	};
 
-	return Guid{std::move(bytes)};
+	return Guid{std::move(bytes)};*/
+	return newId;
 }
 #endif
 

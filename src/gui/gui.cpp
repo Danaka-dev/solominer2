@@ -28,6 +28,11 @@ bool uiInitialize( CConnectionList &connections ) {
             // "thumbmap=regular,{8,8,72,72},8,10,25,46;"
             "thumbmap=regular,{16,16,64,64},8,10,41,62;"
         " }"
+        "minis = { "
+            "file=assets/icons/solo-icons32.png;"
+            // "thumbmap=regular,{8,8,72,72},8,10,25,46;"
+            "thumbmap=regular,{8,8,32,32},8,10,20,31;"
+        " }"
     );
 
     //-- coins //TODO list them all and add
@@ -36,6 +41,13 @@ bool uiInitialize( CConnectionList &connections ) {
         "RTC = { file=assets/coins/rtc.png; }"
         "RTM = { file=assets/coins/rtm.png; }"
         "USDT = { file=assets/coins/usdt.png; }"
+    );
+
+    //-- pools
+    gui::Assets::Image().addFromManifest(
+        "FLOCKPOOL = { file=assets/pools/flockpool.png; }"
+        "RPLANT = { file=assets/pools/rplant.png; }"
+        "SOLO = { file=assets/pools/solo.png; }"
     );
 
 //-- fonts
@@ -58,7 +70,7 @@ bool uiInitialize( CConnectionList &connections ) {
         throw std::runtime_error("[uiInitialize]  Memory error while allocating main window");
     }
 
-    // mainWindow->EnableEditor();
+    mainWindow->EnableEditor();
 
     return mainWindow->Create() == ENOERROR;
 }

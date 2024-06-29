@@ -191,7 +191,7 @@ typedef unsigned __int64	uint64_t;
 #endif
 
 //////////////////////////////////////////////////////////////////////////
-#ifndef NOTINYCGUI
+#ifndef TINY_NO_GUI
  #define _NATIVE_GUI_
 #endif
 
@@ -396,7 +396,7 @@ TINYFUN OsError OsMemoryGetInfo( struct OsMemoryInfo *info );
 //////////////////////////////////////////////////////////////////////////
 #ifdef PLATFORM_WINDOWS
 
- #define __align_n(n)				__declspec (align(n))
+ #define __osalign_n(n)				__declspec (align(n))
 
  #ifdef PLATFORM_64BIT
   #define ASYNCH_TYPE				__int64
@@ -422,7 +422,7 @@ TINYFUN OsError OsMemoryGetInfo( struct OsMemoryInfo *info );
 //////////////////////////////////////////////////////////////////////////
 #elif defined(PLATFORM_LINUX)
 
- #define __align_n(n)				__attribute__((aligned(n)))
+ #define __osalign_n(n)				__attribute__((aligned(n)))
 
  //////////////////////////////////////////////////////////////////////////
  #ifdef PLATFORM_64BIT
@@ -446,20 +446,20 @@ TINYFUN OsError OsMemoryGetInfo( struct OsMemoryInfo *info );
 
 //////////////////////////////////////////////////////////////////////////
 #ifdef PLATFORM_64BIT
- // #define __align					__align_n(8)
+  #define __osalign					__osalign_n(8)
 #else
- // #define __align					__align_n(4)
+  #define __osalign					__osalign_n(4)
 #endif
 
 //////////////////////////////////////////////////////////////////////////
 #define ASYNCH_UTYPE			unsigned ASYNCH_TYPE
 #define ASYNCH_STYPE			signed ASYNCH_TYPE
 #define ASYNCH_DECL				volatile ASYNCH_TYPE
-#define ASYNCH_VARIABLE			__align ASYNCH_TYPE
+#define ASYNCH_VARIABLE			__osalign ASYNCH_TYPE
 
 //////////////////////////////////////////////////////////////////////////
 #define __cache_line_size			64
-#define __align_cache				__align_n(__cache_line_size)
+#define __osalign_cache				__osalign_n(__cache_line_size)
 #define CACHE_PAD(_n_,_x_)			char _pad##_n_[__cache_line_size - (sizeof(_x_)%__cache_line_size)]
 
 //////////////////////////////////////////////////////////////////////////
@@ -561,13 +561,15 @@ TINYFUN OsError OsFileGetDriveInfo( const char_t *drivename ,struct OsFileDriveI
 
 struct OsFileAttributes
 {
-    unsigned int directory : 1;
-    unsigned int archive : 1;
-    unsigned int hidden : 1;
-    unsigned int readonly : 1;
-    unsigned int system : 1;
-    unsigned int reserved : 27;
+	unsigned int directory : 1;
+	unsigned int archive : 1;
+	unsigned int hidden : 1;
+	unsigned int readonly : 1;
+	unsigned int system : 1;
+	unsigned int reserved : 27;
 };
+
+
 
 struct OsFileTime
 {
@@ -747,7 +749,7 @@ enum OsTimerAction {
     ,osTimerGlobal=1
 };
 
-typedef unsigned int OsEventTime; //! ms
+typedef OsTimerTime OsEventTime; //! ms
 
 #define osExecuteCreate osExecuteStart
 #define osExecuteClose osExecuteStop
@@ -793,7 +795,11 @@ struct OsEventMessage
 #define OS_KEYCODE_DOWN			40
 #define OS_KEYCODE_INSERT		45
 #define OS_KEYCODE_DELETE		46
+#ifdef PLATFORM_WINDOWS
+#define OS_KEYCODE_F(_x_)       (111+_x_)
+#else
 #define OS_KEYCODE_F(_x_)       (66+_x_)
+#endif // PLATFORM_WINDOWS
 
 //////////////////////////////////////////////////////////////////////////
 //! colors
@@ -836,22 +842,32 @@ struct OsEventMessage
 #define OS_COLOR_BURGUNDY       ((uint32_t)0x0ff200080)
 #define OS_COLOR_ROSEWOOD       ((uint32_t)0x0ff0b0065)
 
-#define OS_COLOR_PURPLE         ((uint32_t)0x0ff800080) //! complex colors
+//-- green
 #define OS_COLOR_OLIVE          ((uint32_t)0x0ff008080)
+
+//-- blue
+#define OS_COLOR_AZURE          ((uint32_t)0x0ffff8000)
+#define OS_COLOR_ROYAL          ((uint32_t)0x0ffe16941)
+#define OS_COLOR_SKY            ((uint32_t)0x0ff87ceeb)
+#define OS_COLOR_STEEL          ((uint32_t)0x0ff4682b4)
+
+//-- composite
+#define OS_COLOR_PURPLE         ((uint32_t)0x0ff800080)
 #define OS_COLOR_ORANGE         ((uint32_t)0x0ff0080ff)
 #define OS_COLOR_PINK           ((uint32_t)0x0ffff80ff)
 
-//-- dark
-#define OS_COLOR_DARKRED		((uint32_t)0x0ff000080)
-#define OS_COLOR_DARKGREEN		((uint32_t)0x0ff008000)
-#define OS_COLOR_DARKBLUE		((uint32_t)0x0ff800000)
+//-- other
+#define OS_COLOR_GOLD           ((uint32_t)0x0ff00ccff)
 
-//-- light
+//-- shades
 #define OS_COLOR_LIGHTRED		((uint32_t)0x0ff0000c0)
 #define OS_COLOR_LIGHTGREEN		((uint32_t)0x0ff00c000)
 #define OS_COLOR_LIGHTBLUE		((uint32_t)0x0ffc00000)
 
-//-- shades
+#define OS_COLOR_DARKRED		((uint32_t)0x0ff000080)
+#define OS_COLOR_DARKGREEN		((uint32_t)0x0ff008000)
+#define OS_COLOR_DARKBLUE		((uint32_t)0x0ff800000)
+
 #define OS_COLOR_GRAY			((uint32_t)0x0ff808080)
 #define OS_COLOR_LIGHTGRAY		((uint32_t)0x0ffc0c0c0)
 #define OS_COLOR_DARKGRAY       ((uint32_t)0x0ff404040)
@@ -949,6 +965,10 @@ TINYFUN OsError OsDialogNativeFileSelect( OsHandle owner ,const char_t *director
 #define OS_GUISYSTEMID_OPENGLES		3
 #define OS_GUISYSTEMID_DIRECTX		4
 //! SDL
+
+#ifndef OS_GUISYSTEMID_DEFAULT
+ #define OS_GUISYSTEMID_DEFAULT      OS_GUISYSTEMID_NATIVE
+#endif
 
 struct OsGuiSystemTable;
 
@@ -1084,6 +1104,7 @@ TINYFUN void OsGuiSetFont( OsGuiContext context ,OsHandle fontHandle );
 #define OS_IMAGE_USEDIM			-1 //?
 
 #define OS_IMAGE_RGB24			1 //? pixel format
+#define OS_IMAGE_RGBA32			2 //? pixel format
 
 struct OsGuiImageInfo
 {
@@ -1140,6 +1161,10 @@ TINYFUN OsError OsGuiResourceLoadFromMemory( OsHandle *handle ,int resourceTypeH
 TINYFUN OsError OsGuiResourceLoadFromFile( OsHandle *handle ,int resourceTypeHint ,const char_t *filename );
 TINYFUN OsError OsGuiResourceLoadFromApp( OsHandle *handle ,int resourceTypeHint ,int resourceId ,const char_t *application );
 
+//-- clipboard
+TINYFUN OsError OsClipboardGetData( OsHandle handle ,char dataType[32] ,void **data ,int *length );
+TINYFUN OsError OsClipboardSetData( OsHandle handle ,char dataType[32] ,void *data ,int length );
+
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 struct OsGuiSystemTable
@@ -1184,6 +1209,10 @@ struct OsGuiSystemTable
 	OsError (*_ResourceLoadFromMemory)( OsHandle *handle ,int resourceTypeHint ,uint8_t *memory ,const void *resourceInfo );
 	OsError (*_ResourceLoadFromFile)( OsHandle *handle ,int resourceTypeHint ,const char_t *filename );
 	OsError (*_ResourceLoadFromApp)( OsHandle *handle ,int resourceTypeHint ,int resourceId ,const char_t *application );
+
+    OsError (*_ClipboardGetData)( OsHandle handle ,char dataType[32] ,void **data ,int *length );
+    OsError (*_ClipboardSetData)( OsHandle handle ,char dataType[32] ,void *data ,int length );
+
 	enum OsHandleType (*_HandleGetType)( OsHandle handle );
 	OsError (*_HandleDestroy)( OsHandle *handle );
 };

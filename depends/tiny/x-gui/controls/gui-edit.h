@@ -27,64 +27,74 @@ TINY_NAMESPACE {
 //////////////////////////////////////////////////////////////////////////////
 //! Definitions
 
-#define TINY_GUIEDITBOX_UUID    0x050832d6537d2b96f
+#define TINY_GUIDATAEDIT_PUID   0x050832d6537d2b96f
+#define TINY_DATALABEL_PUID     0x0efd8060142f9eacf
+#define TINY_GUITEXTBOX_PUID    0x07d5b0de21313e320
+#define TINY_GUICOMBOBOX_PUID   0x000640c9cf93771b3
+#define TINY_GUICOLORBOX_PUID   0x0b0f71ead71b710a2
+#define TINY_GUIBOOLBOX_PUID    0x0eaa2350b651020d0
+#define TINY_GUIALIGNBOX_PUID   0x005f3d0f01712b1b7
 
-#define TINY_GUITEXTBOX_UUID    0x07d5b0de21313e320
-#define TINY_GUICOMBOBOX_UUID   0x000640c9cf93771b3
-#define TINY_GUICOLORBOX_UUID   0x0b0f71ead71b710a2
+//--
+class GuiDataEdit;
+class GuiDataLabel;
+class GuiTextBox;
+class GuiComboBox;
+class GuiColorBox;
+class GuiBoolBox;
+class GuiAlignBox;
 
 //////////////////////////////////////////////////////////////////////////////
-//! GuiEditBox
+//! GuiDataEdit
 
-class GuiEditBox : public virtual IDataEvent ,GUICONTROL_PARENT {
+class GuiDataEdit : public virtual IDataEvents ,GUICONTROL_PARENT {
     //! Base class for edit control bound to one value from a data source
 
 public:
-    DECLARE_OBJECT_STD(GuiControl,GuiEditBox,TINY_GUIEDITBOX_UUID);
+    DECLARE_OBJECT_STD(GuiControl,GuiDataEdit,TINY_GUIDATAEDIT_PUID);
     DECLARE_GUIPROPERTIES;
 
 public: //-- factory
-    static bool RegisterEditor( const UUID &editableId ,const UUID &editorId );
-    static bool findEditor( const UUID &editableId ,UUID &editorId );
-
-    // virtual void getEditObjectId( UUID &id ) = 0;
+    static bool RegisterEditor( const PUID &editableId ,const PUID &editorId );
+    static bool findEditor( const PUID &editableId ,PUID &editorId );
 
 public: //-- binding
     void Bind( const char *field ,IDataSource &source );
 
     virtual void setValue( const char *value ) = 0;
-    virtual void getValue( String &value ) const = 0;
+    virtual void getValue( String &value ) = 0;
 
-protected: //-- data interface
+protected: ///-- IDataEvents
     IAPI_IMPL onDataCommit( IDataSource &source ,Params &data ) IOVERRIDE;
     IAPI_IMPL onDataChanged( IDataSource &source ,const Params &data ) IOVERRIDE;
 
-    IDataSourceRef m_dataSource;
-    String m_dataField; //! data name which edit is bound to
+protected:
+    IDataSourceRef m_dataSource; //! data source which bound to
+    String m_dataField; //! data field name bound to
 };
 
-typedef RefOf<GuiEditBox> GuiEditBoxRef;
+typedef RefOf<GuiDataEdit> GuiEditBoxRef;
 
-GuiEditBox *ICreateGuiEdit( const UUID &editableId );
+GuiDataEdit *ICreateGuiEdit( const PUID &editableId );
 
 #define REGISTER_EDITBOX(__editable,__editor) \
-    static bool g_##__editor##_registered = GuiEditBox::RegisterEditor( classId_<__editable>(),__editor::classId() );
+    static bool g_##__editor##_registered = GuiDataEdit::RegisterEditor( classId_<__editable>(),__editor::classId() );
 
 //////////////////////////////////////////////////////////////////////////////
-//! GuiEditBox_
+//! GuiDataEdit_
 
 template <typename T>
-class GuiEditBox_ : public GuiEditBox {
+class GuiDataEdit_ : public GuiDataEdit {
 public:
-    T &value() { return m_value; }
+    virtual T &getFieldValue() = 0;
 
 public:
-    void setValue( const char *value ) override {
-        fromString( m_value ,value );
+    API_IMPL(void) setValue( const char *v ) IOVERRIDE {
+        fromString( getFieldValue() ,v );
     }
 
-    void getValue( String &value ) const override {
-        toString( m_value ,value );
+    API_IMPL(void) getValue( String &v ) IOVERRIDE {
+        toString( getFieldValue() ,v );
     }
 
 protected: //-- data interface
@@ -95,9 +105,9 @@ protected: //-- data interface
 
         data[ m_dataField ] = "";
 
-        if( m_dataSource->readData( data ) != IOK) return;
+        if( m_dataSource->readData( data ) != IOK ) return;
 
-        setValue( data[ m_dataField ].c_str() );
+        setValue( tocstr( data[ m_dataField ] ) );
     }
 
     void onDataEdit( bool softEdit=false ) {
@@ -105,31 +115,39 @@ protected: //-- data interface
 
         Params data;
 
-        if( !softEdit ) //! @note soft edit means we want to advise datasource edit is in progress, but don't want to transact data yet
-            getValue( data[ m_dataField ] );
+        // if( !softEdit ) //! @note soft edit means we want to advise datasource edit is in progress, but don't want to transact data yet
+        getValue( data[ m_dataField ] );
 
         m_dataSource->onDataEdit( data );
     };
+};
 
-    T m_value;
+//////////////////////////////////////////////////////////////////////////////
+//! GuiLabelData
+
+    //! @brief a label control with data binding
+
+class GuiDataLabel : public GuiLabel ,public GuiDataEdit_<String> {
+public:
+    DECLARE_GUICONTROL(GuiDataEdit,GuiDataLabel,TINY_DATALABEL_PUID);
+    DECLARE_GUIPROPERTIES;
+
+    API_IMPL(String) &getFieldValue() IOVERRIDE { return GuiLabel::m_text; }
 };
 
 //////////////////////////////////////////////////////////////////////////////
 //! GuiTextBox
 
-class GuiTextBox : public GuiWithText ,public GuiEditBox_<String> {
+    //TODO GuiPublisher -> Notify
+
+class GuiTextBox : public GuiWithText ,public GuiDataEdit_<String> {
 public:
     GuiTextBox();
 
-    DECLARE_GUICONTROL(GuiEditBox,GuiTextBox,TINY_GUITEXTBOX_UUID);
+    DECLARE_GUICONTROL(GuiDataEdit,GuiTextBox,TINY_GUITEXTBOX_PUID);
     DECLARE_GUIPROPERTIES;
 
-public:
-    void setValue( const char *value ) override {
-        GuiEditBox_<String>::setValue( value );
-
-        m_text = m_value; //TODO can merge ?
-    }
+    API_IMPL(String) &getFieldValue() IOVERRIDE { return m_text; }
 
 public:
     void onGotFocus() override {
@@ -167,23 +185,25 @@ protected:
 //////////////////////////////////////////////////////////////////////////////
 //! GuiComboBox
 
-class GuiComboBox : public IGuiCommandEvent ,public GuiTextBox {
+class GuiComboBox : public GuiTextBox {
 public:
     GuiComboBox();
 
-    DECLARE_GUICONTROL(GuiEditBox,GuiComboBox,TINY_GUICOMBOBOX_UUID);
+    DECLARE_GUICONTROL(GuiDataEdit,GuiComboBox,TINY_GUICOMBOBOX_PUID);
     DECLARE_GUIPROPERTIES;
 
     void setListonly( bool listonly=true );
 
-    void setPopup( GuiControl &popup ) {}
+    GuiPopup &popup() { return m_popup; }
+    GuiMenu &menu() { return m_menu; }
 
     //! @note popup command subscriber
-    void Subscribe( IGuiCommandEvent &listener );
+    void Subscribe( IGuiMessage &listener );
 
 public:
     // API_IMPL(void) onClick( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) IOVERRIDE;
         //! @note probably not a good idea to handle event in onMouse (no move/drag detect) //TODO find better
+
     API_IMPL(void) onKeyDown( OsKeyState keyState ,OsKeyCode keyCode ,char_t c ) IOVERRIDE;
 
 public:
@@ -200,30 +220,58 @@ public:
     // mouse + key
     void onMouse( OsMouseAction mouseAction ,OsKeyState keyState ,OsMouseButton mouseButton ,int points ,const OsPoint *pos ) override;
 
-    API_IMPL(void) onCommand( GuiControl &source ,uint32_t commandId ,long param ,Params *params ,void *extra ) IOVERRIDE;
+    API_IMPL(void) onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) IOVERRIDE;
 
 protected:
     GuiPopup m_popup;
-    GuiCommandPublisher *m_events;
+    GuiPublisher *m_events;
 
     Rect m_caretArea;
     OsPoint m_caretPoints[3];
 
+    GuiMenu m_menu;
     bool m_listonly;
 };
 
 //////////////////////////////////////////////////////////////////////////////
 //! GuiColorBox
 
-class GuiColorBox : public GuiEditBox_<ColorRef> {
+class GuiColorBox : public GuiComboBox {
 public:
-    DECLARE_GUICONTROL(GuiEditBox,GuiColorBox,TINY_GUICOLORBOX_UUID);
-    // DECLARE_GUIPROPERTIES;
+    GuiColorBox() {
+        setPropertiesWithString("menu={items=#FF0000,#00FF00,#0000FF;}");
+        //TODO list of colors from theme
+    }
 
-    //TODO with a popup menu, list of colors from theme
+    DECLARE_GUICONTROL(GuiComboBox,GuiColorBox,TINY_GUICOLORBOX_PUID);
 
 public:
     API_IMPL(void) onDraw( const OsRect &updateArea ) IOVERRIDE;
+};
+
+//////////////////////////////////////////////////////////////////////////////
+//! GuiBoolBox
+
+class GuiBoolBox : public GuiComboBox {
+public:
+    GuiBoolBox() {
+        setPropertiesWithString("menu={items=true,false;}");
+        setListonly();
+    }
+
+    DECLARE_GUICONTROL(GuiComboBox,GuiBoolBox,TINY_GUIBOOLBOX_PUID);
+};
+
+//////////////////////////////////////////////////////////////////////////////
+//! GuiAlignBox
+
+class GuiAlignBox : public GuiComboBox {
+public:
+    GuiAlignBox() {
+        setPropertiesWithString("menu={items=none,left,right,centerh,top,bottom,centerv,center;}");
+    }
+
+    DECLARE_GUICONTROL(GuiComboBox,GuiAlignBox,TINY_GUIALIGNBOX_PUID);
 };
 
 //////////////////////////////////////////////////////////////////////////////

@@ -18,17 +18,17 @@
 namespace solominer {
 
 //////////////////////////////////////////////////////////////////////////////
-#define SOLOMINER_UIEARNINGDIALOG_UUID    0x08eb254b6b77d0b04
+#define SOLOMINER_UIEARNINGDIALOG_PUID    0x08eb254b6b77d0b04
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //! UiEarningsDialog
 
-class UiEarningsDialog : public GuiCommandPublisher ,public GuiDialog {
+class UiEarningsDialog : public GuiDialog {
 public:
     UiEarningsDialog( CEarningBook &book );
 
-    DECLARE_OBJECT_STD(GuiDialog,UiEarningsDialog,SOLOMINER_UIEARNINGDIALOG_UUID);
+    DECLARE_OBJECT_STD(GuiDialog,UiEarningsDialog,SOLOMINER_UIEARNINGDIALOG_PUID);
 
     // int firstId() const { return m_firstId; }
     // int lastId() const { return firstId() + m_entryPerPage; }
@@ -39,10 +39,11 @@ public:
     void updateEarnings( int pageId );
 
 protected:
-    void onCommand( GuiControl &source ,uint32_t commandId ,long param ,Params *params ,void *extra ) override;
+    void onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) override;
 
 protected:
     CEarningBook &m_book;
+    CEarning2DataSource m_datasource;
 
     RefOf<GuiGrid> m_earnings;
     RefOf<GuiGroup> m_navbar;

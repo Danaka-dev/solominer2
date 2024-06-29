@@ -142,9 +142,25 @@ int getLastTransactionTime( std::vector<transactioninfo_t> &txs ) {
 }
 
 ///--
+IAPI_DEF CWalletBitcoinBase::listAddresses( const char *accountId ,ListOf<String> &addresses ) {
+    IRESULT result = CallDaemon( core() ,[accountId,&addresses]( CCoreBitcoinBase &core ,BitcoinRPC &api ) {
+        // addresses = api.getaddressesbyaccount( accountId ? accountId : "" ); //! @note deprecated
+
+        auto grouping = api.listaddressgroupings();
+
+        for( auto &it : grouping ) {
+            for( auto &jt : it ) {
+                addresses.emplace_back( jt.address );
+            }
+        }
+    });
+
+    return result;
+}
+
 IAPI_DEF CWalletBitcoinBase::getNewAddress( const char *accountId ,String &address ) {
     IRESULT result = CallDaemon( core() ,[accountId,&address]( CCoreBitcoinBase &core ,BitcoinRPC &api ) {
-        address = api.getnewaddress( accountId );
+        address = api.getnewaddress( accountId ? accountId : "" );
     });
 
     return result;

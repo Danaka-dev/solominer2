@@ -19,9 +19,9 @@ namespace solominer {
 #define CHAIN_SERVICE_CATEGORY   "chain"
 
 //////////////////////////////////////////////////////////////////////////////
-#define ICHAIN_UUID           0x0a42196a7b3fad02f
-#define ICHAINSETUP_UUID      0x0fc3e45e33638486c
-#define ICHAINSTORE_UUID      0x03e9ecca2951e9f73
+#define ICHAIN_PUID           0x0a42196a7b3fad02f
+#define ICHAINSETUP_PUID      0x0fc3e45e33638486c
+#define ICHAINSTORE_PUID      0x03e9ecca2951e9f73
 
 ///--
 class IChain;
@@ -85,7 +85,7 @@ struct ChainConfig {
 class IChain : IOBJECT_PARENT
 {
 public: ///-- IBase
-    static UUID getClassId() { return ICHAIN_UUID; };
+    static PUID getClassId() { return ICHAIN_PUID; };
 
 public: ///-- IChain
     IAPI_DECL getInfo( const char *coin ,ChainInfo &info ,ChainInfoFlags flags ) = 0;
@@ -111,7 +111,7 @@ typedef RefOf<IChain> IChainRef;
 class IChainSetup : IOBJECT_PARENT
 {
 public: ///-- IBase
-    static UUID getClassId() { return ICHAINSETUP_UUID; };
+    static PUID getClassId() { return ICHAINSETUP_PUID; };
 
 public: ///--- ICoreSetup
     //...
@@ -123,7 +123,7 @@ typedef RefOf<IChainSetup> IChainSetupRef;
 class IChainStore : IOBJECT_PARENT
 {
 public: ///-- IBase
-    static UUID getClassId() { return ICHAINSTORE_UUID; };
+    static PUID getClassId() { return ICHAINSTORE_PUID; };
 
 public: ///--- ICoreSetup
     //...

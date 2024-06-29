@@ -16,7 +16,7 @@
 namespace solominer {
 
 //////////////////////////////////////////////////////////////////////////////
-#define UISTATS_UUID        0x0d9ac96e634bc5600
+#define UISTATS_PUID        0x0d9ac96e634bc5600
 
 //////////////////////////////////////////////////////////////////////////////
 class UiStats : GUICONTROL_PARENT {
@@ -25,7 +25,7 @@ public:
         ,m_barImage(NULL)
     {}
 
-    DECLARE_GUICONTROL(GuiControl,UiStats,UISTATS_UUID);
+    DECLARE_GUICONTROL(GuiControl,UiStats,UISTATS_PUID);
 
     Stats &stats() {
         return m_stats;

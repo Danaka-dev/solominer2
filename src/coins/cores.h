@@ -17,9 +17,9 @@
 namespace solominer {
 
 //////////////////////////////////////////////////////////////////////////////
-#define CCORESERVICEBASE_UUID   0x090e9bc31cccc411c
-#define CCORESETUPBASE_UUID     0x0ff943e5ed98505b5
-#define CCORESTORE_UUID         0x06ac3b8047c44a563
+#define CCORESERVICEBASE_PUID   0x090e9bc31cccc411c
+#define CCORESETUPBASE_PUID     0x0ff943e5ed98505b5
+#define CCORESTORE_PUID         0x06ac3b8047c44a563
 
 ///--
 class CCoreService;
@@ -76,7 +76,7 @@ public:
         // @note not getting the name from interface, we are in constructor
     }
 
-    IMPORT_IOBJECT_API(CCORESERVICEBASE_UUID);
+    DECLARE_OBJECT(CCoreService,CCORESERVICEBASE_PUID);
 
     static const char *category() { return CORE_SERVICE_CATEGORY; }
 
@@ -100,7 +100,7 @@ typedef RefOf<CCoreService> CCoreServiceRef;
 class CCoreSetup : public ICoreSetup ,public CServiceSetup
 {
 public: ///-- IBase
-    IMPORT_IOBJECT_API(CCORESETUPBASE_UUID);
+    DECLARE_OBJECT(CCoreSetup,CCORESETUPBASE_PUID);
 
 public: ///-- IServiceSetup
     //...
@@ -122,7 +122,7 @@ class CCoreStore :  public ICoreStore
     ,public Singleton_<CCoreStore>
 {
 public: ///-- IBase
-    IMPORT_IOBJECT_API(CCORESTORE_UUID);
+    DECLARE_OBJECT(CCoreStore,CCORESTORE_PUID);
 
 public: ///-- IServiceStore
     //...

@@ -23,9 +23,9 @@ void fromMarketSymbol( const String &s ,String &primary ,String &secondary ,cons
 String &toMarketSymbol( String &s ,const String &primary ,const String &secondary ,const char sep='/' );
 
 //////////////////////////////////////////////////////////////////////////////
-#define CMARKETSERVICEBASE_UUID 0x05351473824d4dd47
-#define CMARKETSETUPBASE_UUID   0x08bb2d1fe3ea10a8d
-#define CMARKETSTOREBASE_UUID   0x04012d23f1dbf3d3a
+#define CMARKETSERVICEBASE_PUID 0x05351473824d4dd47
+#define CMARKETSETUPBASE_PUID   0x08bb2d1fe3ea10a8d
+#define CMARKETSTOREBASE_PUID   0x04012d23f1dbf3d3a
 
 ///--
 class CMarketService;
@@ -41,7 +41,7 @@ public:
         this->info().category = MARKET_SERVICE_CATEGORY;
     }
 
-    IMPORT_IOBJECT_API(CMARKETSERVICEBASE_UUID);
+    DECLARE_OBJECT(CMarketService,CMARKETSERVICEBASE_PUID);
 
     static const char *category() { return "market"; }
 
@@ -94,7 +94,7 @@ typedef RefOf<CMarketService> CMarketServiceRef;
 class CMarketSetup : public IMarketSetup ,public CServiceSetup
 {
 public: ///-- IBase
-    IMPORT_IOBJECT_API(CMARKETSETUPBASE_UUID);
+    DECLARE_OBJECT(CMarketSetup,CMARKETSETUPBASE_PUID);
 
 public: ///-- IMarketSetup
     //...
@@ -108,7 +108,7 @@ class CMarketStore : public IMarketStore
     ,public Singleton_<CMarketStore>
 {
 public: ///-- IBase
-    IMPORT_IOBJECT_API(CMARKETSTOREBASE_UUID);
+    DECLARE_OBJECT(CMarketStore,CMARKETSTOREBASE_PUID);
 
 public: ///-- IMarketStore
     //...

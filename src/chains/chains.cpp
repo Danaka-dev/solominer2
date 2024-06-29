@@ -26,7 +26,7 @@ Params &toManifest( const ChainConfig &p ,Params &s ) {
 //////////////////////////////////////////////////////////////////////////////
 //! CChainBase
 
-IAPI_DEF CChainService::getInterface( UUID id ,void **ppv ) {
+IAPI_DEF CChainService::getInterface( PUID id ,void **ppv ) {
     if( !ppv || *ppv ) return IBADARGS;
 
     if( id == classId() ) {
@@ -42,7 +42,7 @@ IAPI_DEF CChainService::getInterface( UUID id ,void **ppv ) {
 //////////////////////////////////////////////////////////////////////////////
 //! CChainSetupBase
 
-IAPI_DEF CChainSetup::getInterface( UUID id ,void **ppv ) {
+IAPI_DEF CChainSetup::getInterface( PUID id ,void **ppv ) {
     if( !ppv || *ppv ) return IBADARGS;
 
     if( id == classId() ) {
@@ -58,7 +58,7 @@ IAPI_DEF CChainSetup::getInterface( UUID id ,void **ppv ) {
 //////////////////////////////////////////////////////////////////////////////
 //! CChainStore
 
-IAPI_DEF CChainStore::getInterface( UUID id ,void **ppv ) {
+IAPI_DEF CChainStore::getInterface( PUID id ,void **ppv ) {
     if( !ppv || *ppv ) return IBADARGS;
 
     if( id == classId() ) {

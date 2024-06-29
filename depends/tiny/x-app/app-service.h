@@ -51,7 +51,7 @@ public:
             m_state(serviceStopped) ,m_setup(setup)
     {}
 
-    IMPORT_IOBJECT_API(CSERVICEBASE_UUID);
+    DECLARE_OBJECT(CService,CSERVICEBASE_UUID);
 
     //-- const
     const ServiceInfo &info() const { return m_info; }
@@ -128,7 +128,7 @@ protected:
 public:
     CServiceSetup() {}
 
-    IMPORT_IOBJECT_API(CSERVICESETUPBASE_UUID);
+    DECLARE_OBJECT(CServiceSetup,CSERVICESETUPBASE_UUID);
 
     static void setConnectExisting( Params &params ,bool exist=true );
 
@@ -179,7 +179,7 @@ protected:
 public:
     CServiceStore() {}
 
-    IMPORT_IOBJECT_API(CSERVICESTOREBASE_UUID);
+    DECLARE_OBJECT(CServiceStore,CSERVICESTOREBASE_UUID);
 
 public: ///-- IServiceStore
     IAPI_IMPL getInfo( ServiceStoreInfo &info ) IOVERRIDE {

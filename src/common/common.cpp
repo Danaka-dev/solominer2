@@ -51,10 +51,18 @@ Params &getOracle() {
 template <> UrlConnection &fromString( UrlConnection &p ,const String &s ,size_t &size ) {
     const char *str = s.c_str(); size_t n = 0;
 
-    //TODO proper URL parsing
+    const char *p1 = strrchr( str ,':' );
+    const char *p2 = strrchr( str ,'/' );
 
-    size = ParseField( str ,':' ,&p.host ,false );
-    if( *str ) fromString( p.port ,String(str) ,n ) ,size += n;
+    if( p1 && (!p2 || p2 < p1) ) { //! have port
+        p.host = String( str ,p1 );
+        fromString( p.port ,String(p1+1) ,n ) ,size += n;
+    } else {
+        p.host = str;
+    }
+
+    // size = ParseField( str ,':' ,&p.host ,false );
+    // if( *str ) fromString( p.port ,String(str) ,n ) ,size += n;
 
     return p;
 }

@@ -18,27 +18,63 @@
 //! OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //! SOFTWARE.
 
-#ifndef TINY_XDATA_CONFIG_H
-#define TINY_XDATA_CONFIG_H
+#ifndef TINY_XDATA_SOURCE_H
+#define TINY_XDATA_SOURCE_H
 
 //////////////////////////////////////////////////////////////////////////
-#include "data-source.h"
+#include "../interface/IData.h"
 
 //////////////////////////////////////////////////////////////////////////
 TINY_NAMESPACE {
 
 //////////////////////////////////////////////////////////////////////////////
-//! ConfigDataSource
+//! Data Interface (later in interface)
 
-    //! @brief a Config file as data source
+//////////////////////////////////////////////////////////////////////////////
+//! CDataSource
 
-class ConfigDataSource : public CDataSource ,COBJECT_PARENT {
+class CDataSource : public IDataSource ,COBJECT_PARENT {
 public:
-    ConfigDataSource( Config &config ,const char *section=NullPtr ) :
-            m_config(config) ,m_section(NullPtr) ,m_haveEdit(false)
-    {
-        if( section ) Seek( section );
+    DECLARE_OBJECT_STD(CObject,IDataSource,IDATASOURCE_PUID);
+
+public:
+//-- source
+    IAPI_IMPL Connect( const char *source ,const Params &params ) IOVERRIDE { return INOEXEC; }
+    IAPI_IMPL Bind( const char *table ) IOVERRIDE { return INOEXEC; }
+    IAPI_IMPL Seek( const char *id ) IOVERRIDE { return INOEXEC; }
+
+//-- control
+    IAPI_IMPL Commit() IOVERRIDE { return INOEXEC; }
+    IAPI_IMPL Discard() IOVERRIDE { return INOEXEC; }
+
+//-- client
+    IAPI_IMPL readHeader( Params &data ,bool requireValues=false ) IOVERRIDE { return INOEXEC; }
+    IAPI_IMPL readData( Params &data ) IOVERRIDE { return INOEXEC; }
+    IAPI_IMPL onDataEdit( Params &data ) IOVERRIDE { return INOEXEC; }
+
+protected:
+    void adviseDataChanged( Params &data ) {
+        for( auto &it : m_subscribers ) {
+            it->onDataChanged( *this ,data );
+        }
     }
+};
+
+//////////////////////////////////////////////////////////////////////////////
+//! CDataSource
+
+    /// @brief generic data source support
+
+template <class TSource ,class TEntry>
+class CDataSource_ : public CDataSource ,COBJECT_PARENT {
+public:
+    CDataSource_( TSource &source  ) :
+        m_source(source) ,m_haveEdit(false)
+    {}
+
+    TSource &Source() { return m_source; }
+
+    bool &HaveEdit() { return m_haveEdit; }
 
     IAPI_IMPL getInterface( PUID id ,void **ppv ) IOVERRIDE {
         return CDataSource::getInterface(id,ppv);
@@ -48,36 +84,39 @@ public: ///-- IDataSource
     IAPI_IMPL Connect( const char *source ,const Params &params ) IOVERRIDE {
         if( getMember_<bool>(params,"commit","false") && m_haveEdit ) Commit();
 
+        Close();
+
         if( source && *source ) {} else {
-            //! disconnecting
-            m_config.CloseFile();
+            //! disconnecting only
             return IOK;
         }
 
         if( *source == '$' ) {
             //! get from store
-            // m_config = Store_<Config>::getInstance(); //TODO reform Store for this
-            _TODO; //TODO
+            // m_config = Store_<Config>::getInstance();
+            //TODO reform Store for this
             return INOEXEC;
         } else {
             //! get from file
-            return m_config.LoadFile( source ) ? IOK : IERROR;
+
+            return Open( source ,params );
         }
     }
 
     IAPI_IMPL Bind( const char *table ) IOVERRIDE {
+        if( !hasData() ) return INODATA;
+
         if( table && *table ) {} else return IBADARGS;
 
-        m_section = m_config.peekSection( table );
-
-        return m_section ? IOK : INODATA;
+        return IOK;
     }
 
     IAPI_IMPL Seek( const char *id ) IOVERRIDE {
         if( id && *id ) {} else return IBADARGS;
-        if( !m_section ) return IBADENV;
 
         if( m_haveEdit ) Commit();
+
+        //TODO process id "next" ,"prev" ,"first" ,"end" ...
 
         if( !readValues( id ) ) return INODATA;
 
@@ -87,8 +126,7 @@ public: ///-- IDataSource
     }
 
     IAPI_IMPL Commit() IOVERRIDE {
-        if( !m_section ) return INODATA;
-        if( !m_haveEdit ) return INOTHING;
+        if( !hasData() ) return INODATA;
 
         for( auto &it : m_subscribers ) {
             IRESULT result = it->onDataCommit( *this ,m_values );
@@ -99,7 +137,7 @@ public: ///-- IDataSource
     }
 
     IAPI_IMPL Discard() IOVERRIDE {
-        if( !m_section ) return IOK;
+        if( !hasData() ) return INODATA;
 
         if( !readValues() ) return INODATA;
 
@@ -110,17 +148,15 @@ public: ///-- IDataSource
 
     //--
     IAPI_IMPL readHeader( Params &data ,bool requireValues=false ) IOVERRIDE {
-        if( !m_section ) return INODATA;
+        if( !hasData() ) return INODATA;
 
-        for( auto &it : m_values ) {
-            data[ it.first ] = it.second;
-        }
+        data = m_values;
 
         return IOK;
     }
 
     IAPI_IMPL readData( Params &data ) IOVERRIDE {
-        if( !m_section ) return INODATA;
+        if( !hasData() ) return INODATA;
 
         for( auto &it : data ) {
             auto field = m_values.find( it.first );
@@ -134,7 +170,7 @@ public: ///-- IDataSource
     }
 
     IAPI_IMPL onDataEdit( Params &data ) IOVERRIDE {
-        if( !m_section ) return INODATA;
+        if( !hasData() ) return INODATA;
 
         if( data.empty() ) {
             //! @note client can datasource edit has started but doesn't want to transact the data yet
@@ -144,8 +180,6 @@ public: ///-- IDataSource
             m_haveEdit = true;
             return IOK;
         }
-
-        auto &params = m_section->params;
 
         bool haveEdit = false;
 
@@ -171,38 +205,53 @@ public: ///-- IDataSource
         return result;
     }
 
+public: ///-- CDataSource_
+    API_DECL(bool) hasData() = 0;
+
+    IAPI_DECL Open( const char *source ,const Params &params ) = 0;
+    API_DECL(void) Close() = 0;
+
+    API_DECL(bool) getEntry( TEntry &entry ) = 0;
+    API_DECL(bool) setEntry( TEntry &entry ) = 0;
+
 protected:
     bool readValues( const char *id ) {
-        auto it = m_section->params.find( id );
-        if( it == m_section->params.end() ) return false;
+        fromString( m_id ,id );
 
-        m_entry = id;
-        fromString( m_values ,it->second );
-        m_haveEdit = false;
+        return readValues();
+    }
+
+    API_DECL(bool) readValues() {
+        TEntry entry;
+
+        if( !getEntry( entry ) ) return false;
+
+        toManifest( entry ,m_values );
+
+        m_haveEdit = false; //! @note if any edit it is canceled here
+
+        //! @note no data change advise here,
+        //! its done IDataSource implementation
 
         return true;
     }
 
-    bool readValues() {
-        return readValues( m_entry.c_str() );
-    }
+    API_DECL(bool) writeValues() {
+        TEntry entry;
 
-    bool writeValues() {
-        String s;
+        fromManifest( entry ,m_values );
 
-        toString( m_values ,s );
-        m_section->params[ m_entry ] = s;
-
-        return m_config.commitSection( *m_section ) && m_config.SaveFile();
+        return setEntry( entry );
     }
 
 protected:
-    Config &m_config; //TODO, this to a pointer
+    RefOf<TSource> m_source;
 
-    Config::Section *m_section;
-    String m_entry;
+    //-- data
+    size_t m_id;
     Params m_values;
 
+    //-- edition
     bool m_haveEdit;
 };
 
@@ -210,4 +259,4 @@ protected:
 } //TINY_NAMESPACE
 
 //////////////////////////////////////////////////////////////////////////////
-#endif //TINY_XDATA_CONFIG_H
+#endif //TINY_XDATA_SOURCE_H

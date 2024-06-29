@@ -26,7 +26,7 @@ TINY_NAMESPACE {
 //////////////////////////////////////////////////////////////////////////////
 //! CService
 
-IAPI_DEF CService::getInterface( UUID id ,void **ppv ) {
+IAPI_DEF CService::getInterface( PUID id ,void **ppv ) {
     if( !ppv || *ppv ) return IBADARGS;
 
     return
@@ -38,7 +38,7 @@ IAPI_DEF CService::getInterface( UUID id ,void **ppv ) {
 //////////////////////////////////////////////////////////////////////////////
 //! CServiceSetup
 
-IAPI_DEF CServiceSetup::getInterface( UUID id ,void **ppv ) {
+IAPI_DEF CServiceSetup::getInterface( PUID id ,void **ppv ) {
     if( !ppv || *ppv ) return IBADARGS;
 
     return
@@ -171,7 +171,7 @@ bool CServiceSetup::matchService( const ServiceInfo &info ,const Params &params 
 //////////////////////////////////////////////////////////////////////////////
 //! CServiceStore
 
-IAPI_DEF CServiceStore::getInterface( UUID id ,void **ppv ) {
+IAPI_DEF CServiceStore::getInterface( PUID id ,void **ppv ) {
     if( !ppv || *ppv ) return IBADARGS;
 
     return

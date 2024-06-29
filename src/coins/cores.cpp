@@ -42,7 +42,7 @@ Params &toManifest( const CoreConfig &p ,Params &s ) {
 //////////////////////////////////////////////////////////////////////////////
 //! CCoreBase
 
-IAPI_DEF CCoreService::getInterface( UUID id ,void **ppv ) {
+IAPI_DEF CCoreService::getInterface( PUID id ,void **ppv ) {
     return
         (!ppv || *ppv) ? IBADARGS :
         honorInterface_<CCoreService>(this,id,ppv) || honorInterface_<ICore>(this,id,ppv)  ? IOK :
@@ -53,7 +53,7 @@ IAPI_DEF CCoreService::getInterface( UUID id ,void **ppv ) {
 //////////////////////////////////////////////////////////////////////////////
 //! CCoreSetupBase
 
-IAPI_DEF CCoreSetup::getInterface( UUID id ,void **ppv ) {
+IAPI_DEF CCoreSetup::getInterface( PUID id ,void **ppv ) {
     return
         (!ppv || *ppv) ? IBADARGS :
         honorInterface_<CCoreSetup>(this,id,ppv) || honorInterface_<ICoreSetup>(this,id,ppv)  ? IOK :
@@ -64,7 +64,7 @@ IAPI_DEF CCoreSetup::getInterface( UUID id ,void **ppv ) {
 //////////////////////////////////////////////////////////////////////////////
 //! CCoreStore
 
-IAPI_DEF CCoreStore::getInterface( UUID id ,void **ppv ) {
+IAPI_DEF CCoreStore::getInterface( PUID id ,void **ppv ) {
     return
         (!ppv || *ppv) ? IBADARGS :
         honorInterface_<CCoreStore>(this,id,ppv) || honorInterface_<ICoreStore>(this,id,ppv)  ? IOK :

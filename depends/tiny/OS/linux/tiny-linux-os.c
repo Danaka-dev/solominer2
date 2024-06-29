@@ -92,7 +92,7 @@ OsError OsSystemGetInfo( struct OsSystemInfo *info )
 {
     unsigned int regs[4];
     
-	info->_logicalCoreCount = sysconf( _SC_NPROCESSORS_ONLN );
+	info->_logicalCoreCount = (uint32_t) sysconf( _SC_NPROCESSORS_ONLN );
 
 	//-- get CPU features
 	cpuID( 1 ,regs );
@@ -196,14 +196,14 @@ OsError OsSystemDoEvents( void ) {
                         pprev->_next = p->_next;
                 }
 
-                p = NULL; //! found event owner
+                break; //! found event owner
             }
-            else
-                p = p->_next;
+
+            pprev = p; p = p->_next;
         }
     }
 
-    //TODO return interupt on global quit
+    //TODO return interrupt on global quit
 
 ///-- timers
     if( lastTime == 0 || OsTimerGetElapsed(lastTime,now) > g_osSystemGlobalTimerInterval ) {
@@ -409,7 +409,7 @@ void OsMemoryFree( void *memory )
 // #define CACHE_PAD(_n_,_x_)			char _pad##_n_[_CACHE_LINE_SIZE - (sizeof(_x_)%_CACHE_LINE_SIZE)]
 
 //////////////////////////////////////////////////////////////////////////
-#ifdef _LP64
+/* #ifdef _LP64
  #define __align					__attribute__((aligned(8)))
  #define _ASYNCH_DECL               volatile long long
  #define _ASYNCH_TYPE				unsigned long long
@@ -431,6 +431,7 @@ void OsMemoryFree( void *memory )
 #define _ASYNCH_WRITE(__x,__y)		__sync_lock_test_and_set((_ASYNCH_DECL*)&__x,__y)	//! returns the variable (initial) value
 #define _ASYNCH_INCREMENT(__x)		__sync_add_and_fetch((_ASYNCH_DECL*)&__x,1)		//! returns the new incremented value
 #define _ASYNCH_DECREMENT(__x)		__sync_add_and_fetch((_ASYNCH_DECL*)&__x,-1)		//! returns the new decremented value
+*/
 
 //////////////////////////////////////////////////////////////////////////
 //-- process
@@ -785,7 +786,7 @@ OsError OsSemaphoreCreate( OsHandle *handle ,uint32_t initialCount ,const char_t
 {
 	struct SemaphoreHandle *p = NULL;
 
-    int error = ENOERROR;
+    OsError error = ENOERROR;
 
 	if( handle == NULL ) return EINVAL;
 
@@ -1361,9 +1362,9 @@ static OsError DeleteNetHandle( OsHandle *handle )
 }
 
 //////////////////////////////////////////////////////////////////////////
-static _ASYNCH_VARIABLE _win_wsaInitialize = 0;
+static ASYNCH_VARIABLE _win_wsaInitialize = 0;
 
-static _ASYNCH_VARIABLE _win_wsaReady = 0;
+static ASYNCH_VARIABLE _win_wsaReady = 0;
 
 //CRITICAL_SECTION _win_cs_net;
 
@@ -1591,7 +1592,7 @@ void OsConsoleSetColor( int selectColor ,OsColorRef color ) {
 struct OsGuiSystemTable *_guiSystemDIRECTX = NULL; //! never exist on linux
 
 //! native system is default
-static int _guiSystemCurrentId = OS_GUISYSTEMID_NATIVE;
+static int _guiSystemCurrentId = OS_GUISYSTEMID_DEFAULT;
 
 static struct OsGuiSystemTable *guiGetSystemFromId( int guiSystemId )
 {
@@ -1694,7 +1695,11 @@ TINYFUN void OsGuiWindowShow( OsHandle handle ,int visible )
 
 TINYFUN void OsGuiMouseSetCursor(OsHandle handle, int cursorID )
 {
-	assert(0);
+    struct GuiSystemHandle *p = CastGuiSystemHandle( handle );
+
+    if( p == NULL ) { _ASSERT( 0 ); return; }
+
+    p->_guiTable->_MouseSetCursor( handle ,cursorID  );
 }
 
 TINYFUN void OsGLDrawPolygon(OsHandle handle)
@@ -1924,6 +1929,25 @@ TINYFUN OsError OsGuiResourceLoadFromApp( OsHandle *handle ,int resourceTypeHint
 	if( gui == NULL ) return ENOSYS;
 
 	return gui->_ResourceLoadFromApp( handle ,resourceTypeHint ,resourceId ,application );
+}
+
+//-- clipboard
+TINYFUN OsError OsClipboardGetData( OsHandle handle ,char dataType[32] ,void **data ,int *length )
+{
+    struct OsGuiSystemTable *gui = guiGetSystemFromId(OS_GUISYSTEMID_CURRENT);
+
+    if( gui == NULL ) return ENOSYS;
+
+    return gui->_ClipboardGetData( handle ,dataType ,data ,length );
+}
+
+TINYFUN OsError OsClipboardSetData( OsHandle handle ,char dataType[32] ,void *data ,int length )
+{
+    struct OsGuiSystemTable *gui = guiGetSystemFromId(OS_GUISYSTEMID_CURRENT);
+
+    if( gui == NULL ) return ENOSYS;
+
+    return gui->_ClipboardSetData( handle ,dataType ,data ,length );
 }
 
 //////////////////////////////////////////////////////////////////////////

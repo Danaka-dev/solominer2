@@ -15,161 +15,6 @@ namespace solominer {
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////
-//OUT
-
-// #define POOL_SOLOLOCAL_NAME "core"
-
-/*
-template <>
-MiningMode &fromString( MiningMode &p ,const std::string &s ,size_t &size );
-
-template <>
-std::string &toString( const MiningMode &p ,std::string &s );
-*/
-
-/*
-///-- PoolConnection
-#define POOLCONNECTION_FIELD_COIN       "COIN"
-#define POOLCONNECTION_FIELD_MODE       "MODE"
-#define POOLCONNECTION_FIELD_HOST       "HOST"
-#define POOLCONNECTION_FIELD_ADDRESS    "ADDRESS"
-#define POOLCONNECTION_FIELD_USER       "USER"
-#define POOLCONNECTION_FIELD_PASSWORD   "PASSSWORD"
-#define POOLCONNECTION_FIELD_OPTIONS    "OPTIONS"
-*/
-/*
-#define POOLCONNECTION_OPTION_TLS       "TLS"
-#define POOLCONNECTION_OPTION_DAEMON    "DAEMON"
-#define POOLCONNECTION_OPTION_CORE      "CORE"
-*/
-/*
-//--
-template <>
-MiningMode &fromString( MiningMode &p ,const std::string &s ,size_t &size ) {
-    std::string S = s; toupper(S);
-
-    if( S == with_size(MININGMODE_NAME_SOLO_LOCAL,size) )
-        p = MiningMode::SoloLocal;
-    else if( S == with_size(MININGMODE_NAME_SOLO_REMOTE,size) )
-        p = MiningMode::SoloRemote;
-    else if( S == with_size(MININGMODE_NAME_POOL_SOLO,size) )
-        p = MiningMode::PoolSolo;
-    else if( S == with_size(MININGMODE_NAME_POOL_SHARED,size) )
-        p = MiningMode::PoolShared;
-
-    else
-        p = MiningMode::mmUnknown;
-
-    return p;
-}
-
-template <>
-std::string &toString( const MiningMode &p ,std::string &s ) {
-
-    switch( p ) {
-        case MiningMode::SoloLocal:
-            s = MININGMODE_NAME_SOLO_LOCAL; break;
-        case MiningMode::SoloRemote:
-            s = MININGMODE_NAME_SOLO_REMOTE; break;
-        case MiningMode::PoolSolo:
-            s = MININGMODE_NAME_POOL_SOLO; break;
-        case MiningMode::PoolShared:
-            s = MININGMODE_NAME_POOL_SHARED; break;
-        default:
-            s = "unknown"; break;
-    }
-
-    return s;
-}
-
-//--
-std::string *findNamedString( PoolConnectionInfo &p ,const std::string &s ) {
-    if( s == POOLCONNECTION_FIELD_COIN )
-        return & p.coin;
-    else if( s == POOLCONNECTION_FIELD_HOST )
-        return & p.host;
-    else if( s == POOLCONNECTION_FIELD_ADDRESS )
-        return & p.address;
-    else if( s == POOLCONNECTION_FIELD_USER )
-        return & p.user;
-    else if( s == POOLCONNECTION_FIELD_PASSWORD )
-        return & p.password;
-    else
-        return nullptr;
-}
-
-const std::string *findNamedString( const PoolConnectionInfo &p ,const std::string &s ) {
-    return findNamedString( * (PoolConnectionInfo*) &p ,s );
-}
-
-bool setNamedField( PoolConnectionInfo &p ,const KeyValue &kv ) {
-    std::string S = kv.key; toupper(S);
-
-    std::string *s = findNamedString( p ,S );
-
-    if( s )
-        *s = kv.value;
-
-    else if( S == POOLCONNECTION_FIELD_MODE )
-        fromString( p.mode ,kv.value );
-
-    else if( S == POOLCONNECTION_FIELD_OPTIONS )
-        fromString( p.options ,kv.value );
-
-    else
-        return false;
-
-    return true;
-}
-
-bool getNamedField( const PoolConnectionInfo &p ,KeyValue &kv ) {
-    const std::string *s = findNamedString( p ,kv.key );
-
-    if( s )
-        kv.value = *s;
-
-    else if( kv.key == POOLCONNECTION_FIELD_MODE )
-        toString( p.mode ,kv.value );
-
-    else if( kv.key == POOLCONNECTION_FIELD_OPTIONS )
-        toString( p.options ,kv.value );
-
-    else
-        return false;
-
-    return true;
-}
-
-//--
-template <>
-PoolConnectionInfo &fromString( PoolConnectionInfo &p ,const std::string &s ,size_t &size ) {
-    using namespace std;
-
-    stringstream ss(s);
-
-    KeyValue kv;
-
-    while( ss >> kv ) {
-        setNamedField( p ,kv );
-    }
-
-    return p;
-}
-
-template <>
-std::string &toString( const PoolConnectionInfo &p ,std::string &s ) {
-    // KeyValue kv;
-    // getNamedField()
-
-    //TODO
-    return s;
-}
-*/
-
-//OUT
-
-//////////////////////////////////////////////////////////////////////////////
 template <>
 MiningMode &fromString( MiningMode &p ,const String &s ,size_t &size ) {
     String key = s; tolower(key);
@@ -205,7 +50,26 @@ template <> String &toString( const MiningMode &p ,String &s ) {
     return s;
 }
 
-///-- manifest
+///-- PoolConnectionInfo
+template <>
+PoolConnectionInfo &Zero( PoolConnectionInfo &p ) {
+    p.coin = "";
+    p.mode = MiningMode::SoloLocal;
+
+    p.host = "";
+    p.port = 0;
+    p.user = "";
+    p.password = "";
+
+    p.options.isTls = false;
+    p.options.isDaemon = false;
+    p.options.isCore = false;
+
+    p.args = "";
+
+    return p;
+}
+
 template <>
 PoolConnectionInfo &fromManifest( PoolConnectionInfo &p ,const Params &manifest ) {
     p.coin = getMember(manifest,"coin");
@@ -213,8 +77,8 @@ PoolConnectionInfo &fromManifest( PoolConnectionInfo &p ,const Params &manifest 
 
     p.host = getMember(manifest,"host");
     fromString( p.port ,getMember(manifest,"port") );
-    p.user = getMember(manifest,"host");
-    p.password = getMember(manifest,"host");
+    p.user = getMember(manifest,"user");
+    p.password = getMember(manifest,"password");
 
     fromString( p.options ,getMember(manifest,"options") );
     p.args = getMember(manifest,"args");
@@ -232,7 +96,7 @@ Params &toManifest( const PoolConnectionInfo &p ,Params &manifest ) {
 //////////////////////////////////////////////////////////////////////////////
 //! Pool
 
-IAPI_DEF CPool::getInterface( UUID id ,void **ppv ) {
+IAPI_DEF CPool::getInterface( PUID id ,void **ppv ) {
     if( !ppv || *ppv ) return IBADARGS;
 
     return
@@ -245,6 +109,8 @@ IAPI_DEF CPool::loadSettings( StringList &settings ) {
     PoolConnectionInfo info;
 
     for( const auto &it : settings ) {
+        Init(info);
+
         Params params;
 
         fromString( params ,it );
@@ -292,7 +158,7 @@ bool CPool::hasPoolConnections( const char *coin ,solominer::MiningMode mode ) {
         return !m_connections.empty();
 
     for( auto &info : m_connections ) {
-        if( (coin == nullptr || info.coin == coin)
+        if( (coin == NullPtr || info.coin == coin)
             && (mode == MiningMode::mmUnknown || info.mode == mode )
         ) {
             return true;
@@ -302,23 +168,19 @@ bool CPool::hasPoolConnections( const char *coin ,solominer::MiningMode mode ) {
     return false;
 }
 
-/* bool CPool::findPoolConnections( std::vector<PoolConnectionRef> &connections ,const char *coinTicker ,solominer::MiningMode mode ) {
-    connections.clear();
+bool CPool::findPoolConnections( ListOf<PoolConnectionInfo> &infos ,const char *coin ,MiningMode mode ) {
+    infos.clear();
 
-    for( auto it : m_connection ) {
-        PoolConnectionInfo *p = it.get();
-
-        if( p &&
-            (coinTicker == nullptr || p->coin == coinTicker)
-            && (mode == MiningMode::mmUnknown || p->mode == mode )
-            ) {
-
-            connections.emplace_back( it );
+    for( auto &info : m_connections ) {
+        if( (coin == NullPtr || info.coin == coin)
+            && (mode == MiningMode::mmUnknown || info.mode == mode )
+        ) {
+            infos.emplace_back( info );
         }
     }
 
-    return connections.empty();
-} */
+    return !infos.empty();
+}
 
 //////////////////////////////////////////////////////////////////////////////
 //! CPoolList
@@ -350,6 +212,18 @@ IAPI_DEF CPoolList::loadConfig( Config &config ) {
     }
 
     return IOK;
+}
+
+bool CPoolList::findPoolByName( const char *name ,CPoolRef &pool ) {
+    auto *p = findItem( name );
+
+    if( !p ) {
+        pool = NullPtr;
+        return false;
+    }
+
+    pool = *p;
+    return true;
 }
 
 bool CPoolList::listPools( ListOf<String> &pools ,const char *coin ,MiningMode mode ) {

@@ -15,7 +15,7 @@
 namespace solominer {
 
 //////////////////////////////////////////////////////////////////////////////
-#define TINY_CBOOKFILE_UUID      0x0f06f0f82974f18bb
+#define TINY_CBOOKFILE_PUID      0x0f06f0f82974f18bb
 
 class CBookFile;
 
@@ -51,24 +51,26 @@ public:
 public:
     CBookFile();
 
-    CBookFile( UUID uuid ,int sizeofEntry ,BookMode mode=bookText );
+    CBookFile( PUID uuid ,int sizeofEntry ,BookMode mode=bookText );
 
     virtual ~CBookFile();
 
-    DECLARE_OBJECT_STD(CObject,CBookFile,TINY_CBOOKFILE_UUID);
+    DECLARE_OBJECT_STD(CObject,CBookFile,TINY_CBOOKFILE_PUID);
 
     const char *title() const { return m_title.c_str(); }
     const char *volume() const { return m_volume.c_str(); }
     BookMode bookmode() const { return m_mode; }
 
     const Guid &udbn() const { return m_udbn; }
-    const UUID &uuid() const { return m_uuid; }
+    const PUID &uuid() const { return m_uuid; }
 
     size_t sizeofEntry() const { return m_sizeofEntry; }
 
     byte *getUserData( size_t &size );
     bool updateUserData();
     bool setUserData( byte *data ,size_t size );
+
+    bool isOpen() { return m_file.isOpen(); }
 
 public:
     static IRESULT makeFilepath( const char *title ,const char *path ,String &filepath );
@@ -78,7 +80,7 @@ public:
 //-- file
     IRESULT Archive( const char *volume ,entryid_t untilId );
 
-    IRESULT Create( const char *title ,const char *path ,UUID uuid ,int sizeofEntry ,BookMode mode=bookText );
+    IRESULT Create( const char *title ,const char *path ,PUID uuid ,int sizeofEntry ,BookMode mode=bookText );
     IRESULT Create( const char *title ,const char *path );
     IRESULT Open( const char *title ,const char *path="" ,bool createIfNotExit=true );
     void Close();
@@ -115,7 +117,7 @@ protected:
     BookMode m_mode; //! what serialization format entries are recorded with
 
     Guid m_udbn; //! universal digital book number
-    UUID m_uuid; //! entry uuid
+    PUID m_uuid; //! entry uuid
 
     int m_sizeofEntry; //! size in byte of an entry
 };
@@ -391,6 +393,45 @@ protected:
     Map_<entryid_t,Cache> m_cache; //TODO use cache from pattern
 
     size_t m_cacheCount; //! count of cache entries 0=none ,BOOK_CACHE_ALL=all
+};
+
+//////////////////////////////////////////////////////////////////////////////
+//! BookDataSource
+
+    //! @brief book file as data source
+
+template <class TEntry ,class TEntry2>
+class CBookDataSource_ : public CDataSource_<CBookFile_<TEntry>,TEntry2> ,COBJECT_PARENT {
+public:
+    CBookDataSource_( CBookFile_<TEntry> &source  ) : CDataSource_<CBookFile_<TEntry> ,TEntry2>( source )
+    {}
+
+public: ///-- CDataSource_
+    API_IMPL(bool) hasData() IOVERRIDE {
+        return this->m_source->isOpen();
+    }
+
+    IAPI_IMPL Open( const char *source ,const Params &params ) IOVERRIDE {
+        return this->m_source->Open( source ) ? IOK : IERROR;
+    }
+
+    API_IMPL(void) Close() IOVERRIDE {
+        this->m_source->Close();
+    }
+
+    API_IMPL(bool) getEntry( TEntry2 &entry ) IOVERRIDE {
+        auto *p = this->m_source->getEntry( this->m_id );
+
+        if( !p ) return false;
+
+        entry = *p;
+
+        return true;
+    }
+
+    API_IMPL(bool) setEntry( TEntry2 &entry ) IOVERRIDE {
+        return this->m_source->updateEntry( this->m_id ,entry ,false );
+    }
 };
 
 //////////////////////////////////////////////////////////////////////////////

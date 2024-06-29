@@ -42,11 +42,11 @@ TINY_NAMESPACE {
 //////////////////////////////////////////////////////////////////////////////
 //! Interface
 
-#define TINY_IGUICONTEXT_UUID    0x014a48cfea18664fb
-#define TINY_IGUISURFACE_UUID    0x0bbf3d3370c971986
-#define TINY_IGUIDISPLAY_UUID    0x0786c5fd92a26e23a
-#define TINY_IGUIMESSAGE_UUID    0x0b0f71ead71b710a2
-#define TINY_IGUIEVENTS_UUID     0x0e90f416d700cf967
+#define TINY_IGUICONTEXT_PUID    0x014a48cfea18664fb
+#define TINY_IGUISURFACE_PUID    0x0bbf3d3370c971986
+#define TINY_IGUIDISPLAY_PUID    0x0786c5fd92a26e23a
+#define TINY_IGUIMESSAGE_PUID    0x0b0f71ead71b710a2
+#define TINY_IGUIEVENTS_PUID     0x0e90f416d700cf967
 
 struct IGuiContext;
 struct IGuiSurface;
@@ -57,9 +57,9 @@ struct IGuiEvents;
 //////////////////////////////////////////////////////////////////////////////
 //! Class
 
-#define TINY_GUIFONT_UUID      0x0c703ce2ee00596af
-#define TINY_GUIIMAGE_UUID     0x05a6063982fa973d6
-#define TINY_GUIWINDOW_UUID    0x0565a62f13093a7cb
+#define TINY_GUIFONT_PUID      0x0c703ce2ee00596af
+#define TINY_GUIIMAGE_PUID     0x05a6063982fa973d6
+#define TINY_GUIWINDOW_PUID    0x0565a62f13093a7cb
 
 class GuiFont;
 class GuiImage;
@@ -101,8 +101,8 @@ enum RefreshFlags {
 //! Drawing interface
 
 //! context states for drawing to a surface
-struct IGuiContext {
-    DECLARE_CLASS(IGuiContext,TINY_IGUICONTEXT_UUID);
+struct IGuiContext : IOBJECT_PARENT {
+    DECLARE_CLASS(IGuiContext,TINY_IGUICONTEXT_PUID);
 
     virtual void SetColor( int selectColor ,OsColorRef c ) = 0;
     virtual void SetAlphaBlend( float alpha ) = 0;
@@ -117,8 +117,8 @@ struct IGuiContext {
 };
 
 //! drawing function to a surface
-struct IGuiSurface {
-    DECLARE_CLASS(IGuiSurface,TINY_IGUISURFACE_UUID);
+struct IGuiSurface : IOBJECT_PARENT {
+    DECLARE_CLASS(IGuiSurface,TINY_IGUISURFACE_PUID);
 
     virtual void DrawRectangle( int left ,int top ,int right ,int bottom ) = 0;
     virtual void DrawEllipse( int left ,int top ,int right ,int bottom ) = 0;
@@ -139,7 +139,7 @@ struct IGuiSurface {
 };
 
 struct IGuiDisplay : IGuiSurface ,IGuiContext {
-    DECLARE_CLASS(IGuiDisplay,TINY_IGUIDISPLAY_UUID);
+    DECLARE_CLASS(IGuiDisplay,TINY_IGUIDISPLAY_PUID);
 
     virtual void SetCursor( int cursorId ) = 0;
     //TODO // virtual void GetDimensions( OsPoint &size ,OsPoint &dpi ) = 0;
@@ -152,27 +152,32 @@ struct IGuiDisplay : IGuiSurface ,IGuiContext {
 //! Message interface
 
 #define TINY_MESSAGE(__category,__id)       INT64_MAKE(__category,__id)
-#define TINY_ISMESSAGE(__category,__id)     (INT64_HIPART(__id) > __category)
+#define TINY_ISMESSAGE(__category,__msg)    (INT64_HIPART(__msg) == (__category))
+#define TINY_GETMESSAGE(__category,__msg)   ( (TINY_ISMESSAGE(__category,__msg) ? INT64_LOPART(__msg) : 0) )
 
-#define TINY_MESSAGE_USER           0x08000
-#define TINY_USERMSG(__id)          TINY_MESSAGE(TINY_MESSAGE_USER,__id)
-#define TINY_ISUSERMSG(__id)        TINY_ISMESSAGE(TINY_MESSAGE_USER,__id)
+#define TINY_NOMESSAGE      0
+#define TINY_MESSAGE_USER   0x08000
 
-#define TINY_MSGID_INVALID          0
+#define TINY_USERMESSSAGE(__id)     TINY_MESSAGE(TINY_MESSAGE_USER,__id)
+#define TINY_ISUSERMESSAGE(__msg)   TINY_ISMESSAGE(TINY_MESSAGE_USER,__msg)
+#define TINY_GETUSERMESSAGE(__msg)  TINY_GETMESSAGE(TINY_MESSAGE_USER,__msg)
 
-typedef uint64_t msgid_t;
+typedef uint64_t message_t;
 
-struct IGuiMessage {
-    DECLARE_CLASS(IGuiMessage,TINY_IGUIMESSAGE_UUID);
+typedef uint32_t messageclass_t;
+typedef uint32_t messageid_t;
 
-    virtual void onPost( IObject *source ,uint64_t msg ,long param ,Params *params ,void *extra ) = 0;
+struct IGuiMessage : IOBJECT_PARENT {
+    DECLARE_CLASS(IGuiMessage,TINY_IGUIMESSAGE_PUID);
+
+    virtual void onPost( IObject *source ,message_t msg ,long param ,Params *params ,void *extra ) = 0;
 };
 
 //////////////////////////////////////////////////////////////////////////////
 //! Events interface
 
 struct IGuiEvents : IGuiMessage ,IOBJECT_PARENT {
-    DECLARE_CLASS(IGuiEvents,TINY_IGUIEVENTS_UUID);
+    DECLARE_CLASS(IGuiEvents,TINY_IGUIEVENTS_PUID);
 
     //! @return boolean value indicates if the event should continue to be propagated or not
     virtual void onLayout( const OsRect &clientArea ,OsRect &placeArea ) = 0;
@@ -230,7 +235,7 @@ public:
 
     ~GuiFont() { Destroy(); }
 
-    DECLARE_OBJECT_STD(CObject,GuiFont,TINY_GUIFONT_UUID)
+    DECLARE_OBJECT_STD(CObject,GuiFont,TINY_GUIFONT_PUID)
     // DECLARE_FACTORY_IOBJECT(GuiFont) //TODO pattern not included yet here
 
 public:
@@ -273,11 +278,7 @@ public:
     OsError LoadFromApp( int resourceId ,const char_t *application=NULL ) { OsError error = OsGuiResourceLoadFromApp( &_hfont ,OS_GUIRESOURCETYPE_FONT ,resourceId ,application ); assert( error != ENOERROR || OsGuiResourceGetType(_hfont) == OS_GUIRESOURCETYPE_FONT ); return error; }
 
     static GuiFont &getDefault() {
-        static GuiFont *g_default = NullPtr;
-
-        if( g_default == NullPtr )
-            g_default = new GuiFont(NULL,OS_GUIFONT_DEFAULTSIZE,OS_FONTWEIGHT_NORMAL,OS_FONTSTYLE_NORMAL,OS_FONTPITCH_ANY);
-
+        static GuiFont *g_default = new GuiFont( NULL ,18 ,OS_FONTWEIGHT_NORMAL ,OS_FONTSTYLE_NORMAL ,OS_FONTPITCH_ANY );
         return *g_default;
     }
 
@@ -335,7 +336,7 @@ public:
 
     ~GuiImage() { Destroy(); }
 
-    DECLARE_OBJECT_STD(CObject,GuiImage,TINY_GUIIMAGE_UUID)
+    DECLARE_OBJECT_STD(CObject,GuiImage,TINY_GUIIMAGE_PUID)
 
 public:
     int GetGuiSystemId() const { return _guiSystemId; }
@@ -350,7 +351,7 @@ public:
     ThumbMap &thumbmap() { return _thumbmap; }
 
     const Rect getThumbRect( int &i ) const {
-        int n = _thumbmap.rects.size(); if( n==0 ) Rect();
+        int n = (int) _thumbmap.rects.size(); if( n==0 ) Rect();
 
         return _thumbmap.rects[ i = CLAMP(i,0,n-1) ];
     }
@@ -435,7 +436,7 @@ protected:
     void UpdateInfo( void ) { OsGuiImageGetInfo( _himage ,&_info ); }
 
     const Rect &thumbrect( int i ) const {
-        int n = _thumbmap.rects.size();
+        int n = (int) _thumbmap.rects.size();
         assert(n>0);
         return _thumbmap.rects[ CLAMP(i,0,n-1) ];
     }
@@ -469,7 +470,7 @@ class GuiWindow : public IGuiEvents ,public virtual IGuiDisplay ,COBJECT_PARENT 
 public: ///-- instance
     friend OsError GuiWindowFunction( const struct OsEventMessage *msg ,void *userData );
 
-    GuiWindow( const char_t *name ,const char_t *title ,int width ,int height ,int style=OS_WINDOWSTYLE_NORMAL ,int flags=OS_WINDOWFLAG_NORMAL ,OsColorRef backgroundColor=OS_COLOR_BLACK ) :
+    GuiWindow( const char_t *name ,const char_t *title ,int width ,int height ,int style= OS_WINDOWSTYLE_SIZEABLE,int flags=OS_WINDOWFLAG_NORMAL ,OsColorRef backgroundColor=OS_COLOR_BLACK ) :
         _hwindow(OS_INVALID_HANDLE)
     {
         _name = name; _title = title;
@@ -489,7 +490,8 @@ public: ///-- instance
         Destroy();
     }
 
-    DECLARE_OBJECT_STD(CObject,GuiWindow,TINY_GUIWINDOW_UUID)
+    //DECLARE_OBJECT_STD(CObject,GuiWindow,TINY_GUIWINDOW_PUID)
+    DECLARE_OBJECT(GuiControlWindow,TINY_GUIWINDOW_PUID);
 
 public:
     OsHandle GetHandle( void ) const { return _hwindow; }
@@ -547,8 +549,13 @@ public: //-- GuiDisplay
 //-- display
     virtual void SetCursor( int cursorId ) { OsGuiMouseSetCursor( _hwindow ,cursorId ); }
 
-    virtual void Refresh( const OsRect *area=NULL ,RefreshFlags flags=refreshNormal ) { OsGuiWindowRefresh( _hwindow ,area ,(int) flags ); }
-    virtual void Update( const OsRect *area=NULL ,RefreshFlags flags=refreshNormal ) { OsGuiWindowRefresh( _hwindow ,area ,OS_REFRESH_UPDATE | (int) flags ); }
+    virtual void Refresh( const OsRect *area=NULL ,RefreshFlags flags=refreshNormal ) {
+        if( _hwindow ) OsGuiWindowRefresh( _hwindow ,area ,(int) flags );
+    }
+
+    virtual void Update( const OsRect *area=NULL ,RefreshFlags flags=refreshNormal ) {
+        if( _hwindow ) OsGuiWindowRefresh( _hwindow ,area ,OS_REFRESH_UPDATE | (int) flags );
+    }
 
 public: //-- helpers
     void SetForeColor( OsColorRef c ) { OsGuiSetForeColor( _context ,c ); }
@@ -574,6 +581,9 @@ public: //-- timers
     void setTimer( uint32_t id ,OsEventTime delay );
     void removeTimer( uint32_t id );
     void removeTimers( IGuiEvents &listener );
+
+    OsEventTime getLayoutTime() { return _lastRenderTime; }
+    OsEventTime getRenderTime() { return _lastRenderTime; }
 
 public: ///-- Windows event
     virtual OsError onCreate( void ) { return ENOERROR; }

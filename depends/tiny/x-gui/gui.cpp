@@ -22,29 +22,14 @@
 #ifndef TINY_NO_XGUI
 
 //////////////////////////////////////////////////////////////////////////
-//! DEVNOTE check timers in tiny
-
-/* struct ITimerListener {
-    virtual void onTimer( uint32_t id ,OsEventTime now ,OsEventTime last ,void *userdata ) = 0;
-};
-
-struct TimerInfo {
-    ITimerListener *listener;
-    OsEventTime delay;
-    OsEventTime last;
-    void *userdata;
-}; */
-
-//////////////////////////////////////////////////////////////////////////
 TINY_NAMESPACE {
 
-using namespace TINY_NAMESPACE_GUI;
+using TINY_NAMESPACE_GUI;
 
 //////////////////////////////////////////////////////////////////////////
-//! Coords
+//! Coord(s)
 
-template <>
-GuiCoord &fromString( GuiCoord &p ,const String &s ,size_t &size ) {
+DEFINE_FROMSTRING(GuiCoord) {
     fromString( p.value ,s ,size );
 
     if( size == 0 ) return p;
@@ -60,19 +45,18 @@ GuiCoord &fromString( GuiCoord &p ,const String &s ,size_t &size ) {
     return p;
 }
 
-template <>
-String &toString( const GuiCoord &p ,String &s ) {
+DEFINE_TOSTRING(GuiCoord) {
     if( p.unit == GuiCoord::Unit::unitPixel ) {
         toString( (int) p.value ,s );
     } else {
         Format( s ,"%d%%" ,32 ,(int) p.value );
     }
+
     return s;
 }
 
 ///--
-template <>
-GuiCoords &fromString( GuiCoords &p ,const String &s ,size_t &size ) {
+DEFINE_FROMSTRING(GuiCoords) {
     StringList slist;
 
     fromString( slist ,s ,size ); if( size == 0 ) return p;
@@ -85,16 +69,15 @@ GuiCoords &fromString( GuiCoords &p ,const String &s ,size_t &size ) {
     return p;
 }
 
-template <>
-String &toString( const GuiCoords &p ,String &s ) {
+DEFINE_TOSTRING(GuiCoords) {
     String si;
 
-    s = '{';
+    // s = '{';
     toString( p.left ,si ); s += si; s += ',';
     toString( p.top ,si ); s += si; s += ',';
     toString( p.right ,si ); s += si; s += ',';
     toString( p.bottom ,si ); s += si;
-    s += '}';
+    // s += '}';
 
     return s;
 }
@@ -102,13 +85,14 @@ String &toString( const GuiCoords &p ,String &s ) {
 //////////////////////////////////////////////////////////////////////////
 //! Align
 
-    //TODO merge TextAlign and GuiAlign ...
+    //TODO merge TextAlign and GuiAlign ... ?
 
 template <>
 const char *Enum_<GuiAlign>::names[] = {
     "none"
     ,"left" ,"right" ,"centerh"
     ,"top" ,"bottom" ,"centerv"
+    ,"fill" ,"fillh" ,"fillv"
     ,"horizontal" ,"vertical"
     ,"center"
 };
@@ -118,37 +102,20 @@ const GuiAlign Enum_<GuiAlign>::values[] = {
     noAlign
     ,alignLeft ,alignRight ,alignCenterH
     ,alignTop ,alignBottom ,alignCenterV
+    ,alignFill ,alignFillH ,alignFillV
     ,alignAnchorH ,alignAnchorV
     ,alignCenter
 };
 
-//TODO remove function below, use Enum_ pattern
-template <>
-GuiAlign &fromString( GuiAlign &p ,const String &s ,size_t &size ) {
-    StringList slist;
-
-    fromString( slist ,s ,size ); if( size == 0 ) return p;
-
-    p = noAlign;
-
-    for( const auto &it : slist ) {
-        if( iMatch( it ,"left" ) ) p = (GuiAlign) (p | alignLeft);
-        if( iMatch( it ,"right" ) ) p = (GuiAlign) (p | alignRight);
-        if( iMatch( it ,"centerh" ) ) p = (GuiAlign) (p | alignCenterH);
-
-        if( iMatch( it ,"top" ) ) p = (GuiAlign) (p | alignTop);
-        if( iMatch( it ,"bottom" ) ) p = (GuiAlign) (p | alignBottom);
-        if( iMatch( it ,"centerv" ) ) p = (GuiAlign) (p | alignCenterV);
-
-        if( iMatch( it ,"fill" ) ) p = (GuiAlign) (p | alignFill);
-        if( iMatch( it ,"center" ) ) p = (GuiAlign) (p | alignCenter);
-
-        if( iMatch( it ,"horizontal" ) ) p = (GuiAlign) (p | alignAnchorH);
-        if( iMatch( it ,"vertical" ) ) p = (GuiAlign) (p | alignAnchorV);
-    }
-
-    return p;
+DEFINE_FROMSTRING(GuiAlign) {
+    return enumFromStringList( p ,s ,size );
 }
+
+DEFINE_TOSTRING(GuiAlign) {
+    return enumToStringList( p ,s );
+}
+
+REGISTER_STRUCTNAME( GuiAlign );
 
 //////////////////////////////////////////////////////////////////////////////
 //! ColorPair
@@ -288,9 +255,14 @@ const Highlight Enum_<Highlight>::values[] = {
 //////////////////////////////////////////////////////////////////////////
 //! Fonts
 
-static GuiFont g_fontDefault( "clean" ,24 ,OS_FONTWEIGHT_NORMAL ,OS_FONTSTYLE_ITALIC ,OS_FONTPITCH_ANY );
-
 const GuiFont &getDefaultFont() {
+#ifdef _WIN32
+	static GuiFont g_fontDefault("Arial", 24, OS_FONTWEIGHT_NORMAL, OS_FONTSTYLE_ITALIC, OS_FONTPITCH_ANY);
+	//static GuiFont g_fontDefault("clean", 24, OS_FONTWEIGHT_NORMAL, OS_FONTSTYLE_ITALIC, OS_FONTPITCH_ANY);
+#else 
+	static GuiFont g_fontDefault("clean", 24, OS_FONTWEIGHT_NORMAL, OS_FONTSTYLE_ITALIC, OS_FONTPITCH_ANY);
+#endif
+
     return g_fontDefault;
 }
 
@@ -333,11 +305,25 @@ static bool g_controlRegister = registerClassName_<GuiControl>();
 GuiControl::GuiControl( GuiControlWindow *root ) :
     m_root(root)
 {
-    VisualTheme &theme = root ? root->getTheme() : theTheme();
+    TINY_NAMESPACE_NAME::gui::VisualTheme &theme = root ? root->getTheme() : theTheme();
 
-    m_colors = theme.getColors( MyUUID ,"normal" );
+    m_colors = theme.getColors( MyPUID ,"normal" );
 }
 
+IRESULT GuiControl::getInterface( puid_t id ,void **ppv ) {
+    if( !ppv || *ppv) return IBADARGS;
+
+    return
+        honorInterface_<IGuiEvents>(this,id,ppv) || honorInterface_<IGuiMessage>(this,id,ppv)
+        || honorInterface_<IGuiControlEvents>(this,id,ppv)
+        || honorInterface_<IGuiMessageEvents>(this,id,ppv)
+        || honorInterface_<IGuiProperties>(this,id,ppv)
+        || honorInterface_<GuiControl>(this,id,ppv)
+        ? IOK : CObject::getInterface( id ,ppv )
+    ;
+}
+
+//--
 bool GuiControl::shouldDraw( const OsRect &updateArea ) const {
     return m_visible && m_root && (area() & updateArea);
 }
@@ -357,28 +343,47 @@ void GuiControl::getCenteredArea( const OsPoint &dims ,Rect &r ) const {
 
 ///-- properties
 void GuiControl::getProperties( Params &properties ) const {
-    toString( m_id ,properties["id"] );
-    toString( m_coords ,properties["coords"] );
+    toMember( m_id ,properties ,"id" );
+    toMember( m_coords ,properties ,"coords" );
 
+    toMember( m_visible ,properties ,"visible:bool" );
+    toMember( m_enabled ,properties ,"enabled:bool" );
+
+    toMember( m_align ,properties ,"align:GuiAlign" );
+
+    toString( ColorRef(m_colors.foreColor) ,properties["bordercolor:ColorRef"] );
+    toString( ColorRef(m_colors.fillColor) ,properties["background:ColorRef"] );
     toString( ColorRef(m_colors.textColor) ,properties["textcolor:ColorRef"] );
+    toString( ColorRef(m_colors.backColor) ,properties["backcolor:ColorRef"] );
 }
 
 void GuiControl::setProperties( const Params &properties ) {
-    fromString( m_id ,getMember( properties ,"id" ) );
-    fromString( m_coords ,getMember( properties ,"coords") );
-
-    fromString( m_align ,getMember( properties ,"align") );
-    const char *anchor = getMember( properties ,"anchor" );
-    if( anchor && *anchor ) {
-        GuiAlign anchor;
-
-        fromString( anchor ,getMember( properties ,"anchor") );
-
-        m_align = (GuiAlign) (m_align | anchor);
-    }
+    fromMember( m_id ,properties ,"id" );
 
     fromString( m_visible ,getMember( properties ,"visible") );
     fromString( m_enabled ,getMember( properties ,"enabled") );
+
+//-- layout
+    bool layout = false;
+
+    if( hasMember( properties ,"coords" ) ) {
+        fromMember( m_coords ,properties ,"coords" );
+        layout = true;
+    }
+
+    if( hasMember( properties ,"align" ) ) {
+        fromMember( m_align ,properties ,"align" );
+        layout = true;
+    }
+
+    if( hasMember( properties ,"anchor" ) ) {
+        GuiAlign align;
+        m_align = (GuiAlign) ( m_align | fromString( align ,getMember( properties ,"anchor") ) );
+        layout = true;
+    }
+
+    if( layout )
+        Update(false,refreshResized);
 
 //-- colors
     const char *prop ,*back;
@@ -399,6 +404,14 @@ void GuiControl::setPropertiesWithString( const char *properties ) {
     fromString( params ,properties );
 
     setProperties( params );
+}
+
+void GuiControl::setPropertiesWithString( const char *properties ,const Params &vars ) {
+    String s;
+
+    replaceTextVariables( properties ,vars ,s );
+
+    setPropertiesWithString( tocstr(s) );
 }
 
 bool GuiControl::loadProperties( const char *filename ,const char *path ) {
@@ -453,8 +466,9 @@ void GuiControl::SetFont( const GuiFont &font ) {
     if( !isOrphan() ) root().SetFont( font );
 }
 
-void GuiControl::RegionSetArea( OsRect &r ) { // },bool useOffset ) {
-    if( !isOrphan() ) root().RegionSetArea( Rect(r) + area().getTopLeft() ,true );
+void GuiControl::RegionSetArea( OsRect &r ) {
+    //! @note use offset should always be false by design, use root().RegionSetArea if something else required
+    if( !isOrphan() ) root().RegionSetArea( Rect(r) + area().getTopLeft() ,false );
 }
 
 /* void GuiControl::RegionGetArea( OsRect &r ) {
@@ -493,9 +507,9 @@ void GuiControl::DrawTextAlign( const char_t *text ,const OsRect &r ,TextAlign a
 }
 
 void GuiControl::DrawPolygon( int npoints ,const OsPoint *points ) {
-    if( isOrphan() ) return;
+    if( isOrphan() || npoints <=0 ) return;
 
-    OsPoint *p = new OsPoint[npoints];
+    OsPoint *p = new OsPoint[ (size_t) npoints ];
 
     for( int i=0; i<npoints; ++i ) {
         p[i] = area().getTopLeft() + points[i];
@@ -515,12 +529,12 @@ void GuiControl::SetCursor( int cursorId ) {
     if( !isOrphan() ) root().SetCursor( cursorId );
 }
 
-void GuiControl::Refresh( bool noArea ) {
-    if( !isOrphan() ) root().Refresh( noArea ? nullptr : &area() );
+void GuiControl::Refresh( bool noArea ,RefreshFlags flags ) {
+    if( !isOrphan() ) root().Refresh( noArea ? nullptr : &area() ,flags );
 }
 
-void GuiControl::Update( bool noArea ) {
-    if( !isOrphan() ) root().Update( noArea ? nullptr : &area() );
+void GuiControl::Update( bool noArea ,RefreshFlags flags ) {
+    if( !isOrphan() ) root().Update( noArea ? nullptr : &area() ,flags );
 }
 
 ///-- IGuiControlEvents
@@ -534,7 +548,7 @@ void GuiControl::onDraw( const OsRect &updateArea ) {
     ColorQuad colors = this->colors();
 
     if( !enabled() ) {
-        colors = root().getTheme().getColors( MyUUID ,"disabled" );
+        colors = root().getTheme().getColors( MyPUID ,"disabled" );
     }
 
     SetColors( colors );
@@ -593,22 +607,114 @@ void GuiControl::onTimer( OsTimerAction timeAction ,OsEventTime now ,OsEventTime
     //...
 }
 
+void GuiControl::onPost( IObject *source ,uint64_t msg ,long param ,Params *params ,void *extra ) {
+    messageid_t id;
+
+    if( (id = GUI_GETCOMMAND(msg)) != 0 ) {
+        onCommand( source ,id, param ,params ,extra );
+    } else if( (id = GUI_GETNOTIFY(msg)) != 0 ) {
+        onNotify( source ,id, param ,params ,extra );
+    }
+}
+
 //////////////////////////////////////////////////////////////////////////////
 //! ICommand interface
 
 void GuiCommandOnClick::getProperties( Params &properties ) const {
     toString( m_commandId ,properties["commandId"] );
+
+    const char *name = "";
+
+    const auto &subscribers = GuiPublisher::subscribers();
+
+    auto bind = subscribers.begin();
+
+    if( bind != subscribers.end() ) {
+        name = root().digBinding( (IObject*) bind->ptr() );
+    }
+
+    properties["bind"] = (name ? name : "");
 }
 
 void GuiCommandOnClick::setProperties( const Params &properties ) {
-    fromString( m_commandId ,getMember(properties,"commandId" ) );
+    StringList cmd;
+
+    fromString( cmd ,getMember(properties,"commandId" ) );
+
+    if( cmd.size() > 0 ) fromString( m_commandId ,cmd[0] );
+    if( cmd.size() > 1 ) fromString( m_commandParam ,cmd[1] );
+
+    // fromString( m_commandId ,getMember(properties,"commandId" ) );
+
+    const char *s = getMember( properties ,"bind" );
+
+    if( s && *s && !isOrphan() ) {
+        auto *binding = root().getBindingAs_<IGuiMessage>( s );
+
+        if( binding )
+            GuiPublisher::Subscribe( *binding );
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////////
+//! PropertiesDataSource
+
+//-- control
+IAPI_DEF PropertiesDataSource::Commit() {
+    if( m_properties.isNull() ) return INOTHING;
+
+    Params params;
+
+    for( auto &it : m_subscribers ) {
+        IRESULT result = it->onDataCommit( *this ,params );
+        IF_IFAILED_RETURN(result);
+    }
+
+    SAFECALL(m_properties)->setProperties( params );
+
+    return IOK;
+}
+
+IAPI_DEF PropertiesDataSource::Discard() {
+    Params params;
+
+    SAFECALL(m_properties)->getProperties( params );
+
+    adviseDataChanged( params );
+
+    return IOK;
+}
+
+//-- client
+IAPI_DEF PropertiesDataSource::readHeader( Params &data ,bool requireValues ) {
+    SAFECALL(m_properties)->getProperties( data );
+
+    return IOK;
+}
+
+IAPI_DEF PropertiesDataSource::readData( Params &data ) {
+    SAFECALL(m_properties)->getProperties( data );
+
+    return IOK;
+}
+
+IAPI_DEF PropertiesDataSource::onDataEdit( Params &data ) {
+    if( data.empty() ) return IOK; //! soft edit advise
+
+    SAFECALL(m_properties)->setProperties( data );
+
+    return IOK;
 }
 
 //////////////////////////////////////////////////////////////////////////////
 //! GuiSet
 
 void GuiSet::getProperties( Params &properties ) const {
-    //TODO
+    GuiControl::getProperties( properties );
+
+    //TODO get controls ?
+        //? on demand only (..if hasMember( properties ,"controls" ) .. ) ?
+        //? some other way / always ?
 }
 
 void GuiSet::setProperties( const Params &properties ) {
@@ -618,7 +724,7 @@ void GuiSet::setProperties( const Params &properties ) {
 
     if( controlset && *controlset ) {} else return;
 
-    ParamList controls; //! @note using ParamList here instread of Params to preserve declaration order
+    ParamList controls; //! @note using ParamList here instead of Params to preserve declaration order
     fromString( controls ,controlset ); //! each entry is a name:type with a Param list of Properties
 
     NameType itemDecl;
@@ -630,13 +736,21 @@ void GuiSet::setProperties( const Params &properties ) {
         fromString( itemDecl ,it.key );
         fromString( itemProps ,it.value );
 
-        GuiControl *control = ICreateGuiControl( itemDecl.type.c_str() );
+        GuiControl *control = getControl( tocstr(itemDecl.name) );
+
+        if( !control ) {
+            control = ICreateGuiControl( itemDecl.type.c_str() );
+            addControl( itemDecl.name.c_str() ,*control );
+        } else if( !itemDecl.type.empty() ){
+            String className;
+            control->getMyClassName(className);
+            assert( className == itemDecl.type );
+        }
 
         if( !control ) continue; //TODO log this
 
-        control->setProperties( itemProps );
-
-        addControl( itemDecl.name.c_str() ,*control );
+        control->setProperties( itemProps ); //! @note set properties after addControl, so context has a chance of being
+                                             //! captured (e.g. binding to root)
     }
 }
 
@@ -644,7 +758,7 @@ void GuiSet::setProperties( const Params &properties ) {
 bool GuiSet::setControl( int i ,GuiControl &control ) {
     if( !hasControl(i) ) { assert(false); return false; }
 
-    m_controls.at(i) = &control;
+    m_controls.at( (size_t) i ) = &control;
 
     return true;
 }
@@ -653,7 +767,7 @@ int GuiSet::addControl( GuiControl &control ) {
     size_t n = m_controls.size();
 
     if( control.id() == CONTROLID_NONE ) {
-        control.setControlId(n+1);
+        control.setControlId( (controlid_t) (CONTROLID_AUTOID+n) );
     }
 
     control.setRoot( root() );
@@ -664,11 +778,11 @@ int GuiSet::addControl( GuiControl &control ) {
 }
 
 int GuiSet::addControl( const char *name ,GuiControl &control ) {
-    int id = addControl( control );
+    int i = addControl( control );
 
-    m_names[name] = id;
+    m_names[name] = i;
 
-    return id;
+    return i;
 }
 
 bool GuiSet::removeControl( GuiControl &control ) {
@@ -683,9 +797,12 @@ bool GuiSet::removeControl( GuiControl &control ) {
 bool GuiSet::removeControl( const char *name ) {
     auto *control = findControlByName( name );
 
-    if( !control ) return false;
+    if( control && removeControl( *control ) ) {} else
+        return false;
 
-    return removeControl( *control );
+    m_names.delItem( name );
+
+    return true;
 }
 
 void GuiSet::removeControl( int i ) {
@@ -741,9 +858,11 @@ GuiControl *GuiSet::findControlByName( const char *name ) {
 }
 
 const char *GuiSet::digControlName( int i ) {
+    if( i < 0 ) return NullPtr;
+
     auto *name = m_names.digItem( i );
 
-    return name ? name->c_str() : NullPtr;
+    return name ? tocstr( *name ) : NullPtr;
 }
 
 //--
@@ -753,8 +872,10 @@ OsError GuiSet::onDropAccept( const OsPoint &p ,IObject *source ,DragOperation o
     if( !control ) return ENOEXEC;
     if( preview ) return IOK;
 
-    //TODO placement & preview given position
     addControl( *control );
+
+    control->setPropertiesWithString( "align=left; coords={0,0,25%,25%}" );
+    Update( false ,refreshResized );
 
     return IOK;
 }
@@ -779,6 +900,11 @@ void GuiSet::onTimer( OsTimerAction timeAction ,OsEventTime now ,OsEventTime las
 //! GuiLayer
 
 REGISTER_CLASS(GuiLayer)
+
+GuiLayer::GuiLayer() {
+    //! @note layers are transparent by default
+    m_colors.fillColor = m_colors.foreColor = OS_COLOR_TRANSPARENT;
+}
 
 //--
 void GuiLayer::onLayout( const OsRect &clientArea ,OsRect &placeArea ) {
@@ -835,6 +961,28 @@ void GuiLayer::onKey( OsKeyAction keyAction ,OsKeyState keyState ,OsKeyCode keyC
 
 REGISTER_CLASS(GuiTab)
 
+GuiTab::GuiTab() : m_tab(0)
+{}
+
+void GuiTab::selectTab( int at ) {
+    int n = getTabCount();
+    int from = m_tab;
+
+    if( m_tab < n ) {
+        auto *p = getCurrentTab();
+
+        p->onNotify( this ,GUI_MESSAGEID_LEAVE ,at ,NullPtr ,(void*) "tab" );
+    }
+
+    m_tab = MIN( at ,getTabCount()-1 );
+
+    if( m_tab < n ) {
+        auto *p = getCurrentTab();
+
+        p->onNotify( this ,GUI_MESSAGEID_ENTER ,from ,NullPtr ,(void*) "tab" );
+    }
+}
+
 //--
 void GuiTab::onLayout( const OsRect &clientArea ,OsRect &placeArea ) {
     GuiSet::onLayout( clientArea ,placeArea );
@@ -873,6 +1021,23 @@ void GuiTab::onKey( OsKeyAction keyAction ,OsKeyState keyState ,OsKeyCode keyCod
     GuiControl *p = getCurrentTab();
 
     if( p ) p->onKey( keyAction ,keyState ,keyCode ,c );
+}
+
+///--
+void CGuiTabControl::onNotify( IObject *source ,messageid_t notifyId ,long param ,Params *params ,void *extra ) {
+    GuiControl::onNotify( source ,notifyId ,param ,params ,extra );
+
+    switch( notifyId ) {
+        case GUI_MESSAGEID_LEAVE:
+            onTabLeave((int) param );
+            break;
+        case GUI_MESSAGEID_ENTER:
+            onTabEnter((int) param );
+            break;
+        default:
+            GuiControl::onNotify( source ,notifyId ,param ,params ,extra );
+            break;
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -989,7 +1154,7 @@ void GuiGroup::onLayout( const OsRect &clientArea ,OsRect &placeArea ) {
     Rect ri = this->area();
 
     for( auto &it : m_controls ) if( it ) {
-            it->onLayout( groupArea ,r );
+        it->onLayout( groupArea ,r );
 
         ri |= it->area();
     }
@@ -1009,7 +1174,7 @@ void GuiGroup::onDraw( const OsRect &updateArea ) {
 
     Rect previousArea; Point previousOffset;
 
-    if( !isOrphan() ) { //! SetDrawAreaSpecs
+    if( !isOrphan() ) {
         root().RegionGetOffset( previousOffset );
         root().RegionGetArea( previousArea );
 
@@ -1022,7 +1187,7 @@ void GuiGroup::onDraw( const OsRect &updateArea ) {
         view &= previousArea;
 
         root().RegionSetOffset( m_offset.x ,m_offset.y );
-        root().RegionSetArea( view );
+        root().RegionSetArea( view ,false );
     }
 
     for( auto &it : m_controls ) if( it && it->shouldDraw(updateArea) ) {
@@ -1031,7 +1196,7 @@ void GuiGroup::onDraw( const OsRect &updateArea ) {
 
     if( !isOrphan() ) { //! RestoreDrawAreaSpecs
         root().RegionSetOffset( previousOffset );
-        root().RegionSetArea( previousArea );
+        root().RegionSetArea( previousArea ,false );
     }
 
     SAFECALL(m_scrollV)->onDraw( updateArea );
@@ -1054,11 +1219,13 @@ void GuiGroup::onMouse( OsMouseAction mouseAction ,OsKeyState keyState ,OsMouseB
     for( auto it = controls().rbegin(); it != controls().rend(); ++it ) if( *it ) {
         GuiControl &control = (*it).get();
 
-        if( control.enabled() && control.visible() && TestHit( p0 ,control.area() ) ) {
-            (*it)->onMouse( mouseAction ,keyState ,mouseButton ,points ,&p0 );
+        if( control.visible() && TestHit( p0 ,control.area() ) ) {
+            if( control.enabled() ) {
+                (*it)->onMouse( mouseAction ,keyState ,mouseButton ,points ,&p0 );
 
-            if( mouseAction == osMouseButtonDown ) {
-                setFocus( &control );
+                if( mouseAction == osMouseButtonDown ) {
+                    setFocus( &control );
+                }
             }
 
             break;
@@ -1097,7 +1264,7 @@ void GuiTabBar::Bind( GuiTab &tabs ) {
 
         p.setPropertiesWithString( buttonProps );
 
-        p.commandId() = COMMANDID_TABSELECT + i;
+        p.commandId() = (messageid_t) (COMMANDID_TABSELECT + i);
         p.text() = name;
         p.Subscribe(*this);
 
@@ -1107,13 +1274,13 @@ void GuiTabBar::Bind( GuiTab &tabs ) {
     m_tabs = tabs;
 }
 
-void GuiTabBar::onCommand( GuiControl &source ,uint32_t commandId ,long param ,Params *params ,void *extra ) {
+void GuiTabBar::onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra )  {
     if( m_tabs.isNull() ) return;
 
     GuiTab &tabs = m_tabs.get();
 
     if( commandId >= COMMANDID_TABSELECT && commandId < COMMANDID_TABSELECT+tabs.getControlCount() ) {
-        tabs.selectTab( commandId-COMMANDID_TABSELECT );
+        tabs.selectTab( (int) (commandId-COMMANDID_TABSELECT) );
 
         Refresh();
     }
@@ -1163,15 +1330,24 @@ void GuiMenu::addItem( int id ,const char *text ,GuiShortcut *shortcut ) {
     m_root.emplace_back( item );
 }
 
-bool GuiMenu::makeCommandParam( params_t &params ) {
-    if( m_hoover == -1 ) return false;
+const char *GuiMenu::getItemText( int id ) {
+    if( id < 0 || id >= m_root.size() ) return NullPtr;
 
-    Item &item = m_root[m_hoover];
+    return tocstr( m_root[ (size_t) id ].text );
+}
+
+void GuiMenu::PostCommand() {
+    if( m_hoover < 0 ) return;
+
+    Item &item = m_root[ (size_t) m_hoover ];
 
     m_commandId = item.commandId;
-    m_commandParams.params["text"] = item.text;
 
-    return GuiCommandOnClick::makeCommandParam( params );
+    Params params;
+
+    params["text"] = item.text;
+
+    GuiPublisher::PostCommand( m_commandId ,0 ,&params );
 }
 
 //--
@@ -1293,7 +1469,7 @@ void GuiPopup::Open() {
 }
 
 void GuiPopup::Close() {
-    Post( GUI_MESSAGEID_CLOSED ,(int) this->id() );
+    PostNotify( GUI_MESSAGEID_CLOSE ,(int) this->id() );
 }
 
 void GuiPopup::onMouse( OsMouseAction mouseAction ,OsKeyState keyState ,OsMouseButton mouseButton ,int points ,const OsPoint *pos ) {
@@ -1316,19 +1492,19 @@ void GuiPopup::onKey( OsKeyAction keyAction ,OsKeyState keyState ,OsKeyCode keyC
 //////////////////////////////////////////////////////////////////////////
 //! GuiTitlebar
 
-GuiTitlebar::GuiTitlebar() {
+GuiTitleBar::GuiTitleBar() {
     const char *properties =
         "align=top,vertical; coords={0,0,100%,34} controls={"
-        "help:GuiButton = { commandId=31; align=left,horizontal; coords={0,0,34,34} text=?; }"
-        "close:GuiButton = { commandId=19; align=right,horizontal; coords={0,0,34,34} text=X; }"
-        "title:GuiLabel = { align=center; coords={0,0,80%,100%} textalign=center; text=titlebar; font=large; }"
+            "help:GuiButton = { commandId=31; align=left,horizontal; coords={0,0,34,34} text=?; }"
+            "close:GuiButton = { commandId=19; align=right,horizontal; coords={0,0,34,34} text=X; }"
+            "title:GuiLabel = { align=top,vertical,fillh; coords={0,0,80%,100%} textalign=center; text=titlebar; }"
         "}"
     ;
 
     setPropertiesWithString( properties );
 }
 
-void GuiTitlebar::Bind( IGuiCommandEvent &owner ) {
+void GuiTitleBar::Bind( IGuiMessage &owner ) {
     getControl(0)->As_<GuiButton>()->Subscribe( owner );
     getControl(1)->As_<GuiButton>()->Subscribe( owner );
 }
@@ -1354,7 +1530,7 @@ void GuiDialog::Open() {
 }
 
 void GuiDialog::Close() {
-    Post( GUI_MESSAGEID_CLOSED ,(int) this->id() );
+    PostNotify( GUI_MESSAGEID_CLOSE ,(int) this->id() );
 }
 
 void GuiDialog::onKey( OsKeyAction keyAction ,OsKeyState keyState ,OsKeyCode keyCode ,char_t c ) {
@@ -1365,19 +1541,22 @@ void GuiDialog::onKey( OsKeyAction keyAction ,OsKeyState keyState ,OsKeyCode key
     }
 }
 
-void GuiDialog::onCommand( GuiControl &source ,uint32_t commandId ,long param ,Params *params ,void *extra ) {
+void GuiDialog::onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) {
     switch( commandId ) {
-        case GUI_COMMANDID_CLOSE:
+        case GUI_MESSAGEID_CLOSE:
             Close(); break;
-        case GUI_COMMANDID_HELP:
+        case GUI_MESSAGEID_HELP:
             Help(); break;
+
+        default:
+            break;
     }
 }
 
 //////////////////////////////////////////////////////////////////////////
 //! GuiMessageBox
 
-GuiMessageBox::GuiMessageBox( IGuiCommandEvent &listener ,const char *title ,const char *text ,const Params &options ) {
+GuiMessageBox::GuiMessageBox( IGuiMessage &listener ,const char *title ,const char *text ,const Params &options ) {
     setPropertiesWithString(
         "coords={25%,30%,75%,70%} "
         "controls = {"
@@ -1407,24 +1586,28 @@ GuiMessageBox::GuiMessageBox( IGuiCommandEvent &listener ,const char *title ,con
 
             cmd->setPropertiesWithString( "coords={0,0,18%,100%} align=right,centerv,horizontal;" );
             cmd->text() = it.first;
-            fromString( cmd->commandId() ,it.second );
+
+            Params props;
+            props["commandId"] = it.second;
+            cmd->setProperties( props );
+            // fromString( cmd->commandId() ,it.second );
 
             cmd->Subscribe(*this);
             footer->addControl( *cmd );
         }
     }
 
-    GuiCommandPublisher::Subscribe(listener);
+    GuiPublisher::Subscribe(listener);
 }
 
 void GuiMessageBox::Open() {
 }
 
 void GuiMessageBox::Close() {
-    Post( GUI_MESSAGEID_CLOSED ,(int) this->id() );
+    PostNotify( GUI_MESSAGEID_CLOSE ,(int) this->id() );
 }
 
-void GuiMessageBox::onCommand( GuiControl &source ,uint32_t commandId ,long param ,Params *params ,void *extra ) {
+void GuiMessageBox::onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) {
     PostCommand( commandId ,param ,params ,extra );
 
     Close();
@@ -1447,7 +1630,7 @@ static bool g_controlWindowRegister = registerClassName_<GuiControlWindow>();
 GuiControlWindow::GuiControlWindow( const char_t *name ,const char_t *title ,int width ,int height ,int style ,int flags ,OsColorRef backgroundColor ) :
     GuiWindow( name ,title ,width ,height ,style ,flags ,backgroundColor )
     ,m_mouseCapture(NullPtr) ,m_mouseMoveDetect(false) ,m_mouseDragDetect(false)
-    ,m_theme(NullPtr)
+    ,m_theme(NullPtr) ,m_enableEditor(false)
 {
     m_background.coords() = { 0 ,0 ,100.f ,100.f };
     m_foreground.coords() = { 0 ,0 ,100.f ,100.f };
@@ -1457,9 +1640,21 @@ GuiControlWindow::GuiControlWindow( const char_t *name ,const char_t *title ,int
     m_layers.addControl(m_background);
     m_layers.addControl(m_foreground);
 
-    m_colors = theTheme().getColors( MyUUID ,"normal" );
+    m_colors = theTheme().getColors( MyPUID ,"normal" ); //! FORE GROUND
+    foreground().colors().fillColor = foreground().colors().foreColor = 0; //TODO TEMP
 
     m_theme = &theTheme();
+
+    m_bindings["root"] = *this;
+}
+
+IRESULT GuiControlWindow::getInterface( puid_t id ,void **ppv ) {
+    if( !ppv || *ppv) return IBADARGS;
+
+    return
+        honorInterface_<GuiControlWindow>(this,id,ppv) || honorInterface_<IGuiMessageEvents>(this,id,ppv) ? IOK
+        : GuiWindow::getInterface( id ,ppv )
+    ;
 }
 
 //-- dialog
@@ -1480,10 +1675,6 @@ void GuiControlWindow::ShowModal( GuiDialog &dialog ) {
 }
 
 void GuiControlWindow::ShowPopup( GuiPopup &popup ) {
-    // control.setRoot( *this );
-
-    // GuiPopup *popup = new GuiPopup( control );
-
     popup.setRoot(*this);
     popup.Subscribe(*this);
 
@@ -1551,6 +1742,9 @@ void GuiControlWindow::StartDragDrop( const OsPoint &p ,OsKeyState keyState ) { 
 
     if( m_dragOperation == dragOpLocal ) {
         MouseCapture( m_dragSource.get() );
+    } else {
+        MouseRelease(); //! release automatic grab (allow target window to receive mouse events)
+        GuiWindow::SetCursor( OS_CURSOR_CROSS );
     }
 }
 
@@ -1561,6 +1755,8 @@ void GuiControlWindow::UpdateDragDrop( const OsPoint &p ,OsKeyState keyState ,Gu
 
     if( target && !isDragOpLocal(m_dragOperation) ) {
         result = target->onDropAccept( p ,m_dragSource.As_<IObject>() ,m_dragOperation ,m_dragObject.ptr() ,true );
+
+        GuiWindow::SetCursor( (result == ENOERROR) ? OS_CURSOR_ARROW : OS_CURSOR_CROSS );
     }
 
     m_dragSource->onDrag( p ,m_dragOperation ,m_dragObject.ptr() ,target ,result );
@@ -1579,6 +1775,8 @@ void GuiControlWindow::EndDragDrop( const OsPoint &p ,OsKeyState keyState ,GuiCo
 
     if( m_dragOperation == dragOpLocal ) {
         MouseRelease();
+    } else {
+        GuiWindow::SetCursor( 0 );
     }
 
     m_dragSource.Release();
@@ -1587,6 +1785,32 @@ void GuiControlWindow::EndDragDrop( const OsPoint &p ,OsKeyState keyState ,GuiCo
 
 void GuiControlWindow::CancelDragDrop() {
     EndDragDrop( Point() ,_noKeyState ,NullPtr ,true );
+}
+
+//-- bindings
+void GuiControlWindow::addBinding( const char *name ,IObject *binding ) {
+    if( name && *name && binding ) {} else return;
+
+    m_bindings[name] = binding;
+}
+
+IObject *GuiControlWindow::getBinding( const char *name ) {
+    auto it = m_bindings.find( name );
+
+    if( it == m_bindings.end() ) return NullPtr;
+
+    return it->second.ptr();
+}
+
+const char *GuiControlWindow::digBinding( IObject *binding ) const {
+    if( binding == NullPtr ) return NullPtr;
+
+    for( auto &it : m_bindings ) {
+        if( it.second == binding )
+            return tocstr( it.first );
+    }
+
+    return NullPtr;
 }
 
 //-- editor
@@ -1744,11 +1968,35 @@ void GuiControlWindow::onTimer( OsTimerAction timeAction ,OsEventTime now ,OsEve
     m_layers.onTimer( timeAction ,now ,last );
 }
 
-void GuiControlWindow::onPost( IObject *source ,uint64_t msg ,long param ,Params *params ,void *extra ) {
-    if( msg == GUI_MESSAGEID_CLOSED ) {
+void GuiControlWindow::onPost( IObject *source ,message_t msg ,long param ,Params *params ,void *extra ) {
+    messageid_t id;
+
+    if( (id = GUI_GETCOMMAND(msg)) != 0 ) {
+        onCommand( source ,id, param ,params ,extra );
+    } else if( (id = GUI_GETNOTIFY(msg)) != 0 ) {
+        onNotify( source ,id, param ,params ,extra );
+    }
+}
+
+void GuiControlWindow::onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) {
+    //TODO execute requeted command, e.g. CLOSE ,HIDE ,SHOW ...
+
+    switch( commandId ) {
+        case GUI_MESSAGEID_CLOSE:
+            Destroy();
+            exit(0);
+            // OsSystemPostQuit(0);
+            break;
+        default:
+            break;
+    }
+}
+
+void GuiControlWindow::onNotify( IObject *source ,messageid_t notifyId ,long param ,Params *params ,void *extra ) {
+    if( notifyId == GUI_MESSAGEID_CLOSE ) {
         GuiControl *p = source ? source->getInterface_<GuiControl>() : NullPtr;
 
-        assert( p ); // && p->id() == topmost().id() );
+        assert( p );
 
         if( p ) m_layers.removeControl( *p );
 
@@ -1779,7 +2027,7 @@ void GuiControlWindow::HitTrackMouseLeave( const OsPoint &p ,OsMouseButton mouse
         if( !TestHit( p ,(*it)->area())) {
             (*it)->onMouseLeave( p ,mouseButton ,keyState );
 
-            m_hitTracker.erase( it );
+            it = m_hitTracker.erase( it );
         } else
             ++it;
     }
@@ -2007,7 +2255,7 @@ VisualTheme &VisualTheme::fromManifest( const Params &manifest ) {
     }
 
 ///-- per control / properties
-    UUID classId = 0;
+    PUID classId = 0;
 
     for( auto &it : manifest ) if( !getByName<declKeyword>( it.first.c_str() ) ) {
         NameType decl;
@@ -2023,7 +2271,7 @@ VisualTheme &VisualTheme::fromManifest( const Params &manifest ) {
         replaceTextVariables( it.second.c_str() ,m_vars ,value );
 
         if( !type || type == typeControl ) {
-            type = getClassIdFromName( it.first.c_str() ,classId ) ? typeControl : typeProperties;
+            type = findClassIdByName( it.first.c_str() ,classId ) ? typeControl : typeProperties;
         }
 
         if( type == typeControl ) {
@@ -2060,7 +2308,7 @@ VisualTheme &VisualTheme::fromManifest( const Params &manifest ) {
     return *this;
 }
 
-void VisualTheme::makeColorSet( const UUID &id ,ColorSet &colorSet ) {
+void VisualTheme::makeColorSet( const PUID &id ,ColorSet &colorSet ) {
     for( int i=0; i<highlightCount; ++i ) {
         colorSet.getColors(i) = this->getColors( id ,highlightNames[i] );
     }
@@ -2097,14 +2345,90 @@ bool ThemeStore::addThemeFromManifest( const char *properties ) {
 //////////////////////////////////////////////////////////////////////////
 //! Editor
 
+Map_<String,String> CControlList::m_friendlyNames; // = { {"GuiButton" ,"Button" } };
+
+///--
 void CDesigner::onClick( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) {
     GuiControl::onClick( p ,mouseButton ,keyState );
 
     GuiControl *control = root().getMouseTopHit();
 
-    // if( !control ) return;
+    if( !control ) return;
 
-    CEditorProperties::getInstance().attachControl( control );
+    CEditorProperties::getInstance().attachControl( control ,root().getHitTrackMouse() );
+}
+
+///--
+CEditorProperties::CEditorProperties() : GuiControlWindow( "tiny-editor-properties" ,"Properties" ,360 ,800 ,OS_WINDOWSTYLE_TOOLBOX )
+{
+    m_propertiesStack.setPropertiesWithString( "coords={0,0,100%,5%} align=top,vertical; text=<no control>; menu={ items=; }" );
+    m_propertiesStack.setListonly();
+    foreground().addControl( m_propertiesStack );
+    m_propertiesStack.Subscribe(*this);
+
+    m_propertiesList.setPropertiesWithString( "coords={0,5%,100%,100%} align=top;" );
+    m_propertiesList.Initialize();
+    foreground().addControl( m_propertiesList );
+}
+
+void CEditorProperties::makeControlStack( ListOf<GuiControlRef> &controlStack ) {
+    auto &text = m_propertiesStack.text();
+    auto &menu = m_propertiesStack.menu();
+
+    menu.clear();
+    m_controlStack.clear();
+
+    String name ,type ,decl;
+
+    GuiSet *prev = foreground().getInterface_<GuiSet>();
+
+    int i=0 ,j=0; for( auto it : controlStack ) {
+        if( it.isNull() || j==0 ) { ++j; continue; }
+        //! @note skipping first control which is the window layer group
+
+        const char *dig = prev ? prev->digControlName( * it.ptr() ) : "";
+        name = dig ? dig : "";
+
+        it->getMyClassName(type);
+
+        if( !type.empty() ) {
+            name += " ("; name += type; name += ")";
+        }
+
+        menu.addItem( i ,tocstr(name) ,NullPtr );
+        text = name;
+
+        m_controlStack.emplace_back( controlStack[ (size_t) j ] );
+
+        prev = it.ptr() ? it->As_<GuiSet>() : NullPtr;
+        ++i; ++j;
+    }
+}
+
+void CEditorProperties::selectStackControl( int i ) {
+    GuiControl *control = m_controlStack[ (size_t) i ].ptr();
+
+    m_propertiesData.BindProperties( control );
+    m_propertiesList.Bind( &m_propertiesData );
+
+    Update( NullPtr ,refreshResized );
+}
+
+void CEditorProperties::attachControl( GuiControl *control ,ListOf<GuiControlRef> &controlStack ) {
+    makeControlStack( controlStack );
+
+    m_propertiesData.BindProperties( control );
+    m_propertiesList.Bind( &m_propertiesData );
+
+    Update( NullPtr ,refreshResized );
+}
+
+void CEditorProperties::onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) {
+    if( !source ) return;
+
+    if( commandId >= GUI_COMMANDID_MENU && commandId < GUI_COMMANDID_MENUMAX ) {
+        selectStackControl( (int) (commandId - GUI_COMMANDID_MENU) );
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////

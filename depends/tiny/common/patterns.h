@@ -74,7 +74,7 @@ struct Enum_ {
         return CLAMP( key ,0 ,getMaxValue() );
     }
 
-//-- @note following function assuming there is only a single match possible (use from/to StringList for comibnation)
+//-- @note following function assuming there is only a single match possible (use from/to StringList for combination)
     static const char *findName( T v ) {
         int n = getCount();
 
@@ -108,7 +108,7 @@ struct Enum_ {
 
 //--
 template <typename T>
-T &getByName( const char *s ,T &keyInList ) {
+T getByName( const char *s ,T &keyInList ) {
     keyInList = Enum_<T>::getValue( s ); return keyInList;
 }
 
@@ -119,14 +119,14 @@ T getByName( const char *s ) {
 
 //--
 template <typename T>
-T enumFromString( T &v ,const String &s ,size_t &size ) {
+T &enumFromString( T &v ,const String &s ,size_t &size ) {
     Enum_<T>::findValue( s.c_str() ,v ,size );
 
     return v;
 }
 
 template <typename T>
-T enumFromString( T &v ,const String &s ) {
+T &enumFromString( T &v ,const String &s ) {
     size_t size; return enumFromString( v ,s ,size );
 }
 
@@ -137,12 +137,32 @@ String &enumToString( const T &v ,String &s ) {
     return s;
 }
 
-//--
+//-- Params
 template <typename T>
-T enumFromStringList( T &v ,const StringList &list ) {
+T &enumFromMember( T &v ,const Params &p ,const char *key ) {
+    const String *s = peekMember( p ,key );
+
+    if( s ) enumFromString( v ,*s );
+
+    return v;
+}
+
+template <typename T>
+Params &enumToMember( const T &v ,Params &p ,const char *key ) {
+    String s; enumToString( v ,s );
+
+    if( key && *key && !s.empty() )
+        p[key] = tocstr(s);
+
+    return p;
+}
+
+//-- StringList
+template <typename T>
+T &enumFromStringList( T &v ,const StringList &list ) {
     if( list.empty() ) return v;
 
-    T ev;
+    T ev; v = (T) 0;
 
     for( const auto &it : list ) {
         enumFromString( ev ,it );
@@ -155,7 +175,7 @@ T enumFromStringList( T &v ,const StringList &list ) {
 
 template <typename T>
 StringList &enumToStringList( const T &v ,StringList &list ) {
-    int n = Enum_<T>::getCount();
+    int n = (int) Enum_<T>::getCount();
 
     T vi = v;
 
@@ -172,16 +192,22 @@ StringList &enumToStringList( const T &v ,StringList &list ) {
     return list;
 }
 
+//-- StringList given as String
 template <typename T>
-T enumFromStringList( T &v ,const String &s ) {
+T &enumFromStringList( T &v ,const String &s ,size_t &size ) {
     StringList list;
     String str = s;
 
     replaceChar( str ,'+' ,',' );
 
-    fromString( list ,str );
+    fromString( list ,str ,size );
 
     return enumFromStringList( v ,list );
+}
+
+template <typename T>
+T &enumFromStringList( T &v ,const String &s ) {
+    size_t size; return enumFromStringList( v ,s ,size );
 }
 
 template <typename T>
@@ -403,6 +429,79 @@ protected:
 };
 
 //////////////////////////////////////////////////////////////////////////////
+//! Chain_
+
+    //! @brief linked list
+
+//TODO
+
+//////////////////////////////////////////////////////////////////////////////
+//! Tape_
+
+    //! @brief double linked list
+    //! @note T class/struct needs to define 'next()' ,'prev()' and 'index()' member and be nullable (0)
+    //! @note T needs to define static TIndex &getItem( TIndex i )
+
+/* template <class T ,typename TIndex>
+class Tape_ {
+    struct Link {
+        TIndex m_prev ,m_next;
+    };
+
+public:
+    void Insert( T item ) { //! first
+        if( first ) first.prev() = item.index();
+
+        item.next() = first;
+        first = item.index();
+    }
+
+    void InsertBefore( T at ,T item ) {
+        item.next() = at.index();
+        item.prev() = at.prev();
+
+        T::getItem( item.prev() ).next() = item.index();
+        item.next().prev() = item.index();
+
+        if( first && first == at.index() ) first = item.index();
+    }
+
+    void InsetAfter( T at ,T item ) {
+        item.prev() = at.index();
+        item.next() = at.next();
+
+        item.prev().next() = item.index();
+        item.next().prev() = item.index();
+
+        if( last && last == at.index() ) first = item.index();
+    }
+
+    void Append( T item ) {
+
+    }
+
+    void Remove( T item ) {
+
+    }
+
+    void Clear() {
+
+    }
+
+    template <typename F>
+    void ForEach( F &&lambda ) {
+
+    }
+
+protected:
+    void setIndex( TIndex &index ,const TIndex i ) {
+        if( &index != (TIndex) 0 ) index = i;
+    }
+
+    TIndex first ,last;
+}; */
+
+//////////////////////////////////////////////////////////////////////////////
 //! Cache
 
 template<typename TKey ,typename TValue>
@@ -529,22 +628,22 @@ protected:
 //! Registry
 
 /* template <class T>
-class Registry_ : public Store_<UUID,RefOf<T> > { //! NB used in GuiGroup
+class Registry_ : public Store_<PUID,RefOf<T> > { //! NB used in GuiGroup
 
 protected:
-    bool RegisterItem( UUID *id ,const char *name ,const RefOf<T> &p ) {
+    bool RegisterItem( PUID *id ,const char *name ,const RefOf<T> &p ) {
         if( id && *id ) m_ids[*id] = p;
         if( name && *name ) m_named[*id] = p;
     }
 
-    void RevokeItem( const UUID TA &index ) {
+    void RevokeItem( const PUID TA &index ) {
         m_map.erase( index );
     }
 
 protected:
-    // MapOf<UUID,RefOf<T> > m_ids;
-    MapOf<UUID,String> m_ids;
-    MapOf<String,UUID> m_named;
+    // MapOf<PUID,RefOf<T> > m_ids;
+    MapOf<PUID,String> m_ids;
+    MapOf<String,PUID> m_named;
 }; */
 
 //////////////////////////////////////////////////////////////////////////////
@@ -553,37 +652,37 @@ protected:
 template <class T>
 class Factory_ : public Singleton_< Factory_<T> >{
 public:
-    using Constructor = T *(*)( const char *name );
+    using Constructor = T *(*)( PIID );
 
-    void listClasses( ListOf<UUID> &classes ) {
+    void listClasses( ListOf<PUID> &classes ) {
         for( const auto &it : m_constructors ) {
             classes.emplace_back( it.first );
         }
     }
 
-    virtual bool RegisterClass( const UUID &id ,Constructor factor ) {
+    virtual bool RegisterClass( const PUID &id ,Constructor factor ) {
         m_constructors[id] = factor; return true;
     }
 
-    virtual T *Create( const UUID &id ,const char *instanceName=NullPtr ) { //! LATER instance name / instance ID
+    virtual T *Create( const PUID &id ,PIID instanceId=PIID_NOINSTANCE ) {
         const auto &it = m_constructors.find(id);
 
-        return (it != m_constructors.end() ) ? it->second(instanceName) : NullPtr;
+        return (it != m_constructors.end() ) ? it->second(instanceId) : NullPtr;
     }
 
 protected:
-    MapOf<UUID,Constructor> m_constructors;
+    MapOf<PUID,Constructor> m_constructors;
 };
 
 //--
 template <class T>
-bool RegisterClass_( const UUID &id ,typename Factory_<T>::Constructor constructor ) {
+bool RegisterClass_( const PUID &id ,typename Factory_<T>::Constructor constructor ) {
     return Factory_<T>::getInstance().RegisterClass( id ,constructor );
 }
 
 template <class T>
-T *CreateClass_( const UUID &id ,const char *instanceName=NullPtr ) {
-    return Factory_<T>::getInstance().Create( id ,instanceName );
+T *CreateClass_( const PUID &id ,PIID instanceId=PIID_NOINSTANCE ) {
+    return Factory_<T>::getInstance().Create( id ,instanceId );
 }
 
 ///-- IObject
@@ -612,9 +711,9 @@ struct CClass : CBase ,COBJECT_PARENT {
 
 template <class T>
 T *ICreateObject_( const char *name ) {
-    UUID id;
+    PUID id;
 
-    if( !getClassIdFromName( name ,id ) ) return NullPtr;
+    if( !findClassIdByName( name ,id ) ) return NullPtr;
 
     return Factory_<T>::getInstance().Create( id );
 }

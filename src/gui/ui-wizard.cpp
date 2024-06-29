@@ -16,104 +16,51 @@ namespace solominer {
 //////////////////////////////////////////////////////////////////////////////
 //! UiWizardDialog
 
-UiWizardDialog::UiWizardDialog() {
-    colors().fillColor = OS_COLOR_BLACK;
-    coords() = { 0 ,0 ,95.f ,95.f };
+UiWizardDialog::UiWizardDialog( GuiControlWindow &parent ) :
+    GuiDialog( "Connection Wizard" )
+{
+    setRoot( parent );
+    parent.addBinding( "dialog" ,this );
 
-//-- header
-    m_header.coords() = { 0 ,0 ,100.f ,5.f };
-    m_header.align() = (GuiAlign) (GuiAlign::alignTop | GuiAlign::alignAnchorV);
+    addControl( "header" ,m_header );
+    addControl( "footer" ,m_footer );
+    addControl( "body" ,m_body );
 
-    m_header.m_cancel.setImage( getAssetIconImage( UIICONS_MAIN ) );
-    // m_header.m_cancel.origin() = { 5+75*7,5 };
-    // m_header.m_cancel.size() = { 75 ,75 };
-    m_header.m_cancel.coords() = { 0 ,0 ,75 ,100.f };
-    m_header.m_cancel.align() = (GuiAlign) (GuiAlign::alignLeft | GuiAlign::alignAnchorH);
-    m_header.m_cancel.setCommandId( GUI_COMMANDID_CANCEL );
-    m_header.m_cancel.GuiCommandPublisher::Subscribe( *this );
-    m_header.addControl(m_header.m_cancel);
-
-    m_header.m_info.setImage( getAssetIconImage( UIICONS_MAIN ) );
-    // m_header.m_info.origin() = { 5+75*4,111*4 };
-    // m_header.m_info.size() = { 75 ,75 };
-    m_header.m_info.coords() = { 0 ,0 ,75 ,100.f };
-    m_header.m_info.align() = (GuiAlign) (GuiAlign::alignRight | GuiAlign::alignAnchorH);
-    m_header.addControl(m_header.m_info);
-
-    addControl(m_header);
-
-//-- title
-    m_title.text() = "title";
-    m_title.setFont( getFontMedium() );
-    m_title.coords() = { 0 ,0 ,100.f ,10.f };
-    m_title.align() = (GuiAlign) (GuiAlign::alignTop | GuiAlign::alignAnchorV);
-    m_title.textAlign() = (TextAlign) (textalignCenterH | textalignCenterV);
-
-    addControl(m_title);
-
-//-- footer
-    m_footer.coords() = { 0 ,0 ,100.f ,5.f };
-    m_footer.align() = (GuiAlign) (GuiAlign::alignBottom | GuiAlign::alignAnchorV);
-
-    //--
-    m_footer.m_prev.text() = "Prev";
-    m_footer.m_prev.coords() = { 0 ,0 ,10.f ,100.f };
-    m_footer.m_prev.align() = (GuiAlign) (GuiAlign::alignLeft | GuiAlign::alignAnchorH);
-    m_footer.m_prev.setCommandId( GUI_COMMANDID_PREV );
-    m_footer.m_prev.GuiCommandPublisher::Subscribe( *this );
-    m_footer.addControl(m_footer.m_prev);
-
-    m_footer.m_next.text() = "Next";
-    m_footer.m_next.coords() = { 0 ,0 ,10.f ,100.f };
-    m_footer.m_next.align() = (GuiAlign) (GuiAlign::alignRight | GuiAlign::alignAnchorH);
-    m_footer.m_next.setCommandId( GUI_COMMANDID_NEXT );
-    m_footer.m_next.GuiCommandPublisher::Subscribe( *this );
-    m_footer.addControl(m_footer.m_next);
-
-    addControl(m_footer);
-
-//--
-    m_steps.coords() = { 0 ,0 ,100.f ,70.f };
-    m_steps.align() = GuiAlign::alignCenter; // (GuiAlign) (GuiAlign::alignTop | GuiAlign::alignAnchorV);
-    addControl(m_steps);
-}
-
-IAPI_DEF UiWizardDialog::getInterface( UUID id ,void **ppv ) {
-    if( !ppv || *ppv ) return false;
-
-    return
-        honorInterface_<UiWizardDialog>(this,id,ppv) ? IOK :
-        GuiDialog::getInterface( id ,ppv )
-    ;
+    setPropertiesWithString(
+        "controls = {"
+            "header = { background=#101010; coords={0,0,100%,10%} align=top,vertical; }"
+            "footer = { background=#101010; coords={0,0,100%,5%} align=bottom,vertical; controls={"
+                "prev:GuiLink = { bind=dialog; commandId=22; align=left,horizontal; coords={0,5%,5%,95%} text=<<; textalign=center; font=large; }"
+                "next:GuiLink = { bind=dialog; commandId=23; align=right,horizontal; coords={0,5%,5%,95%} text=>>; textalign=center; font=large; }"
+            "} }"
+            "body = { background=#0; coords={0,0,100%,50%} align=fill; }"
+        "}"
+    );
 }
 
 //--
-void UiWizardDialog::onCommand( GuiControl &source ,uint32_t commandId ,long param ,Params *params ,void *extra ) {
+void UiWizardDialog::onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) {
     switch( commandId ) {
-        case GUI_COMMANDID_PREV:
-            onPrevious();
+        case GUI_MESSAGEID_PREV:
+            PreviousPage();
             return;
 
-        case GUI_COMMANDID_NEXT:
-            if( m_steps.getCurrentTabIndex() == m_steps.getTabCount() - 1 ) {
-                GuiCommandPublisher::PostCommand( GUI_COMMANDID_OK ,getCurrentStep());
-                onConfirm();
-            } else {
-                onNext();
-            }
+        case GUI_MESSAGEID_NEXT:
+            NextPage();
             return;
 
-        case GUI_COMMANDID_CANCEL:
-            GuiCommandPublisher::PostCommand( GUI_COMMANDID_CANCEL ,getCurrentStep() );
+        case GUI_MESSAGEID_CANCEL:
             onCancel();
             return;
 
+        case GUI_MESSAGEID_OK:
+            onConfirm();
+            return;
+
         default:
-            assert(false);
+            GuiDialog::onCommand( source ,commandId ,param ,params ,extra );
             break;
     }
-
-    // GuiCommandPublisher::PostCommand( source ,commandId ,param ,params ,extra );
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -122,118 +69,261 @@ void UiWizardDialog::onCommand( GuiControl &source ,uint32_t commandId ,long par
 
 #define UIWALL_THUMBSIZE {100,100}
 
-class UiCoinWall : public GuiThumbwall {
+class UiCoinList : public GuiList {
 public:
-    UiCoinWall() : GuiThumbwall( UIWALL_THUMBSIZE ) {}
+    UiCoinList() {
+        itemSize() = UIWALL_THUMBSIZE;
+    }
 
-    void buildWall() {
-        auto coins = CCoinStore::getInstance().getList();
+    void buildList() {
+        const auto &coins = CCoinStore::getInstance().getList();
 
         for( const auto &it : coins ) if( !it.isNull() ) {
-                const char *ticker = it->getTicker().c_str();
+            const char *ticker = it->getTicker().c_str();
 
-                addThumb( &getAssetCoinImage(ticker) ,ticker );
-            }
-    }
-};
+            if( !filter(ticker) ) continue;
 
-class UiWalletWall : public GuiThumbwall {
-public:
-    struct WalletInfo {
-        String name;
-        GuiControlRef control;
-        CWalletServiceRef wallet;
-    };
+            auto *image = Assets::Image().get( ticker );
+            auto &thumb = * new GuiImageBox( image );
 
-    ListOf<WalletInfo> &wallets() { return m_infos; };
+            thumb.backgroundColor() = 0;
+            thumb.text() = ticker;
 
-protected:
-    ListOf<WalletInfo> m_infos;
-
-public:
-    UiWalletWall() : GuiThumbwall( UIWALL_THUMBSIZE ) {
-        buildWall();
+            addControl( thumb );
+        }
     }
 
-    WalletInfo &getWalletInfo( int i ) {  return m_infos[i]; }
+    virtual bool filter( const char *ticker ) {
+        return true;
+    }
 
-    void buildWall() {
-        auto &store = getWalletStore();
+    bool filterWallet( const char *ticker ) {
+        String name = ticker;
+
+        name += "-core";
+        tolower(name);
+
+        CWalletServiceRef pwallet;
+
+        getWallet( tocstr(name) ,pwallet );
+
+        return !pwallet.isNull();
+    }
+
+    bool filterPool() {
+        /* auto &store = getWalletStore();
 
         ListOf<String> wallets;
         store.listServiceSupport( wallets );
 
-        WalletInfo info;
-
-        for( auto &it : wallets ) {
-            const char *name = it.c_str();
-
-            getWallet( name ,info.wallet );
-            if( info.wallet.isNull() ) continue; //! should not happen, tho some config/install/... mishaps may lead to it anyway, simply protect
-
-            int thumbIndex = addThumb( &getAssetIconImage(name) ,name );
-
-            info.name = name;
-            info.control = getControl(thumbIndex);
-
-            assert( !info.control.isNull() );
-
-            m_infos.emplace_back(info);
-        }
+        //...
+        info.wallet->hasCoinSupport(coin);
+        */
+        return true;
     }
 
-    void filterWall( const char *coin ) {
-        for( auto &info : m_infos ) {
-
-            if( info.control.isNull() && info.wallet.isNull() ) {
-                assert(false); continue;
-            }
-
-            info.control->visible() = (info.wallet->hasCoinSupport(coin) == IOK);
-        }
-
-        root().Update( NullPtr ,refreshResized );
-    }
+protected:
+    // bool m_hasWallet = false;
+    // bool m_hasPool = false;
+    // hasMarket
 };
 
 class UiAddressList : public GuiGroup {
+public:
+    UiAddressList( GuiControlWindow &parent ) {
+        setRoot(parent);
+        root().addBinding("self",this);
+
+        addControl( "coin" ,m_coinbox );
+        addControl( "address" ,m_addressbox );
+
+        setPropertiesWithString(
+            "controls={"
+                "coin:GuiImageBox = { align=top,vertical; coords={0,0,100%,25%} }"
+                "address:GuiComboBox = { align=top,vertical; coords={25%,0,75%,10%} font=large; menu={ background=#101010; } }"
+                "ma:GuiMargin = { align=top,vertical; coords={25%,0,75%,2%} background=0; }"
+                "new:GuiButton = { commandId=28; bind=self; align=top,vertical; coords={45%,0,55%,6%} text=New; }"
+                "mb:GuiMargin = { align=top,vertical; coords={25%,0,75%,2%} background=0; }"
+                "info:GuiLabel = { align=top,vertical; coords={0,0,100%,10%} background=0; textalign=center; font=large; }"
+                "ok:GuiButton = { commandId=2; bind=self; coords={45%,80%,55%,86%} text=Ok; }"
+            "}"
+        );
+
+        m_info = getControl("info")->As_<GuiLabel>(); assert( m_info );
+    }
+
+    bool getWalletRef( CWalletServiceRef &wallet ) {
+        wallet = m_wallet; return !wallet.isNull();
+    }
+
+    String &getAddress() {
+        return m_addressbox.text();
+    }
+
+public:
+    void updateCoin( const char *ticker ) {
+        auto *image = Assets::Image().get( ticker );
+
+        if( image )
+            m_coinbox.setImage( *image );
+
+        m_coinbox.backgroundColor() = 0;
+        m_coinbox.text() = ticker;
+
+        m_info->text() = "";
+
+        Update( false ,refreshResized );
+    }
+
+    void buildList( const char *ticker ) {
+        if( m_ticker == ticker ) return; //! no change since last call
+
+        //-- gui
+        updateCoin(ticker);
+
+        //-- address list
+        String name = ticker;
+
+        name += "-core";
+        tolower(name);
+
+        CWalletServiceRef pwallet;
+
+        getWallet( tocstr(name) ,m_wallet );
+
+        if( m_wallet.isNull() ) return;
+
+        m_addresses.clear();
+
+        m_wallet->listAddresses( "" ,m_addresses );
+
+        m_addressbox.menu().clear();
+        m_addressbox.text() = "";
+
+        int i=0; for( auto &it : m_addresses ) {
+            const char *address = tocstr(it);
+
+            if( i==0 && *address ) { //! if auto
+                getAddress() = address;
+            }
+
+            m_addressbox.menu().addItem( i , address ,NullPtr );
+
+            ++i;
+        }
+
+        m_ticker = ticker;
+    }
+
+    void onNewAddress() {
+        if( m_wallet.isNull() )
+            return;
+
+        String address;
+
+        if( ISUCCESS(m_wallet->getNewAddress( "" ,address )) ) {
+            m_addressbox.text() = address;
+            m_info->text() = "New address generated";
+            m_info->textColor() = OS_COLOR_OLIVE;
+        } else {
+            m_info->text() = "Could not retrieve address from core wallet, is it running and configured?";
+            m_info->textColor() = OS_COLOR_ORANGE;
+        }
+    }
+
+public:
+    void onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) override {
+        switch( commandId ) {
+            case GUI_MESSAGEID_ADD:
+                onNewAddress();
+                break;
+
+            default:
+                GuiControl::onCommand( source ,commandId ,param ,params ,extra );
+                break;
+        }
+    }
+
+protected:
+    String m_ticker; //! current (last build list) ticker
+
+    GuiImageBox m_coinbox;
+    GuiComboBox m_addressbox;
+    GuiLabel *m_info;
+
 protected:
     ListOf<String> m_addresses;
 
-protected:
-    // GuiList m_addressList;
-    // GuiTextbox m_address;
-    GuiButton m_newAddress;
+    CWalletServiceRef m_wallet;
+};
 
-    IWalletRef m_wallet;
-
+class UiPoolList : public GuiList {
 public:
-    UiAddressList() {}
+    UiPoolList() {
+        itemSize() = UIWALL_THUMBSIZE;
 
-    const char *getAddress() {
-        return NullPtr;
+        // mining mode for pools
+        // mmUnknown = 0 ,SoloLocal ,SoloRemote ,PoolSolo ,PoolShared
     }
 
-public:
-    void Clear() {
+    void buildList( const char *ticker ) {
+        auto &poolList = getPoolListInstance();
 
-    }
+        ListOf<String> pools;
 
-    void makeList( IWalletRef &wallet ) {
-        m_addresses.clear();
+        poolList.listPools( pools ,ticker ); //+ mining mode
 
-        m_wallet = wallet;
+        removeAllControls();
 
-        m_wallet->listAddresses( NullPtr ,m_addresses );
+        for( const auto &it : pools ) {
+            const char *name = tocstr(it);
 
+            auto *image = Assets::Image().get( name );
+            auto &thumb = * new GuiImageBox( image );
 
+            thumb.backgroundColor() = 0;
+            thumb.text() = name;
+
+            addControl( thumb );
+        }
+
+        Update( false ,refreshResized );
     }
 };
 
 //////////////////////////////////////////////////////////////////////////////
-///-- steps
+//////////////////////////////////////////////////////////////////////////////
+///-- Components
 
-struct WizSelectCoin : UiCoinWall {
+#define SOLOMINER_COIN_PUID    0x093be7e167beca8fa
+
+struct Coin {
+    String ticker;
+};
+
+DECLARE_STRUCT(Coin,SOLOMINER_COIN_PUID);
+REGISTER_STRUCTNAME( Coin );
+
+struct GuiCoinBox : GuiComboBox {
+    GuiCoinBox() {
+        setPropertiesWithString("menu={}");
+
+        menu().addItem( 0 ,"MAXE" ,NullPtr );
+        menu().addItem( 1 ,"RTC" ,NullPtr );
+        menu().addItem( 1 ,"RTM" ,NullPtr );
+    }
+
+    DECLARE_GUICONTROL(GuiComboBox,GuiCoinBox,SOLOMINER_COIN_PUID);
+};
+
+REGISTER_CLASS(GuiCoinBox);
+REGISTER_EDITBOX(Coin,GuiCoinBox);
+
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+///-- Wizard Pages
+
+struct WizSelectCoin : UiCoinList {
     UiConnectionWizard &m_wizard;
 
     enum WhichCoin {
@@ -242,110 +332,274 @@ struct WizSelectCoin : UiCoinWall {
 
     WizSelectCoin( UiConnectionWizard &wizard ,WhichCoin whichCoin ) : m_wizard(wizard) ,m_whichCoin(whichCoin)
     {
-        buildWall();
+        placement() = placeDiamond;
+        direction() = (Direction) (directionBottom | directionRight);
+        origin() = center;
+
+        buildList();
     }
 
-    void onItemSelected( GuiControl &item ,int index ,bool selected ) override {
-        CCoinStore &coinlist = CCoinStore::getInstance();
+    void onItemSelect( GuiControl &item ,int index ,bool selected ) override {
+        auto *box = item.As_<GuiImageBox>();
+        assert( box );
 
-        const char *ticker = coinlist.getList().at( index-1 )->getTicker().c_str();
+        const char *ticker = tocstr( box ? box->text() : "" );
 
         switch( m_whichCoin ) {
             case miningCoin:
                 m_wizard.info().mineCoin.coin = ticker;
+                m_wizard.info().mineCoin.wallet = "core"; //! LATER wallet select
                 break;
             case tradeCoin:
-                m_wizard.info().tradeCoin.coin = ticker;
+                if( m_wizard.info().tradeCoin.coin != m_wizard.info().mineCoin.coin )
+                    makeTrade( m_wizard.info() ,ticker );
+                else
+                    noTrade( m_wizard.info() );
+
                 break;
         }
 
-        m_wizard.onNext();
+        m_wizard.NextPage();
+    }
+
+    void makeTrade( ConnectionInfo &info ,const char *ticker ) {
+        m_wizard.info().tradeCoin.coin = ticker;
+        m_wizard.info().tradeCoin.wallet = "core"; //! LATER wallet select
+        m_wizard.info().market = "xeggex";
+        m_wizard.info().trading.percent = 100.f;
+        m_wizard.info().trading.withdraw = true;
+    }
+
+    void noTrade( ConnectionInfo &info ) {
+        m_wizard.info().tradeCoin.coin = "";
+        m_wizard.info().tradeCoin.wallet = "";
+        m_wizard.info().market = "";
+        m_wizard.info().trading.percent = 100.f;
+        m_wizard.info().trading.withdraw = false;
+    }
+
+    bool filter( const char *ticker ) override {
+        switch( m_whichCoin ) {
+            case miningCoin:
+                return filterWallet(ticker);
+            case tradeCoin:
+                return true; //TODO has market par with mining coin
+
+            default:
+                return true;
+        }
     }
 };
 
-struct WizStepWallet : IGuiCommandEvent ,GuiGroup { //! IE mining wallet
+struct WizSelectAddress : UiAddressList ,CGuiTabControl {
     UiConnectionWizard &m_wizard;
-    int m_stepIndex;
 
-    UiWalletWall m_wallets;
-    UiAddressList m_address;
+    WizSelectAddress( UiConnectionWizard &wizard ) : UiAddressList(wizard.root()) ,m_wizard(wizard)
+    {}
 
-    //! 1) select wallet
-    //! 2) select/enter address
-    WizStepWallet( UiConnectionWizard &wizard ,int index ) : m_wizard(wizard) ,m_stepIndex(index)
+    void onTabEnter( int fromTabIndex ) override {
+        buildList( tocstr( m_wizard.info().mineCoin.coin ) );
+    }
+
+    void onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) override {
+        switch( commandId ) {
+            case GUI_MESSAGEID_OK:
+                m_wizard.info().mineCoin.address = m_addressbox.text();
+                m_wizard.NextPage();
+                break;
+
+            default:
+                UiAddressList::onCommand( source ,commandId ,param ,params ,extra );
+                break;
+        }
+    }
+};
+
+struct WizSelectPool : UiPoolList ,CGuiTabControl {
+    UiConnectionWizard &m_wizard;
+    Params m_vars;
+
+    WizSelectPool( UiConnectionWizard &wizard ) : m_wizard(wizard)
     {
-        m_wallets.GuiCommandPublisher::Subscribe(*this);
-        m_wallets.coords() = { 0 ,0 ,100.f ,50.f };
-        m_wallets.align() = GuiAlign::alignTop;
-        addControl(m_wallets);
+        placement() = placeDiamond;
+        direction() = (Direction) (directionBottom | directionRight);
+        origin() = center;
 
-        m_address.coords() = { 0 ,0 ,100.f ,50.f };
-        m_address.align() = GuiAlign::alignBottom;
-        addControl(m_address);
+        auto &global = getGlobalConfig();
 
-        m_wizard.GuiCommandPublisher::Subscribe(*this);
+        m_vars = global.params;
     }
 
-    void onEnterStep() {
-        m_wallets.filterWall( m_wizard.info().mineCoin.coin.c_str() );
+    void onTabEnter( int fromTabIndex ) override {
+        auto &info = m_wizard.info();
+
+        buildList( tocstr( info.mineCoin.coin ) );
+
+        m_vars["coin"] = info.mineCoin.coin;
+        m_vars["address"] = info.mineCoin.address;
     }
 
-    void onWalletSelected( GuiControl &item ,int index ,bool selected ) {
-        m_wizard.info().mineCoin.wallet = m_wallets.getWalletInfo(index).name;
-        m_wizard.onNext();
+    String resolveField( const char *s ) {
+        String r;
+
+        replaceTextVariables( s ,m_vars ,r );
+
+        return r;
     }
 
-    void onAddressSelected( ) {
+    void onItemSelect( GuiControl &item ,int index ,bool selected ) override {
+        auto *box = item.As_<GuiImageBox>();
+        assert( box );
 
-    }
+        const char *name = tocstr( box ? box->text() : "" );
 
-    void onCommand( GuiControl &source ,uint32_t commandId ,long param ,Params *params ,void *extra ) override {
-        if( source == m_wallets ) {
-            onWalletSelected( source ,(int) source.id() ,true );
-            return;
+        m_wizard.info().pool = name;
+
+        ///-- import pool infos
+        auto &poolList = getPoolListInstance();
+
+        CPoolRef pool;
+
+        ListOf<PoolConnectionInfo> infos;
+
+        const char *ticker = tocstr( m_wizard.info().mineCoin.coin );
+
+        if( name && *name && poolList.findPoolByName( name ,pool ) && pool->findPoolConnections( infos ,ticker ) && !infos.empty() ) {
+            auto &poolinfo = infos[0];
+
+            fromString( m_wizard.info().connection ,resolveField( tocstr(poolinfo.host) ) );
+            m_wizard.info().credential.user = resolveField( tocstr(poolinfo.user) );
+            m_wizard.info().credential.password = resolveField( tocstr(poolinfo.password) );
+            m_wizard.info().options = poolinfo.options;
         }
 
-        if( source == m_wizard ) {
-            switch( commandId ) {
-                case GUI_COMMANDID_OPEN :
-                    if( param == m_stepIndex ) onEnterStep();
-                default:
-                    break;
-            }
-        }
+        m_wizard.NextPage();
     }
 };
 
-struct WizStepTrade { // MAYBE market and trade same ?
+struct WizSelectTrade : GuiGroup ,CGuiTabControl {
     UiConnectionWizard &m_wizard;
 
-    //=> select wallet, or manual enter
-    //=> or leave
+    WizSelectTrade( UiConnectionWizard &wizard ) : m_address(wizard.root()) ,m_wizard(wizard)
+    {
+        setRoot( wizard.root() );
 
-    // market list, select
+        m_sheet.headings() = {
+            { "tradePercent" ,"Trade Percent" }
+            ,{ "tradeWithdraw" ,"Withdraw Trade" }
+        };
 
-    //+ how much to trade / withdraw
+        m_sheet.Bind( &wizard );
+        m_sheet.setPropertiesWithString( "coords={25%,5%,75%,18%}" );
+
+        addControl( "sheet" ,m_sheet );
+
+        m_address.setPropertiesWithString( "coords={0%,20%,100%,100%}");
+        addControl( "address" ,m_address );
+
+        setPropertiesWithString( "align=fill;" );
+
+        //+ address visible only if withdraw ? or address required ?
+
+        m_address.getControl("ok")->As_<GuiButton>()->Subscribe(*this);
+    }
+
+    void onTabEnter( int fromTabIndex ) override {
+        m_wizard.updateData();
+
+        m_address.buildList( tocstr( m_wizard.info().tradeCoin.coin ) );
+    }
+
+    void onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) override {
+        switch( commandId ) {
+            case GUI_MESSAGEID_OK:
+                m_wizard.info().tradeCoin.address = m_address.getAddress();
+                m_wizard.NextPage();
+                break;
+
+            default:
+                m_address.onCommand( source ,commandId ,param ,params ,extra );
+                break;
+        }
+    }
+
+    GuiSheet m_sheet;
+    UiAddressList m_address;
 };
 
-struct WizStepPool {
-    //! where to mine
+struct WizSettings : GuiGroup ,CGuiTabControl {
+    UiConnectionWizard &m_wizard;
 
-    //=> pool list
+    WizSettings( UiConnectionWizard &wizard ) : m_wizard(wizard)
+    {
+        setRoot( wizard.root() );
 
-    //=> core list
+        m_sheet.headings() = {
+            { "mineCoin" ,"Mining Coin" }
+            ,{ "mineAddress" ,"Mining Address" }
+            ,{ "Pool" ,"Pool" }
+            ,{ "Host" ,"Host" }
+            ,{ "User" ,"User" }
+            ,{ "Password" ,"Password" }
+            ,{ "tradeCoin" ,"Trade Coin" }
+            ,{ "tradePercent" ,"Trade Percent" }
+            ,{ "tradeWithdraw" ,"Withdraw Trade" }
+            ,{ "tradeAddress" ,"Withdraw Address" }
+            ,{ "*" }
+            ,{ "Market" ,"" } //! not shown
+        };
+
+        m_sheet.Bind( &wizard );
+        m_sheet.setPropertiesWithString( "coords={25%,5%,75%,82%}" );
+
+        addControl( "sheet" ,m_sheet );
+
+        setPropertiesWithString(
+            "align=fill; controls={"
+                "ok:GuiButton = { commandId=2; bind=dialog; coords={45%,88%,55%,94%} text=Confirm; }"
+            "}"
+        );
+    }
+
+    void onTabEnter( int fromTabIndex ) override {
+        m_wizard.updateData();
+    }
+
+    GuiSheet m_sheet;
 };
-
-//+ advanced ?
 
 //////////////////////////////////////////////////////////////////////////////
 ///-- wizard
 
-UiConnectionWizard::UiConnectionWizard() {
-    addStep( *new WizSelectCoin(*this,WizSelectCoin::miningCoin) ,{"What do you want to mine ?"} );
-    addStep( *new WizStepWallet(*this,1) ,{"Where to store your well earned coins ?"} );
-    addStep( *new WizSelectCoin(*this,WizSelectCoin::tradeCoin) ,{"What coin to do you want to get ?"} );
-    addStep( *new GuiLabel("Your all set, leggo!") ,{""} );
-    setStep(0);
+UiConnectionWizard::UiConnectionWizard( GuiControlWindow &parent ) :
+    CDataConnectionInfo2(m_info) ,UiWizardDialog(parent)
+{
+    setRoot(parent);
+
+    addPage( * new WizSelectCoin( *this ,WizSelectCoin::miningCoin ) ,{"What do you want to mine ?"} );
+    addPage( * new WizSelectAddress( *this ) ,{"Your mining address"} );
+    addPage( * new WizSelectPool( *this ) ,{"Where do you want to mine ?"} );
+    addPage( * new WizSelectCoin( *this ,WizSelectCoin::tradeCoin ) ,{"What reward do you want to get (exchange) ?"} );
+    addPage( * new WizSelectTrade( *this ) ,{"Configure trading"} );
+    addPage( * new WizSettings( *this ) ,{"Verify connection settings"} );
+
+    selectPage(0);
+}
+
+void UiConnectionWizard::onStepEnter( int step ,int fromStep ) {
+}
+
+void UiConnectionWizard::onConfirm()  {
+    if( m_index < 0 )
+        confirmAddConnection();
+    else
+        confirmEditConnection();
+
+    UiWizardDialog::onConfirm();
+}
+
+void UiConnectionWizard::onCancel() {
+    UiWizardDialog::onCancel();
 }
 
 //////////////////////////////////////////////////////////////////////////////

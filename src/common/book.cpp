@@ -32,7 +32,7 @@ struct BookHeader {
     BookMode mode;
 
     Udbn udbn; //! book serial number
-    UUID uuid; //! entry type uuid
+    PUID uuid; //! entry type uuid
 
     int sizeOfEntry;
     int entryPerPage;
@@ -84,7 +84,7 @@ struct BookPage {
 
     struct Footer {
 
-        offset_t header; //! offset back to header, allow reading from back (NB file is always written with complete paegs)
+        offset_t header; //! offset back to header, allow reading from back (NB file is always written with complete pages)
 
         //! @note next page is right after, previous page via header
     };
@@ -213,7 +213,7 @@ struct Private_<CBookFile> {
 
         ++page.pageId;
 
-        return readPageHeader( page.pageId ,page.offset = page.offset + page.header.footer + SIZEOF_PAGEFOOTER ,page.header );
+        return readPageHeader( page.pageId ,page.offset = page.header.footer + SIZEOF_PAGEFOOTER ,page.header );
     }
 
     bool flickPageBackward( PageInfo &page ) {
@@ -293,7 +293,7 @@ CBookFile::CBookFile() :
     ,m_uuid( 0 ) ,m_sizeofEntry( 0 ) ,m_mode( bookText )
 {}
 
-CBookFile::CBookFile( UUID uuid ,int sizeofEntry ,BookMode mode ) :
+CBookFile::CBookFile( PUID uuid ,int sizeofEntry ,BookMode mode ) :
     WithPrivate_<CBookFile>( new Private_<CBookFile>(*this) )
     ,m_uuid( uuid ) ,m_sizeofEntry( sizeofEntry ) ,m_mode( mode )
 {}
@@ -344,7 +344,7 @@ IRESULT CBookFile::Archive( const char *volume ,entryid_t untilId ) {
     _TODO; return INOEXEC; //TODO
 }
 
-IRESULT CBookFile::Create( const char *title ,const char *path ,UUID uuid ,int sizeofEntry ,BookMode mode ) {
+IRESULT CBookFile::Create( const char *title ,const char *path ,PUID uuid ,int sizeofEntry ,BookMode mode ) {
     if( uuid && sizeofEntry ) {} else return IBADARGS;
 
     IRESULT result = makeFilepath( title ,path ); IF_IFAILED_RETURN(result);
@@ -539,7 +539,11 @@ bool CBookFile::getEntryOffset( entryid_t id ,size_t &offset ) {
 
     int firstId = pageId * n; //! IE first id in page
 
-    offset = page.offset + SIZEOF_PAGEHEADER + (id - firstId) * m_sizeofEntry;
+    int i = (int) (id - firstId);
+
+    if( i >= page.header.nEntry ) return false; //! id above entries in page
+
+    offset = page.offset + SIZEOF_PAGEHEADER + (i) * m_sizeofEntry;
 
     return true;
 }

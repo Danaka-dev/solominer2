@@ -78,7 +78,7 @@ void scalePeriod( ValuePeriod &period ,double &amount ) {
 //////////////////////////////////////////////////////////////////////////////
 //! CCoin
 
-IAPI_DEF CCoin::getInterface( UUID id ,void **ppv ) {
+IAPI_DEF CCoin::getInterface( PUID id ,void **ppv ) {
     if( !ppv || *ppv ) return IBADARGS;
 
     return

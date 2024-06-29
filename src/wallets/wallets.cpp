@@ -65,7 +65,7 @@ WalletConfig &fromString( WalletConfig &p ,const String &s ,size_t &size ) {
 //////////////////////////////////////////////////////////////////////////////
 //! CWalletBase
 
-IAPI_DEF CWalletService::getInterface( UUID id ,void **ppv ) {
+IAPI_DEF CWalletService::getInterface( PUID id ,void **ppv ) {
     if( !ppv || *ppv ) return IBADARGS;
 
     if( id == classId() ) {
@@ -93,7 +93,7 @@ IAPI_DEF CWalletService::hasCoinSupport( const char *coin ) {
 //////////////////////////////////////////////////////////////////////////////
 //! CWalletSetupBase
 
-IAPI_DEF CWalletSetupBase::getInterface( UUID id ,void **ppv ) {
+IAPI_DEF CWalletSetupBase::getInterface( PUID id ,void **ppv ) {
     if( !ppv || *ppv ) return IBADARGS;
 
     if( id == classId() ) {
@@ -109,7 +109,7 @@ IAPI_DEF CWalletSetupBase::getInterface( UUID id ,void **ppv ) {
 //////////////////////////////////////////////////////////////////////////////
 //! CWalletStore
 
-IAPI_DEF CWalletStore::getInterface( UUID id ,void **ppv ) {
+IAPI_DEF CWalletStore::getInterface( PUID id ,void **ppv ) {
     if( !ppv || *ppv ) return IBADARGS;
 
     if( id == classId() ) {
@@ -192,6 +192,14 @@ static MapOf<String,IWalletRef> g_walletForAddress;
 void noteWalletHasAddress( const char *address ,IWalletRef &wallet ) {
     if( address && *address && !wallet.isNull() )
         g_walletForAddress[address] = wallet;
+}
+
+void listAddressForWallet( IWalletRef &wallet ,ListOf<String> &addresses ) {
+    for( auto &it : g_walletForAddress ) {
+        if( it.second != wallet ) return;
+
+        addresses.emplace_back( it.first );
+    }
 }
 
 bool findWalletForAddress( const char *address ,IWalletRef &wallet ) {

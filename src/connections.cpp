@@ -442,6 +442,49 @@ String &Earning::getMember( int m ,String &s ) const {
     }
 }
 
+///-- Earning2
+template <>
+const Schema Schema_<Earning2>::schema = fromString( Schema::getStatic() ,String(
+    "timestamp:TimeSec"
+    ",type:EnumType"
+    ",tradeAmount:double"
+    ",tradePlacedAt:TimeSec"
+
+    //-- from WalletTransaction
+    ",txid:String"
+    ",amount:AmountValue"
+    ",fromAddress:String"
+    ",toAddress:String"
+    ",comment:String"
+    ",communication:String"
+    ",receivedAt:TimeSec"
+    ",confirmations:int"
+) );
+
+void Earning2::setMember( int m ,const String &s ) {
+    switch( m ) {
+        case 0: fromString( timestamp ,s ); return;
+        case 1: enumFromString( type ,s ); return;
+        case 2: fromString( tradeAmount ,s ); return;
+        case 3: fromString( tradePlacedAt ,s ); return;
+        default: break;
+    }
+
+    solominer::setMember( transaction ,m-4 ,s );
+}
+
+String &Earning2::getMember( int m ,String &s ) const {
+    switch( m ) {
+        case 0: return toString( timestamp ,s );
+        case 1: return enumToString( type ,s );
+        case 2: return toString( tradeAmount ,s );
+        case 3: return toString( tradePlacedAt ,s );
+        default: break;
+    }
+
+    return solominer::getMember( transaction ,m-4 ,s );
+}
+
 //////////////////////////////////////////////////////////////////////////////
 //! Connection
 
@@ -720,7 +763,6 @@ double CConnection::estimateEarnings( double hostHps ,const ValueOfReference &va
     m_chain->getInfo( mineCoin ,chainInfo ,ChainInfoFlags::noFlags );
 
 ///-- reward
-
     double blockReward = (value.type == ValueOfReference::Type::Block) ? 1 : getMiningReward( mineCoin ,chainInfo );
     double networkDiff = chainInfo.networkDiff;
     double networkHps = chainInfo.networkHPS;
@@ -780,7 +822,7 @@ IAPI_DEF CConnectionList::loadConfig( Config &config ) {
         auto &connection = m_connections[ index-1 ];
 
         if( connection.isNull() ) {
-            connection = new CConnection( *this );
+            connection = new CConnection( *this ,index-1 );
         }
 
         Params settings;
@@ -798,7 +840,7 @@ IAPI_DEF CConnectionList::saveConfig() {
 
     Config::Section &section = m_config->getSection("connections");
 
-    bool hasEdit = false;
+    bool hasEdit = m_hasEdit;
 
     for( auto &it : m_connections.map() ) {
         Params settings;
@@ -814,10 +856,37 @@ IAPI_DEF CConnectionList::saveConfig() {
         hasEdit = true;
     }
 
+    //-- removed
+    /* int n = (int) section.params.size();
+
+    for( int i=0; i<n; ++i ) {
+        if( m_connections.findItem(i) != NullPtr ) continue;
+
+        const int index = i+1;
+
+        section.params.erase(index);
+    } */
+
+    // for( auto &it : section.params ) {
+    for( auto it = section.params.cbegin(); it != section.params.cend(); ) {
+        int id;
+
+        fromString( id ,it->first );
+
+        if( m_connections.findItem( id-1 ) == NullPtr ) {
+            section.params.erase(it++);
+        } else {
+            ++it;
+        }
+    }
+
+    //-- commit
     if( hasEdit ) {
         m_config->commitSection( section );
         m_config->SaveFile();
     }
+
+    m_hasEdit = false;
 
     return IOK;
 }
@@ -925,6 +994,62 @@ double CConnectionList::getHostHps( PowAlgorithm algorithm ) {
 ///--
 IAPI_DEF CConnectionList::getConnection( int id ,CConnectionRef &connection ) {
     return m_connections.findItem( id ,connection ) ? IOK : INODATA;
+}
+
+IAPI_DEF CConnectionList::addConnection( Params &settings ,CConnectionRef &connection ) {
+    int index = (int) getCount();
+
+    auto &p  = m_connections[ index ];
+
+    if( p.isNull() ) {
+        p = new CConnection( *this ,index );
+    }
+
+    connection = p;
+
+    IRESULT result = connection->loadSettings( settings );
+
+    p->adviseEdit();
+
+    return result;
+}
+
+IAPI_DEF CConnectionList::editConnection( int index ,Params &settings ) {
+    if( index < 0 || index >= getCount() ) return IBADARGS;
+
+    auto &p  = m_connections[ index ];
+
+    IRESULT result = p->loadSettings( settings );
+
+    p->adviseEdit();
+
+    return result;
+}
+
+IAPI_DEF CConnectionList::deleteConnection( int index ) {
+    if( index < 0 || index >= getCount() ) return IBADARGS;
+
+    m_connections.delItem( index );
+
+    //-- re-order
+    int n = m_connections.getCount();
+
+    auto &m = m_connections.map();
+
+    for( int i=index; i<n; ++i ) {
+        auto node = m.extract(i+1);
+
+        node.key() = i;
+        node.mapped()->setIndex(i);
+        node.mapped()->adviseEdit();
+
+        m.insert( std::move(node) );
+    }
+
+    //--
+    adviseEdit();
+
+    return IOK;
 }
 
 IAPI_DEF CConnectionList::updateConnections() {

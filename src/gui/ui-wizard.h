@@ -15,124 +15,237 @@ namespace solominer {
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-#define SOLOMINER_WIZARDDIALOG_UUID    0x0c511ca221a26107b
+#define SOLOMINER_WIZARDDIALOG_PUID    0x0c511ca221a26107b
 
 //////////////////////////////////////////////////////////////////////////////
 //! UiWizardDialog
 
-class UiWizardDialog : public GuiCommandPublisher ,public GuiDialog  {
+class UiWizardDialog : public GuiDialog  {
 public:
-    struct StepInfo {
-        String title;
+    struct PageInfo {
+        String title; //? where title
+
+        //LATER steps
     };
 
 protected:
     struct Header : GuiGroup {
-        GuiImageBox m_cancel ,m_info;
+        Header() {
+            addControl( "title" ,title );
+
+            setPropertiesWithString( "controls={ title={ align=center; coords={0,0,100%,25%} font=huge; text=title; textalign=center; } }");
+        }
+
+        GuiLabel title;
     } m_header;
 
-    GuiLabel m_title;
-    GuiTab m_steps;
+    GuiTab m_body;
 
     struct Footer : GuiGroup {
-        GuiButton m_prev ,m_next;
-        GuiLabel m_status;
+        /* Footer() {
+            addControl( "info" ,info );
+
+            setPropertiesWithString( "controls={ info={ align=bottom; coords={0,0,100%,25%} text=info; textalign=center; } }");
+        }
+
+        GuiLabel info; */
+
     } m_footer;
 
 //--
-    ListOf<StepInfo> m_stepInfo;
+    ListOf<PageInfo> m_pages;
 
 public:
-    UiWizardDialog();
+    UiWizardDialog( GuiControlWindow &parent );
 
-    IMPORT_IOBJECT_API(SOLOMINER_WIZARDDIALOG_UUID);
+    DECLARE_OBJECT_STD(GuiDialog,UiWizardDialog,SOLOMINER_WIZARDDIALOG_PUID);
 
 public:
-    void addStep( GuiControl &step ,const StepInfo &info ) {
-        m_steps.addControl( step );
-        m_stepInfo.emplace_back( info );
+    int getPageCount() {
+        return (int) m_body.getControlCount();
     }
 
-    void setStep( int index ) {
-        GuiCommandPublisher::PostCommand( GUI_COMMANDID_CLOSE ,getCurrentStep() );
-
-        m_steps.selectTab( index );
-
-        index = m_steps.getCurrentTabIndex();
-
-        m_title.text() = m_stepInfo[ index ].title;
-
-        GuiCommandPublisher::PostCommand( GUI_COMMANDID_OPEN ,getCurrentStep() );
+    int getCurrentPage() {
+        return m_body.getCurrentTabIndex();
     }
 
-    int getCurrentStep() {
-        return m_steps.getCurrentTabIndex();
+    bool isFirstPage() {
+        return getCurrentPage() == 0;
+    }
+
+    bool isLastPage() {
+        return getCurrentPage() == getPageCount();
+    }
+
+    void addPage( GuiControl &page ,const PageInfo &info ) {
+        m_body.addControl( page );
+        m_pages.emplace_back( info );
+    }
+
+    GuiControl *getPage( int index ) {
+        return m_body.getControl( index );
+    }
+
+    bool selectPage( int index ) {
+        if( index < 0 || index >= getPageCount() ) {
+            // assert(false);
+            return false;
+        }
+
+        int icurrent = getCurrentPage();
+
+        if( !onStepLeave( icurrent ,index ) ) return false;
+
+        m_body.selectTab( index );
+
+        m_header.title.text() = m_pages[ index ].title;
+
+        onStepEnter( index ,icurrent );
+
+        // GuiPublisher::PostNotify( GUI_MESSAGEID_OPEN ,getCurrentPage() );
+
+        Refresh();
+
+        return true;
     }
 
 //--
-    virtual void onPrevious() {
-        int i = m_steps.getCurrentTabIndex();
-
-        if( i > 0 ) {
-
-            setStep( i-1 );
-        }
-
-        root().Refresh();
+    bool PreviousPage() {
+        return selectPage( getCurrentPage()-1 );
     }
 
-    virtual void onNext() {
-        int i = m_steps.getCurrentTabIndex();
-        size_t n = m_steps.getControlCount();
-
-        if( i+1 < n ) setStep( i+1 );
-
-        i = m_steps.getCurrentTabIndex();
-        m_footer.m_next.text() = ( i+1 == n ) ? "Done" : "Next";
-
-        root().Refresh();
+    bool NextPage() {
+        return selectPage( getCurrentPage()+1 );
     }
+
+public: ///-- interface
+    virtual bool onStepLeave( int step ,int toStep ) { return true; }
+    virtual void onStepEnter( int step ,int fromStep ) {}
 
     virtual void onConfirm() { Close(); }
     virtual void onCancel() { Close(); }
 
-public:
-    void onCommand( GuiControl &source ,uint32_t commandId ,long param ,Params *params ,void *extra ) override;
+public: ///-- IGuiEvents
+    void onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) override;
+};
+
+//////////////////////////////////////////////////////////////////////////////
+//! CDataConnectionInfo2
+
+    //! @note all fields flat
+
+struct CDataConnectionInfo2 : CDataConnectionInfo {
+    CDataConnectionInfo2( ConnectionInfo &a_info ) : CDataConnectionInfo(a_info)
+    {}
+
+    IAPI_IMPL readHeader( Params &data ,bool requireValues=false ) IOVERRIDE {
+        //! @note all fields flat
+
+        return readData( data );
+    }
+
+    IAPI_IMPL readData( Params &data ) IOVERRIDE {
+        toString( info.status.nThreads ,data["Threads"] );
+        toString( info.mineCoin.coin ,data["mineCoin"] );
+        toString( info.mineCoin.address ,data["mineAddress"] );
+        toString( info.tradeCoin.coin ,data["tradeCoin"] );
+        toString( info.tradeCoin.address ,data["tradeAddress"] );
+        toString( info.trading.percent ,data["tradePercent"] );
+        toString( info.trading.withdraw ,data["tradeWithdraw:bool"] );
+        toString( info.market ,data["Market"] );
+        toString( info.pool ,data["Pool"] );
+        toString( info.connection ,data["Host"] );
+        toString( info.credential.user ,data["User"] );
+        toString( info.credential.password ,data["Password"] );
+        toString( info.options ,data["Options"] );
+        toString( info.args ,data["Args"] );
+
+        return IOK;
+    }
+
+    IAPI_IMPL onDataEdit( Params &data ) IOVERRIDE {
+        fromParamsWithSchema( info ,data );
+
+        //! sub schema
+        fromMember( info.status.nThreads ,data ,"Threads" );
+        fromMember( info.mineCoin.coin ,data ,"mineCoin" );
+        fromMember( info.mineCoin.address ,data ,"mineAddress" );
+        fromMember( info.tradeCoin.coin ,data ,"tradeCoin" );
+        fromMember( info.tradeCoin.address ,data ,"tradeAddress" );
+        fromMember( info.trading.percent ,data ,"tradePercent" );
+        fromMember( info.trading.withdraw ,data ,"tradeWithdraw" );
+        fromMember( info.credential.user ,data ,"User" );
+        fromMember( info.credential.password ,data ,"Password" );
+
+        return IOK;
+    }
 };
 
 //////////////////////////////////////////////////////////////////////////////
 //! UiConnectionWizard
 
-class UiConnectionWizard : public UiWizardDialog {
-protected:
-    int m_index = 0; //! Connection index in ConnectionList (0 = new)
-    ConnectionInfo m_info;
+extern CConnectionList &getConnectionList();
+
+class UiConnectionWizard : public CDataConnectionInfo2 ,public UiWizardDialog {
 
 public:
-    UiConnectionWizard();
+    UiConnectionWizard( GuiControlWindow &parent );
+
+    DECLARE_OBJECT(UiConnectionWizard,SOLOMINER_WIZARDDIALOG_PUID) { \
+        return (!ppv || *ppv) ? IBADARGS : CDataConnectionInfo2::getInterface( id ,ppv ) == IOK ? IOK : UiWizardDialog::getInterface( id ,ppv );
+    }
 
     ConnectionInfo &info() { return m_info; }
 
-    void setConnectionAdd() {
-        m_index = 0; Zero(m_info);
-        setStep(0);
+    void showAddConnection( GuiControlWindow &parent ) {
+        m_index = -1; Zero(m_info);
+        selectPage(0);
+
+        parent.ShowModal( *this );
     }
 
-    void setConnectionEdit( int index ,const ConnectionInfo &info ) {
+    void showEditConnection( GuiControlWindow &parent ,int index ,const ConnectionInfo &info ) {
         m_index = index; m_info = info;
-        setStep(0);
+        selectPage(0);
+
+        parent.ShowModal( *this );
     }
 
-public: //-- UiWizardDialog
-    void onConfirm() override {
-        UiWizardDialog::onConfirm();
+    //--
+    void confirmAddConnection() {
+        Params settings;
+
+        toManifest( m_info ,settings );
+
+        root().onCommand( this ,GUI_MESSAGEID_OK ,-1 ,&settings ,(void*) "connection" );
     }
 
-    void onCancel() override {
-        UiWizardDialog::onCancel();
+    void confirmEditConnection() {
+        Params settings;
+
+        toManifest( m_info ,settings );
+
+        root().onCommand( this ,GUI_MESSAGEID_OK ,m_index ,&settings ,(void*) "connection" );
     }
 
-    // void onCommand( GuiControl &source ,uint32_t commandId ,long param ,Params *params ,void *extra ) override;
+    //--
+    void updateData() {
+        Params data;
+
+        readData( data );
+
+        CDataConnectionInfo::adviseDataChanged( data );
+    }
+
+public: ///-- UiWizardDialog
+    void onStepEnter( int step ,int fromStep ) override;
+
+    void onConfirm() override;
+    void onCancel() override;
+
+protected:
+    int m_index = 0; //! Connection index in ConnectionList (-1 = new)
+    ConnectionInfo m_info;
 };
 
 //////////////////////////////////////////////////////////////////////////////

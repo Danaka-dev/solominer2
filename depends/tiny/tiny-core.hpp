@@ -98,7 +98,7 @@ template <> inline std::istream &operator >>( std::istream &in ,Bits<Point&> pt 
 //! Rect
 
 inline int getWidth( const OsRect &r ) { return r.right - r.left; }
-inline int GetHeight( const OsRect &r ) { return r.bottom - r.top; }
+inline int getHeight( const OsRect &r ) { return r.bottom - r.top; }
 
 inline bool TestHit( const OsPoint &p ,const OsRect &r  ) {
     return p.x > r.left && p.x < r.right && p.y > r.top && p.y < r.bottom;
@@ -223,7 +223,7 @@ template <> inline String &toString( const Rect &p ,String &s ) {
 //////////////////////////////////////////////////////////////////////////////
 //! ColorRef
 
-#define TINY_COLORREF_UUID    0x096ad33bd7c33c280
+#define TINY_COLORREF_PUID    0x096ad33bd7c33c280
 
 struct ColorRef {
     ColorRef() : color(0) {}
@@ -238,15 +238,14 @@ struct ColorRef {
     OsColorRef color;
 };
 
-DECLARE_TCLASS(ColorRef,TINY_COLORREF_UUID);
+DECLARE_STRUCT(ColorRef,TINY_COLORREF_PUID);
 
 bool findColorValueByName( const char *name ,ColorRef &color );
 bool matchColorByName( const String &s ,ColorRef &color ,size_t *size );
 bool findColorNameByValue( ColorRef color ,String &name );
 
 //--
-template <> ColorRef &fromString( ColorRef &p ,const String &s ,size_t &size );
-template <> String &toString( const ColorRef &p ,String &s );
+DEFINE_STRING_API(ColorRef);
 
 //--
 inline OsColorRef &colorFromString( OsColorRef &p ,const String &s ,size_t &size ) {
@@ -272,6 +271,13 @@ inline String &colorToString( const OsColorRef &p ,String &s ) {
     //TODO proper timeMs / TimeSec  (NB keep TimeDate and such in tiny-types ?)
 
 inline time_t Now() { return time(NullPtr); }
+
+//////////////////////////////////////////////////////////////////////////////
+//! Native
+
+#define TINY_BOOL_PUID    0x085ec8bf8fb9dc0a3
+
+DECLARE_STRUCT(bool,TINY_BOOL_PUID);
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////

@@ -21,7 +21,7 @@
 namespace solominer {
 
 //////////////////////////////////////////////////////////////////////////////
-#define ICOIN_UUID           0x0fff3638dd108ff74
+#define ICOIN_PUID           0x0fff3638dd108ff74
 
 ///--
 class ICoin;
@@ -57,7 +57,7 @@ struct CoinInfo {
 
 class ICoin : IOBJECT_PARENT {
 public:
-    static UUID getClassId() { return ICOIN_UUID; };
+    static PUID getClassId() { return ICOIN_PUID; };
 
 public:
 

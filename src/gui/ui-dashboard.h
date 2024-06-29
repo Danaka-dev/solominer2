@@ -18,7 +18,7 @@
 namespace solominer {
 
 //////////////////////////////////////////////////////////////////////////////
-#define SOLOMINER_DASHBOARDWINDOW_UUID    0x0f794fe5b2cdc458a
+#define SOLOMINER_DASHBOARDWINDOW_PUID    0x0f794fe5b2cdc458a
 
 //////////////////////////////////////////////////////////////////////////////
 class UiHeader;
@@ -44,6 +44,8 @@ class UiHeader : public GuiGroup {
 protected:
     CDashboardWindow &m_parent;
 
+    GuiLink *m_totalEarnings; //! total income earnings from connection list
+
 public:
     UiHeader( CDashboardWindow &parent );
 
@@ -51,7 +53,7 @@ public:
 };
 
 //////////////////////////////////////////////////////////////////////////////
-class UiFooter : public IGuiCommandEvent ,public GuiGroup {
+class UiFooter : public GuiGroup {
 protected:
     CDashboardWindow &m_parent;
 
@@ -63,36 +65,26 @@ public:
     void onClickTradeLink();
 
 public:
-    void onCommand( GuiControl &source ,uint32_t commandId ,long param ,Params *params ,void *extra ) override;
+    void onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) override;
 };
 
 //////////////////////////////////////////////////////////////////////////////
 //TODO UiConnection here
 
 //////////////////////////////////////////////////////////////////////////////
-class CConnectionAdder : public GuiGroup  {
-protected:
-    UiConnectionList &m_parent;
-
-    GuiImageBox m_addButton;
-
-public:
-    CConnectionAdder( UiConnectionList &parent );
-
-    GuiCommandPublisher &command() { return m_addButton; }
-};
-
-//////////////////////////////////////////////////////////////////////////////
-class UiConnectionList : public IGuiCommandEvent ,public GuiGroup {
+class UiConnectionList : public GuiGroup {
 protected:
     CDashboardWindow &m_parent;
     CConnectionList &m_connections;
 
-    CConnectionAdder m_addConnection;
     UiConnectionWizard m_connectionWizard;
+
+    int m_editIndex; //! index being edited/deleted
 
 public:
     UiConnectionList( CDashboardWindow &parent ,CConnectionList &connections );
+
+    void makeConnectionAdder();
 
 //-- command
     void onAddConnection(); //! wants to add a connection => wizard dialog
@@ -101,17 +93,20 @@ public:
     void onDeleteConnection( int index );
 
 //-- callback
-    void onCreateConnection(); //! new connection was setup (from wizard)
-    void onUpdateConnection(); //! a connection was updated (from wizard)
+    void onAddConnectionOk( Params &settings ); //! new connection was setup (from wizard)
+    void onEditConnectionOk( int index ,Params &settings ); //! a connection was updated (from wizard)
+    void onDeleteConnectionOk( int index ); //! connection delete confirmed
 
 public:
-    void onCommand( GuiControl &source ,uint32_t commandId ,long param ,Params *params ,void *extra ) override;
+    void onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) override;
 };
 
 //////////////////////////////////////////////////////////////////////////////
-class UiCoreSettings : public IDataEvent ,public CDataSource ,public GuiDialog {
+class UiCoreSettings : public IDataEvents ,public CDataSource ,public GuiDialog {
 public:
     UiCoreSettings();
+
+    DECLARE_OBJECT_STD(GuiDialog,UiCoreSettings,99);
 
     void setCoreByTicker( const char *ticker ,CConnection &connection );
 
@@ -130,7 +125,7 @@ public:
     void onCancel();
     void onClose();
 
-    void onCommand( GuiControl &source ,uint32_t commandId ,long param ,Params *params ,void *extra ) override;
+    void onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) override;
 
 public: //-- data event
     IAPI_IMPL onDataCommit( IDataSource &source ,Params &data ) IOVERRIDE;
@@ -155,16 +150,16 @@ public:
     UiMainSettings();
 
 public:
-    void onCommand( GuiControl &source ,uint32_t commandId ,long param ,Params *params ,void *extra ) override;
+    void onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) override;
 };
 
 //////////////////////////////////////////////////////////////////////////////
-class CDashboardWindow : public IGuiCommandEvent  ,public GuiControlWindow {
+class CDashboardWindow : public GuiControlWindow {
 
 public:
     explicit CDashboardWindow( CConnectionList &connections );
 
-    DECLARE_OBJECT_STD(GuiControlWindow,CDashboardWindow,SOLOMINER_DASHBOARDWINDOW_UUID);
+    DECLARE_OBJECT_STD(GuiControlWindow,CDashboardWindow,SOLOMINER_DASHBOARDWINDOW_PUID);
 
     void showMainSettings() {
         this->ShowModal( m_mainSettings );
@@ -180,15 +175,19 @@ public:
         this->ShowModal( m_coreSettings );
     }
 
+    void showConfirmDelete( int index ) {
+        this->ShowMessageBox( m_confirmDelete );
+    }
+
     CConnectionList &connections() { return m_connections; }
 
     UiHeader &header() { return m_uiHeader; }
     UiFooter &footer() { return m_uiFooter; }
+    UiConnectionList &connectionList() { return m_uiConnectionList; }
 
 protected:
-    // API_IMPL(void) onDraw( const OsRect &uptadeArea ) IOVERRIDE;
-
-    void onCommand( GuiControl &source ,uint32_t commandId ,long param ,Params *params ,void *extra ) override;
+    void onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) override;
+    void onNotify( IObject *source ,messageid_t notifyId ,long param ,Params *params ,void *extra ) override;
 
 protected:
     CConnectionList &m_connections;
@@ -201,6 +200,9 @@ protected:
     UiMainSettings m_mainSettings;
     UiEarningsDialog m_uiEarningsDialog;
     UiCoreSettings m_coreSettings;
+
+///--
+    GuiMessageBox m_confirmDelete;
 };
 
 //////////////////////////////////////////////////////////////////////////////

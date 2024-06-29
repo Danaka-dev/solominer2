@@ -157,18 +157,24 @@ void mapX11KeyState( struct OsKeyState *keyState ,unsigned int xstate ) {
 OsKeyCode mapX11KeyCode( unsigned int x11code ) {
     switch( x11code ) {
         case 22: return OS_KEYCODE_BACKSPACE; //? XK_BackSpace
+        case 104: return OS_KEYCODE_RETURN;
         case 110: return OS_KEYCODE_HOME;
+        case 111: return OS_KEYCODE_UP;
         case 113: return OS_KEYCODE_LEFT; // XK_Left
         case 114: return OS_KEYCODE_RIGHT; // XK_Linefeed
         case 115: return OS_KEYCODE_END;
+        case 116: return OS_KEYCODE_DOWN;
         case 119: return OS_KEYCODE_DELETE;
 
     //-- reflect
         case OS_KEYCODE_BACKSPACE: return 22;
+        case OS_KEYCODE_RETURN: return 104;
         case OS_KEYCODE_HOME: return 110;
+        case OS_KEYCODE_UP: return 111;
         case OS_KEYCODE_LEFT: return 113;
         case OS_KEYCODE_RIGHT: return 114;
         case OS_KEYCODE_END: return 115;
+        case OS_KEYCODE_DOWN: return 116;
         case OS_KEYCODE_DELETE: return 119;
 
         default:
@@ -180,6 +186,8 @@ OsError _linux_guiwindowproc( struct GuiWindowHandle *p ,XEvent *event ) {
 	struct OsEventMessage eventMessage;
     struct GuiContextHandle context;
     struct OsPoint points[OS_MAX_MOUSEPOS];
+
+    int width ,height;
 
     char keybuf[32];
     KeySym keysym;
@@ -203,6 +211,9 @@ OsError _linux_guiwindowproc( struct GuiWindowHandle *p ,XEvent *event ) {
 
     switch( event->type )
     {
+    case SelectionNotify:
+        break;
+
     case CreateNotify:
 		eventMessage.eventType = osExecuteEvent;
 		eventMessage.executeMessage.executeAction = osExecuteStart;
@@ -223,21 +234,24 @@ OsError _linux_guiwindowproc( struct GuiWindowHandle *p ,XEvent *event ) {
 
     // case NoExpose:
     case Expose:
-        if( event->xexpose.x == 0 && event->xexpose.y == 0 ) {
+        width = event->xexpose.width ? event->xexpose.width : p->_width;
+        height = event->xexpose.height ? event->xexpose.height : p->_height;
+
+        /* if( event->xexpose.x == 0 && event->xexpose.y == 0 ) {
             if( p->_width != event->xexpose.width || p->_height != event->xexpose.height ) {
                 p->_width = event->xexpose.width;
                 p->_height = event->xexpose.height;
                 ++ p->_resized;
             }
-        }
+        } */
 
         context._xdrawable = p->_xpixmap;
         context._xgc = p->_xgc;
         
 		context._region.left = event->xexpose.x;
 		context._region.top = event->xexpose.y;
-		context._region.right = event->xexpose.x + event->xexpose.width;
-		context._region.bottom = event->xexpose.y + event->xexpose.height;
+		context._region.right = event->xexpose.x + width; // event->xexpose.width;
+		context._region.bottom = event->xexpose.y + height; // event->xexpose.height;
 
         context._offsetx = context._offsety = 0;
         context._scalex = context._scaley = 1.0;
@@ -400,6 +414,7 @@ OsError _X11WindowCreate( OsHandle *handle ,const char_t *name ,const struct OsG
             | ButtonPress | ButtonReleaseMask | ButtonMotionMask
             | KeyPressMask | KeyReleaseMask // | KeymapStateMask
             | PointerMotionMask // | ColormapChangeMask
+            // | OwnerGrabButtonMask // mask avoid automatic grab
     ;
 
     if( properties != NULL )     {
@@ -553,9 +568,67 @@ void _X11WindowShow( OsHandle handle ,int visible ) {
 //	ShowWindow( p->_handle ,(visible != 0) ? SW_HIDE : SW_SHOW ); //? SW_RESTORE
 }
 
-///-- input
+///-- cursor
+#include <X11/Xcursor/Xcursor.h>
+
+//! @note see https://tronche.com/gui/x/xlib/appendix/b/
+
+unsigned int _x11_mapCursorId( int cursorId ) {
+    switch( cursorId ) {
+        case OS_CURSOR_NOCURSOR:
+            return 0;
+
+        default:
+        case OS_CURSOR_ARROW:
+            return 2;
+        case OS_CURSOR_WAIT:
+            return 150;
+        case OS_CURSOR_CROSS:
+            return 0;
+        case OS_CURSOR_BEAM:
+            return 86;
+        case OS_CURSOR_CANNOT:
+            return 0;
+        case OS_CURSOR_UPARROW:
+            return 6;
+        case OS_CURSOR_SIZEALL:
+            return 52;
+        case OS_CURSOR_SIZETOPLEFT:
+            return 134;
+        case OS_CURSOR_SIZETOPRIGHT:
+            return 136;
+        case OS_CURSOR_SIZEWIDTH:
+            return 108;
+        case OS_CURSOR_SIZEHEIGHT:
+            return 116;
+    }
+}
+
+static Cursor x11_cursors[10] = {
+    0 ,0 ,0 ,0 ,0
+    ,0 ,0 ,0 ,0 ,0
+};
+
 void _X11MouseSetCursor( OsHandle handle ,int cursorId ) {
-	assert(0);
+    struct GuiWindowHandle *p = CastGuiWindowHandle( handle );
+
+    Display *xdisplay = _linux_peekdisplay();
+
+    if( p == NULL || xdisplay == NULL ) return;
+
+    if( cursorId == 0 ) {
+        XUndefineCursor( xdisplay ,p->_xwindow );
+        return;
+    }
+
+    cursorId = MIN( cursorId ,9 );
+    if( x11_cursors[cursorId] == 0 ) {
+        x11_cursors[cursorId] = XCreateFontCursor( xdisplay ,_x11_mapCursorId(cursorId) );
+    }
+
+    XDefineCursor( xdisplay ,p->_xwindow ,x11_cursors[cursorId] );
+
+    XFlush(xdisplay);
 }
 
 void _X11MouseCapture( OsHandle handle ) {
@@ -697,6 +770,11 @@ void _X11RegionSetArea( OsGuiContext context ,int left ,int top ,int right ,int 
     osContext->_region.top = top;
     osContext->_region.right = right;
     osContext->_region.bottom = bottom;
+
+    if( useOffset ) {
+        osContext->_offsetx = left;
+        osContext->_offsety = top;
+    }
 }
 
 void _X11RegionGetArea( OsGuiContext context ,struct OsRect *area )
@@ -1463,54 +1541,47 @@ void LoadPng( FILE *file ,unsigned char **data ,char **clipData ,unsigned int *w
 
     // This gets freed by XDestroyImage
 
-    *data = (unsigned char*) malloc (sizeof (png_byte) * size);
+    *data = (unsigned char*) malloc( sizeof (png_byte) * size );
 
-    rowPointers = (unsigned char**) malloc (*height * sizeof (unsigned char*));
+    rowPointers = (unsigned char**) malloc( *height * sizeof(unsigned char*) );
 
     png_bytep cursor = *data;
 
     int i=0,x=0,y=0;
 
-    for (i=0; i<*height; ++i, cursor += *rowbytes)
-
+    for( i=0; i<*height; ++i, cursor += *rowbytes ) {
         rowPointers[i] = cursor;
+    }
 
-    png_read_image (png, rowPointers);
+    png_read_image( png ,rowPointers );
 
-    *clipData = (char*) calloc (clipSize, sizeof(unsigned char));
+    *clipData = (char*) calloc ( clipSize ,sizeof(unsigned char) );
 
-    if (colortype == PNG_COLOR_TYPE_RGB) {
-
-        memset (*clipData, 0xff, clipSize);
-
+    if( colortype == PNG_COLOR_TYPE_RGB ) {
+        memset( *clipData ,0xff ,clipSize );
     } else {
-
         // Set up bitmask for clipping fully transparent areas
 
-        for (y=0; y<*height; ++y, cursor+=*rowbytes) {
-
-            for (x=0; x<*rowbytes; x+=4) {
+        for( y=0; y<*height; ++y, cursor+=*rowbytes ) {
+            for( x=0; x<*rowbytes; x+=4 ) {
 
                 // Set bit in mask when alpha channel is nonzero
 
-                if(rowPointers[y][x+3])
-
+                if( rowPointers[y][x+3] )
                     (*clipData)[(y*clipRowbytes) + (x/32)] |= (1 << ((x/4)%8));
-
             }
-
         }
-
     }
 
     if( png ) {
-        png_infop *realInfo = (info? &info: NULL);
-
-        png_destroy_read_struct (&png, realInfo, NULL);
+        png_infop *realInfo = (info ? &info : NULL);
+        png_destroy_read_struct( &png ,realInfo ,NULL );
     }
+
     // TeardownPng (png, info);
 
-    free (rowPointers);
+    // free( clipData );
+    free( rowPointers );
 }
 
 /* OsError _linux_loadimage( OsHandle *handle ,HINSTANCE hinstance ,const char_t *name ,UINT fLoad )
@@ -1673,6 +1744,82 @@ TINYFUN OsError _X11ResourceLoadFromApp( OsHandle *handle ,int resourceTypeHint 
 	return ENOSYS;
 }
 
+//-- clipboard
+static const int XA_STRING = 31;
+static Atom UTF8;
+
+char *X11PasteType( struct GuiWindowHandle *handle ,Atom atom ) {
+    XEvent event;
+    int format ,lapse = 10;
+    unsigned long N, size;
+    char * data, * s = 0;
+    Bool result;
+
+    Display *xdisplay = _linux_getdisplay();
+
+    Atom target;
+
+    Atom CLIPBOARD = XInternAtom( xdisplay, "CLIPBOARD", 0), XSEL_DATA = XInternAtom(xdisplay, "XSEL_DATA", 0);
+    XConvertSelection(xdisplay, CLIPBOARD, atom, XSEL_DATA, handle->_xwindow, CurrentTime);
+    XSync( xdisplay ,0 );
+
+    result = XCheckTypedEvent( xdisplay ,SelectionNotify ,&event );
+
+    while( result == False && lapse > 0 ) {
+        OsSleep(1); --lapse;
+        result = XCheckTypedEvent( xdisplay ,SelectionNotify ,&event );
+    }
+
+    if( result == False ) return NULL;
+
+    switch( event.type ) {
+        case SelectionNotify:
+            if(event.xselection.selection != CLIPBOARD) break;
+            if(event.xselection.property)
+            {
+                XGetWindowProperty(event.xselection.display, event.xselection.requestor, event.xselection.property, 0L,(~0L), 0, AnyPropertyType, &target, &format, &size, &N,(unsigned char**)&data);
+                if(target == UTF8 || target == XA_STRING)
+                {
+                    s = strndup(data, size);
+                    XFree(data);
+                }
+                XDeleteProperty(event.xselection.display, event.xselection.requestor, event.xselection.property);
+            }
+    }
+
+    return s;
+}
+
+TINYFUN OsError _X11ClipboardGetData( OsHandle handle ,char dataType[32] ,void **data ,int *length ) {
+    struct GuiWindowHandle *p = CastGuiWindowHandle( handle );
+
+    char *cstr = NULL;
+
+    if( p == NULL ) return EINVAL;
+
+    Display *xdisplay = _linux_getdisplay();
+
+    UTF8 = XInternAtom( xdisplay ,"UTF8_STRING" ,True );
+
+    *data = NULL;
+
+    if( UTF8 != None ) {
+        cstr = X11PasteType( p ,UTF8 );
+    }
+
+    if( cstr == NULL ) {
+        cstr = X11PasteType( p ,XA_STRING );
+    }
+
+    *data = cstr;
+
+    return cstr ? ENOERROR : ENODATA;
+}
+
+TINYFUN OsError _X11ClipboardSetData( OsHandle handle ,char dataType[32] ,void *data ,int length ) {
+    return ENOEXEC;
+}
+
 //////////////////////////////////////////////////////////////////////////
 struct X11AnyHandle 
 {
@@ -1767,6 +1914,8 @@ struct OsGuiSystemTable _systemX11 =
 	,_X11ResourceLoadFromMemory
 	,_X11ResourceLoadFromFile
 	,_X11ResourceLoadFromApp
+    ,_X11ClipboardGetData
+    ,_X11ClipboardSetData
 	,_X11HandleGetType
 	,_X11HandleDestroy
 };
