@@ -27,8 +27,9 @@ TINY_NAMESPACE {
 //////////////////////////////////////////////////////////////////////////////
 //! Definitions
 
-#define TINY_GUIGRID_PUID   0x031ecaf6659b9050a
-#define TINY_GUIBAR_PUID    0x07de60d82627b3359
+#define TINY_GUIGRID_PUID       0x031ecaf6659b9050a
+#define TINY_GUINAVBAR_PUID     0x07de60d82627b3359
+#define TINY_GUINAVGRID_PUID    0x0fec5716871a51908
 
 //////////////////////////////////////////////////////////////////////////////
 //! GuiGrid
@@ -87,6 +88,10 @@ public:
     Row &row( int i ) { return m_rows[(size_t) i]; }
 
     size_t baseIndex() { return m_baseIndex; }
+
+    IDataSource *getDataSource() {
+        return m_datasource.ptr();
+    }
 
 public:
     Config &config() { return m_config; }
@@ -194,9 +199,38 @@ class GuiNavBar : public GuiGroup {
 public:
     GuiNavBar();
 
-    void Bind( IGuiMessage &listener );
+    DECLARE_GUICONTROL(GuiGroup,GuiNavBar,TINY_GUINAVBAR_PUID);
 
-    DECLARE_GUICONTROL(GuiGroup,GuiNavBar,TINY_GUIBAR_PUID);
+    void Bind( IGuiMessage &listener );
+};
+
+//////////////////////////////////////////////////////////////////////////////
+//! GuiNavGrid
+
+class GuiNavGrid : public GuiGroup {
+public:
+    GuiNavGrid();
+
+    DECLARE_GUICONTROL(GuiGroup,GuiNavGrid,TINY_GUINAVGRID_PUID);
+
+    GuiGrid *Grid() { return m_grid.ptr(); }
+    GuiNavBar *Nav() { return m_nav.ptr(); }
+
+public:
+    void updateInfo();
+    void updatePage( int pageId );
+
+protected:
+    API_IMPL(void) onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) IOVERRIDE;
+
+protected:
+    RefOf<GuiGrid> m_grid;
+    RefOf<GuiNavBar> m_nav;
+
+    int m_pageId; //! active page in grid
+    int m_dataCount; //! count of data
+    int m_rowCount; //! grid row count
+    int m_pageCount; //! page count from datasource
 };
 
 //////////////////////////////////////////////////////////////////////////////

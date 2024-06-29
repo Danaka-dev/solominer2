@@ -39,14 +39,14 @@ public:
     void updateEarnings( int pageId );
 
 protected:
-    void onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) override;
+    // void onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) override;
 
 protected:
     CEarningBook &m_book;
     CEarning2DataSource m_datasource;
 
-    RefOf<GuiGrid> m_earnings;
-    RefOf<GuiGroup> m_navbar;
+    RefOf<GuiNavGrid> m_earnings;
+    // RefOf<GuiGroup> m_navbar;
     // GuiGrid m_body;
 
     int m_pageId; //! active page in grid

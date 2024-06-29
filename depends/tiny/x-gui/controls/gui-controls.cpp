@@ -1356,9 +1356,9 @@ void GuiGrid::Clear( bool withRefresh ) {
 
 //-- Data
 void GuiGrid::Bind( IDataSource *datasource ) {
-    Clear(false);
-
-    if( m_datasource ) m_datasource->Revoke( *this );
+    if( m_datasource ) {
+        m_datasource->Revoke( *this );
+    }
 
     m_datasource = datasource;
 
@@ -1687,6 +1687,8 @@ void GuiGrid::drawRowLine( int i ,const Rect &r ,bool forceDraw ) {
 //////////////////////////////////////////////////////////////////////////
 //! GuiNavBar
 
+REGISTER_CLASS(GuiNavBar);
+
 static const char *guiNavBar = {
     "controls = {"
         "first:GuiLink = { commandId=24; align=left,horizontal; font=large; text=|<; coords={0,0,6%,100%} }"
@@ -1708,7 +1710,77 @@ void GuiNavBar::Bind( IGuiMessage &listener ) {
     getControlAs_<GuiLink>("last")->Subscribe(listener);
 }
 
-REGISTER_CLASS(GuiNavBar);
+//////////////////////////////////////////////////////////////////////////
+//! GuiNavGrid
+
+REGISTER_CLASS(GuiNavGrid);
+
+static const char *guiNavGrid = {
+    "controls = {"
+        "grid:GuiGrid = { align=top; anchor=vertical; coords={0,0,100%,90%} }"
+        "nav:GuiNavBar = { align=bottom; anchor=vertical; coords={0,0,100%,10%} }"
+    "}"
+};
+
+GuiNavGrid::GuiNavGrid() : m_pageId(0) ,m_pageCount(0) {
+    setPropertiesWithString(guiNavGrid);
+
+    m_grid = getControlAs_<GuiGrid>("grid");
+    m_nav = getControlAs_<GuiGroup>("nav");
+
+    if( !m_nav.isNull() )
+        m_nav->Bind( *this );
+}
+
+//--
+void GuiNavGrid::updateInfo() {
+    if( m_grid.isNull() || !m_grid->getDataSource() ) return;
+
+    m_dataCount = getInfoField_<int>( m_grid->getDataSource() ,"count" );
+    m_rowCount = (int) m_grid->rowCount();
+
+//-- info
+    if( m_rowCount > 0 )
+        m_pageCount = (int) ( m_dataCount / m_rowCount ) + 1;
+    else
+        m_pageCount = 0;
+}
+
+void GuiNavGrid::updatePage( int pageId ) {
+    updateInfo();
+
+    m_pageId = pageId;
+
+//-- grid
+    m_grid->setRows( m_rowCount ,pageId * m_rowCount );
+    m_grid->UpdateData();
+
+//-- nav
+    String label = "Page ";
+
+    Format( label ,"Page %d/%d" ,128 ,m_pageId+1 ,m_pageCount );
+    m_nav->getControlAs_<GuiLabel>("label")->text() = label;
+}
+
+void GuiNavGrid::onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) {
+    updateInfo();
+
+    switch( commandId ) {
+        case GUI_MESSAGEID_PREV:
+            updatePage( MAX( m_pageId-1 ,0 ) ); break;
+        case GUI_MESSAGEID_NEXT:
+            updatePage( MIN( m_pageId+1 ,m_pageCount-1 ) ); break;
+        case GUI_MESSAGEID_FIRST:
+            updatePage( m_pageId = 0 ); break;
+        case GUI_MESSAGEID_LAST:
+            updatePage( m_pageId = m_pageCount-1 ); break;
+        default:
+            GuiGroup::onCommand( source ,commandId ,param ,params ,extra );
+            return;
+    }
+
+    Refresh();
+}
 
 //////////////////////////////////////////////////////////////////////////
 //! GuiSheet

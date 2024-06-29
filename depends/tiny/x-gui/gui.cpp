@@ -739,8 +739,8 @@ void GuiSet::setProperties( const Params &properties ) {
         GuiControl *control = getControl( tocstr(itemDecl.name) );
 
         if( !control ) {
-            control = ICreateGuiControl( itemDecl.type.c_str() );
-            addControl( itemDecl.name.c_str() ,*control );
+            control = ICreateGuiControl( tocstr(itemDecl.type) );
+            addControl( tocstr(itemDecl.name) ,*control );
         } else if( !itemDecl.type.empty() ){
             String className;
             control->getMyClassName(className);

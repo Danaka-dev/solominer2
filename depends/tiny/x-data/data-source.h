@@ -28,7 +28,22 @@
 TINY_NAMESPACE {
 
 //////////////////////////////////////////////////////////////////////////////
-//! Data Interface (later in interface)
+//! Data Interface helpers
+
+template <typename T>
+T getInfoField_( IDataSource *source ,const char *field ) {
+    assert(source && field && *field);
+
+    Params params = {{field,""}};
+
+    source->getInfo(params);
+
+    T info;
+
+    fromString( info ,params[field] );
+
+    return info;
+}
 
 //////////////////////////////////////////////////////////////////////////////
 //! CDataSource
@@ -41,9 +56,10 @@ public:
 //-- source
     IAPI_IMPL Connect( const char *source ,const Params &params ) IOVERRIDE { return INOEXEC; }
     IAPI_IMPL Bind( const char *table ) IOVERRIDE { return INOEXEC; }
-    IAPI_IMPL Seek( const char *id ) IOVERRIDE { return INOEXEC; }
+    IAPI_IMPL getInfo( Params &params ) IOVERRIDE { return INOEXEC; }
 
-//-- control
+//-- data
+    IAPI_IMPL Seek( const char *id ) IOVERRIDE { return INOEXEC; }
     IAPI_IMPL Commit() IOVERRIDE { return INOEXEC; }
     IAPI_IMPL Discard() IOVERRIDE { return INOEXEC; }
 
@@ -111,6 +127,7 @@ public: ///-- IDataSource
         return IOK;
     }
 
+//--
     IAPI_IMPL Seek( const char *id ) IOVERRIDE {
         if( id && *id ) {} else return IBADARGS;
 

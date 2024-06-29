@@ -69,11 +69,13 @@ struct IDataSource : CPublisher_<IDataEvents> ,IOBJECT_PARENT {
 
     IAPI_DECL Bind( const char *table ) = 0;
 
+    IAPI_DECL getInfo( Params &params ) = 0;
+
+//-- data
     //! absolute or relative seek to data record
     //! id content interpretation is implementation specific
     IAPI_DECL Seek( const char *id ) = 0;
 
-//-- control
     //! commit pending edits to storage
     IAPI_DECL Commit() = 0;
 

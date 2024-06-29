@@ -406,6 +406,14 @@ public:
     CBookDataSource_( CBookFile_<TEntry> &source  ) : CDataSource_<CBookFile_<TEntry> ,TEntry2>( source )
     {}
 
+public:
+    IAPI_IMPL getInfo( Params &params ) IOVERRIDE {
+        if( hasMember( params ,"count" ) )
+            toString( this->m_source->getEntryCount() ,params["count"] );
+
+        return IOK;
+    }
+
 public: ///-- CDataSource_
     API_IMPL(bool) hasData() IOVERRIDE {
         return this->m_source->isOpen();
