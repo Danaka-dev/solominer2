@@ -182,7 +182,7 @@ IAPI_DEF CServiceStore::getInterface( PUID id ,void **ppv ) {
 
 ///-- IServiceStore
 IAPI_DEF CServiceStore::loadConfig( Config &config ) {
-    const auto &section = config.getSection( "cores" );
+    const auto &section = config.getSection( "cores" ); //TODO section depends on service store
 
     IServiceSetupRef setup;
 

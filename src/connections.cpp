@@ -442,6 +442,17 @@ String &Earning::getMember( int m ,String &s ) const {
     }
 }
 
+template <>
+Earning &Zero( Earning &p ) {
+    p.timestamp = 0;
+    p.type = Earning::earningIncome;
+    Zero( p.transaction );
+    p.tradeAmount = 0;
+    p.tradePlacedAt = 0;
+
+    return p;
+}
+
 ///-- Earning2
 template <>
 const Schema Schema_<Earning2>::schema = fromString( Schema::getStatic() ,String(

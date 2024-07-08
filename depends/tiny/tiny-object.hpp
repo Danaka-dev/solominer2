@@ -375,7 +375,7 @@ typedef RefOf<IObject> IObjectRef;
 template <class T>
 bool honorInterface_( T *object ,PUID id ,void **ppv ) {
     if( T::classId() == id ) {
-        *ppv = object; SAFECALL(object)->AddRef(); return true;
+        *ppv = (T*) object; SAFECALL(object)->AddRef(); return true;
     }
 
     return false;

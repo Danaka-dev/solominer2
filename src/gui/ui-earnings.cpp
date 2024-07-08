@@ -3,9 +3,7 @@
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
 //////////////////////////////////////////////////////////////////////////////
-#include <common/stats.h>
-
-#include <tiny/x-gui/controls/gui-grid.h>
+// #include <common/stats.h>
 
 #include "ui.h"
 #include "ui-earnings.h"
@@ -34,33 +32,60 @@ static const char *uiEarnings = {
                         "rows=9"
                     "} }"
                 "}"
-                "trades:GuiGroup = { controls={ label:GuiLabel={ text=TRADES; textalign=center; } } }"
-                "orders:GuiGroup = { controls={ label:GuiLabel={ text=ORDERS; textalign=center; } } }"
+                "trades:GuiNavGrid = { controls={ "
+                    "grid:GuiGrid = {"
+                        "cols={24%,10%,10%,6%,10%,10%,10%,10%,10%}"
+                        "titles={Trade Id,Amount,Price,To,Status,RecordedAt,PlacedAt,ExecutedAt,CompletedAt}"
+                        "fields={id,amount,price,toValue,status,timeRecorded,timePlaced,timeExecuted,timeCompleted}"
+                        "rows=9"
+                    "} }"
+                "}"
+                "orders:GuiNavGrid = { controls={ "
+                    "grid:GuiGrid = {"
+                        "cols={16%,8%,20%,20%,20%,8%,8%}"
+                        "titles={Order Id,Type,Deposit,Order,Withdraw,Stage,Placed At}"
+                        "fields={id,type,deposit,order,withdraw,stage,timePlaced}"
+                        "rows=9"
+                    "} }"
+                "}"
             "}"
         "}"
     "}"
 };
 
 UiEarningsDialog::UiEarningsDialog( CEarningBook &book ) : GuiDialog("Accounts")
-    ,m_book(book) ,m_datasource(book)
+    ,m_earningData(book)
+    ,m_tradeData( getTrader().getTradeBook() )
+    ,m_orderData( getBroker().getOrderBook() )
 {
     setPropertiesWithString( uiEarnings );
 
+//-- tabs
     auto &tab = * getControlAs_<GuiTab>("body");
 
     GuiTabBar *tabbar = getControlAs_<GuiTabBar>("header");
 
     if( tabbar ) tabbar->Bind( tab );
 
+//-- earnings
     m_earnings = tab.getControlAs_<GuiNavGrid>("earnings");
+    m_earnings->Grid()->Bind( &m_earningData );
 
-    m_earnings->Grid()->Bind( &m_datasource );
+//-- trades
+    m_trades = tab.getControlAs_<GuiNavGrid>("trades");
+    m_trades->Grid()->Bind( &m_tradeData );
+
+//-- orders
+    m_orders = tab.getControlAs_<GuiNavGrid>("orders");
+    m_orders->Grid()->Bind( &m_orderData );
 }
 
 void UiEarningsDialog::Open() {
     GuiDialog::Open();
 
     m_earnings->updatePage(0);
+    m_trades->updatePage(0);
+    m_orders->updatePage(0);
 }
 
 //////////////////////////////////////////////////////////////////////////////

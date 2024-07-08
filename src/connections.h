@@ -181,12 +181,12 @@ struct Earning : BookEntry {
 };
 
 CLASS_SCHEMA(Earning);
-
 DEFINE_WITHSCHEMA_API(Earning);
+
+template <> Earning &Zero( Earning &p );
 
 typedef CBookFile_<Earning> CEarningBook;
 typedef CBookDataSource_<Earning,Earning> CEarningDataSource;
-
 
 ///-- @brief Earning as flat data fields
 struct Earning2 : Earning {

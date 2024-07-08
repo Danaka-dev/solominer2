@@ -32,6 +32,9 @@ typedef OsTimerTime TimeMilli; //! time in milli second
 typedef OsTimerTime TimeSec; //! time in second
     //TODO ISOTime
 
+// String &timeToString( TimeSec )
+// String &timeToString( const time_t &t  )
+
 //////////////////////////////////////////////////////////////////////////////
 } //TINY_NAMESPACE
 

@@ -9,6 +9,8 @@
 
 //////////////////////////////////////////////////////////////////////////////
 #include <connections.h>
+#include <markets/trader.h>
+#include <markets/broker.h>
 
 #include <tiny/x-gui/controls/gui-grid.h>
 
@@ -42,17 +44,14 @@ protected:
     // void onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) override;
 
 protected:
-    CEarningBook &m_book;
-    CEarning2DataSource m_datasource;
-
+    CEarning2DataSource m_earningData;
     RefOf<GuiNavGrid> m_earnings;
-    // RefOf<GuiGroup> m_navbar;
-    // GuiGrid m_body;
 
-    int m_pageId; //! active page in grid
-    int m_pageCount; //! count of page in book
+    CTradeDataSource m_tradeData;
+    RefOf<GuiNavGrid> m_trades;
 
-    int m_entryPerPage = 9;
+    COrderDataSource m_orderData;
+    RefOf<GuiNavGrid> m_orders;
 };
 
 //////////////////////////////////////////////////////////////////////////////

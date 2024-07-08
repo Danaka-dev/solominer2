@@ -402,7 +402,7 @@ void UiMainSettings::onCommand( IObject *source ,messageid_t commandId ,long par
 //! Definitions
 
 #define COMMANDID_EARNINGSDIALOG    1001
-#define COMMANDID_TRADELINK         1002 // TODO to window
+#define COMMANDID_TRADEDIALOG       1002
 #define COMMANDID_SETTINGSDIALOG    1044
 #define COMMANDID_DELETEOK          1045
 
@@ -458,49 +458,14 @@ void UiHeader::updateTotalIncome() {
 
 UiFooter::UiFooter( CDashboardWindow &parent ) :
     m_parent(parent)
-    ,m_tradeLink( "trading..." ,this )
 {
-    colors().fillColor = OS_RGB(24,24,24); // OS_RGB(24,25,29)
+    setRoot( parent );
 
-    coords() = { 0 ,0 ,100.f ,UI_FOOTER_HEIGHT };
-    align() = (GuiAlign) (GuiAlign::alignBottom | GuiAlign::alignAnchorV);
-
-//--
-    //TODO
-    // @note for Params / config
-    // m_tradeLink.fromManifest( Params({"size=500,100; pos=0,0; align=left; anchor=horizontal;"}) );
-    // tradelink:link {}
-
-    m_tradeLink.setCommandId( COMMANDID_TRADELINK );
-    m_tradeLink.coords() = { 0 ,0 ,20.f ,100.f };
-    m_tradeLink.align() = (GuiAlign) (GuiAlign::alignRight | GuiAlign::alignCenterV | GuiAlign::alignAnchor);
-
-    m_tradeLink.textAlign() = (TextAlign) (textalignRight | textalignCenterV);
-    m_tradeLink.setFont( getFontSmall() );
-    m_tradeLink.hooverColor() = OS_RGB(160,160,250);
-
-    addControl( m_tradeLink );
-}
-
-void UiFooter::onClickTradeLink() {
-    //TODO objects
-    // root().As_<GuiControlWindow>()->showModal();
-
-    /* using namespace test::mercury;
-
-    static UiMarketGraph m_dialog;
-
-    m_parent.ShowModal( m_dialog ); */
-}
-
-void UiFooter::onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) {
-    switch( commandId ) {
-        case COMMANDID_TRADELINK:
-            onClickTradeLink(); break;
-        default:
-            assert(false);
-            break;
-    }
+    setPropertiesWithString(
+        "align=bottom,vertical; coords={0,0,100%,61} background=#181818; controls={"
+            "trade:GuiLink = { commandId=1002; bind=root; align=right,centerv,horizontal; coords={0,0,25%,100%} background=0; text=trade...; font=large; textalign=right+centerv; }"
+        "}"
+    );
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1390,6 +1355,7 @@ CDashboardWindow::CDashboardWindow( CConnectionList &connections ) :
     ,m_uiFooter(*this)
     ,m_uiConnectionList(*this,connections)
     ,m_uiEarningsDialog( connections.earnings() )
+    ,m_uiTradeDialog(*this)
     ,m_confirmDelete( *this ,"Delete Connection" ,"Are your sure you want to delete this connection?" ,{ {"No" ,"3"} ,{"Yes","1045"} } )
 {
     foreground().addControl( m_uiHeader );
@@ -1412,6 +1378,8 @@ void CDashboardWindow::onCommand( IObject *source ,messageid_t commandId ,long p
             showMainSettings(); break;
         case COMMANDID_EARNINGSDIALOG:
             showEarningsDialog(); break;
+        case COMMANDID_TRADEDIALOG:
+            showTradeDialog(); break;
 
         case COMMANDID_DELETEOK:
             m_uiConnectionList.onDeleteConnectionOk( (int) param );

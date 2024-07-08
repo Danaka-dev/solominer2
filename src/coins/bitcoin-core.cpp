@@ -253,6 +253,8 @@ IAPI_DEF CWalletBitcoinBase::getTransaction( const char *address ,const char *tr
     transaction.txid = tx.txid;
     transaction.amount.amount = tx.amount;
     getCoin( transaction.amount.value );
+    transaction.receivedAt = tx.timereceived;
+    transaction.confirmations = tx.confirmations;
 
     const auto &it = tx.details.begin();
 

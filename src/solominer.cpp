@@ -8,6 +8,8 @@
 #include <common/option.h>
 
 #include <markets/markets.h>
+#include <markets/trader.h>
+#include <markets/broker.h>
 #include <wallets/wallets.h>
 #include <pools/pools.h>
 #include <coins/cores.h>
@@ -141,18 +143,25 @@ Config::Section &getGlobalConfig() {
     return getConfig().getSection( "global" );
 }
 
-//-- pools.conf
-static Config g_poolsConfig;
+//-- credential config
+static Config g_credentialConfig;
 
-Config &getPoolsConfig() {
-    return g_poolsConfig;
+Config &getCredentialConfig() {
+    return g_credentialConfig;
 }
 
-//-- service.conf
+//-- service config
 static Config g_serviceConfig;
 
 Config &getServiceConfig() {
     return g_serviceConfig;
+}
+
+//-- pools config
+static Config g_poolsConfig;
+
+Config &getPoolsConfig() {
+    return g_poolsConfig;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -252,12 +261,27 @@ CServiceStore *getStore( const char *category ) {
     return NullPtr;
 }
 
+Params &getCredential( Config::Section &section ,const char *name ,Params &params ) {
+    const char *credit = getMember( section.params ,name ,"" );
+
+    params.clear();
+
+    if( *credit )
+        fromString( params ,credit );
+
+    return params;
+}
+
 //-- service
 bool initServices( Config &config ) {
 
 #ifdef TEST_SERVICES
     // testServices();
 #endif
+
+    auto &credit = getCredentialConfig();
+
+    Params params;
 
 ///-- chains
     StartChain( "minerstat" );
@@ -268,24 +292,35 @@ bool initServices( Config &config ) {
         return false;
     }
 
-    /* Params rtcParams = {
-        { "wallet-password" ,RTC_WALLET_PASSPHRASE }
-    }; */
+    auto &coreCredit = credit.getSection("cores");
 
-    StartCore( "maxe-core" );
-    StartCore( "rtc-core" );
-    StartCore( "rtm-core" );
+    StartCore( "maxe-core" ,&getCredential(coreCredit,"maxe-core",params) );
+    StartCore( "rtc-core" ,&getCredential(coreCredit,"rtc-core",params) );
+    StartCore( "rtm-core" ,&getCredential(coreCredit,"rtm-core",params) );
 
 ///-- markets
-    Params xeggexParams;
+    // getMarketStore().loadConfig( config ); //TODO later
 
-    StartMarket( "xeggex" ,&xeggexParams );
+    auto &marketCredit = credit.getSection("markets");
 
-///-- trading
-    //! BETA 2
+    StartMarket( "xeggex" ,&getCredential(marketCredit,"xeggex",params) );
 
 ///-- done
     return true;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+//-- trading
+
+bool initTrading( Config &config ) {
+    bool result = true;
+
+    initWalletAddresses();
+
+    result &= ISUCCESS( getTrader().Start( config ) );
+    result &= ISUCCESS( getBroker().Start( config ) );
+
+    return result;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -341,11 +376,23 @@ void terminalHandle() {
 void mainAppLoop() {
     using namespace solominer;
 
+    CTrader &trader = CTrader::getInstance();
+    CBroker &broker = CBroker::getInstance();
+
 //! tiny C loop
+    time_t t0 = Now();
+
     while( OsSystemDoEvents() == ENOERROR ) {
+        time_t now = Now();
+
         //TODO -> if option set, have a terminal command interface ?
 
         getConnectionList().updateConnections();
+
+        if( now - t0 > 1 ) {
+            trader.processTrades();
+            broker.processOrders();
+        }
 
         OsSleep(10);
     }
@@ -410,10 +457,16 @@ int main( int argc ,char *argv[] ) {
     //! @note keeping on even if config was not found
     loadConfigFile( config ,tocstr(getOptConfigFile()) );
 
-    auto &configSection = config.getSection( "config" );
+    auto &globalSection = getConfig().getSection("config");
 
-    const char *serviceConf = getMember( configSection.params ,"service" ,"./service.conf" );
-    //TODO wallet ,pools
+    const char *serviceConf = getMember( globalSection.params ,"service" ,"./credit.conf" );
+    const char *credentialConf = getMember( globalSection.params ,"credential" ,"./service.conf" );
+    const char *poolsConf = getMember( globalSection.params ,"pools" ,"./pools.conf" );
+
+    //////////////////////////////////////////////////////////////////////////////
+    //! credential
+
+    loadConfigFile( getCredentialConfig() ,credentialConf );
 
     //////////////////////////////////////////////////////////////////////////////
     //! services
@@ -442,6 +495,11 @@ int main( int argc ,char *argv[] ) {
     if( !initConnections( getConfig() ) ) {
         PLOG_ERROR  << LogCategory::config << "Error loading configuration file";
     }
+
+    //////////////////////////////////////////////////////////////////////////////
+    //! Trading
+
+    initTrading( config );
 
     //////////////////////////////////////////////////////////////////////////////
     //! gui

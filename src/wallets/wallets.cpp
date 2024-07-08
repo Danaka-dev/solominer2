@@ -54,6 +54,21 @@ String &getMember( const WalletTransaction &p ,int m ,String &s ) {
     }
 }
 
+template <> WalletTransaction &Zero( WalletTransaction &p ) {
+    p.txid = "";
+
+    Zero( p.amount );
+    p.fromAddress = "";
+    p.toAddress = "";
+    p.comment = "";
+    p.communication = "";
+
+    p.receivedAt = 0;
+    p.confirmations = 0;
+
+    return p;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 template <>
 WalletConfig &fromString( WalletConfig &p ,const String &s ,size_t &size ) {
@@ -189,6 +204,27 @@ void noteWalletHasAddress( const char *coin ,const char *address ,CWalletService
 //////////////////////////////////////////////////////////////////////////////
 static MapOf<String,IWalletRef> g_walletForAddress;
 
+void initWalletAddresses() {
+    auto &store = getWalletStore();
+
+    ListOf<String> wallets ,addresses;
+
+    store.listServiceSupport( wallets );
+
+    CWalletServiceRef p;
+
+    for( const auto &it : wallets ) {
+        getWallet( tocstr(it) ,p );
+
+        addresses.clear();
+        p->listAddresses( "" ,addresses );
+
+        for( auto &address : addresses ) {
+            noteWalletHasAddress( tocstr(address) ,p );
+        }
+    }
+}
+
 void noteWalletHasAddress( const char *address ,IWalletRef &wallet ) {
     if( address && *address && !wallet.isNull() )
         g_walletForAddress[address] = wallet;
@@ -211,6 +247,46 @@ bool findWalletForAddress( const char *address ,IWalletRef &wallet ) {
     wallet = it->second;
 
     return true;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+void makeAddressList( ListOf<String> &addresses ,const char *ticker ) {
+    String name = ticker;
+
+    name += "-core";
+    tolower(name);
+
+    CWalletServiceRef pWallet;
+
+    getWallet( tocstr(name) ,pWallet );
+
+    if( pWallet.isNull() ) return;
+
+    pWallet->listAddresses( "" ,addresses );
+}
+
+void makeAddressList( GuiComboBox &combo ,const char *ticker ) {
+    ListOf<String> addresses;
+
+    makeAddressList( addresses ,ticker );
+
+    //--
+    auto &menu = combo.menu();
+
+    menu.clear();
+    combo.text() = ""; //TODO only if address not in list ?
+
+    int i=0; for( auto &it : addresses ) {
+        const char *address = tocstr(it);
+
+        if( i==0 && *address ) { //! if auto
+            combo.text() = address;
+        }
+
+        menu.addItem( i , address ,NullPtr );
+
+        ++i;
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////////

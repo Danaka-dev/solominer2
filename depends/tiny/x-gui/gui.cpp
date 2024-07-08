@@ -720,12 +720,27 @@ void GuiSet::getProperties( Params &properties ) const {
 void GuiSet::setProperties( const Params &properties ) {
     GuiControl::setProperties( properties );
 
+//-- controlset
     const char *controlset = getMember( properties ,"controls" ,"" );
 
-    if( controlset && *controlset ) {} else return;
-
     ParamList controls; //! @note using ParamList here instead of Params to preserve declaration order
-    fromString( controls ,controlset ); //! each entry is a name:type with a Param list of Properties
+
+    if( controlset && *controlset ) {
+        fromString( controls ,controlset ); //! each entry is a name:type with a Param list of Properties
+    }
+
+//-- path shorthand
+    for( const auto &it : properties ) {
+        const char *str = tocstr(it.first);
+
+        if( *str != '/' ) continue;
+
+        KeyValue kv = { str+1 ,it.second };
+        controls.emplace_back( kv );
+    }
+
+//-- process
+    if( controls.empty() ) return;
 
     NameType itemDecl;
     Params itemProps;
@@ -974,7 +989,7 @@ void GuiTab::selectTab( int at ) {
         p->onNotify( this ,GUI_MESSAGEID_LEAVE ,at ,NullPtr ,(void*) "tab" );
     }
 
-    m_tab = MIN( at ,getTabCount()-1 );
+    m_tab = MAX( MIN( at ,getTabCount()-1 ) ,0 );
 
     if( m_tab < n ) {
         auto *p = getCurrentTab();

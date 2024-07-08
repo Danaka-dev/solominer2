@@ -123,10 +123,14 @@ MarketDeposit &fromManifest( MarketDeposit &p ,const xeggex::Deposit &manifest )
     p.amount.value = manifest.ticker;
 
     p.fromAddress = "";
-    p.toAddress = manifest.address; //TODO check if to or from
+    p.toAddress = manifest.address;
 
     p.seenAt  = manifest.firstSeenAt;
     p.confirmations = manifest.confirmations;
+
+    if( manifest.status == "Pending" ) {
+        p.requiredConfirmations = p.confirmations + 1; //TODO find out how many from market instead
+    }
 
     return p;
 }

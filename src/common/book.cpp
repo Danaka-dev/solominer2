@@ -420,7 +420,10 @@ entryid_t CBookFile::addEntry( const byte *entry ,size_t size ) {
 
 //-- write line
     //! devnote may want to 0 pad entry write
-    return m_file.Seek( offset ,SEEK_SET ) == ENOERROR && m_file.Write( entry ,size ) == ENOERROR;
+    if( m_file.Seek( offset ,SEEK_SET ) == ENOERROR && m_file.Write( entry ,size ) == ENOERROR ) {} else
+        return INVALID_ENTRY_VALUE;
+
+    return id;
 }
 
 bool CBookFile::readEntry( entryid_t id ,byte *entry ,size_t size ) {

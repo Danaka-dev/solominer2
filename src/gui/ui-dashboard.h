@@ -12,6 +12,7 @@
 
 #include "ui.h"
 #include "ui-earnings.h"
+#include "ui-trade.h"
 #include "ui-wizard.h"
 
 //////////////////////////////////////////////////////////////////////////////
@@ -57,15 +58,15 @@ class UiFooter : public GuiGroup {
 protected:
     CDashboardWindow &m_parent;
 
-    GuiLink m_tradeLink;
+    // GuiLink m_tradeLink;
 
 public:
     UiFooter( CDashboardWindow &parent );
 
-    void onClickTradeLink();
+    // void onClickTradeLink();
 
 public:
-    void onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) override;
+    // void onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) override;
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -169,6 +170,10 @@ public:
         this->ShowModal( m_uiEarningsDialog );
     }
 
+    void showTradeDialog() {
+        this->ShowModal( m_uiTradeDialog );
+    }
+
     void showCoreSettings( const char *ticker ,CConnection &connection ) {
         m_coreSettings.setCoreByTicker( ticker ,connection );
 
@@ -199,6 +204,7 @@ protected:
 
     UiMainSettings m_mainSettings;
     UiEarningsDialog m_uiEarningsDialog;
+    UiTradeDialog m_uiTradeDialog;
     UiCoreSettings m_coreSettings;
 
 ///--

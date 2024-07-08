@@ -23,6 +23,16 @@ void fromMarketSymbol( const String &s ,String &primary ,String &secondary ,cons
 String &toMarketSymbol( String &s ,const String &primary ,const String &secondary ,const char sep='/' );
 
 //////////////////////////////////////////////////////////////////////////////
+DEFINE_MEMBER_API(MarketDeposit);
+DEFINE_WITHSCHEMA_API(MarketDeposit);
+
+DEFINE_MEMBER_API(MarketWithdraw);
+DEFINE_WITHSCHEMA_API(MarketWithdraw);
+
+DEFINE_MEMBER_API(MarketOrder);
+DEFINE_WITHSCHEMA_API(MarketOrder);
+
+//////////////////////////////////////////////////////////////////////////////
 #define CMARKETSERVICEBASE_PUID 0x05351473824d4dd47
 #define CMARKETSETUPBASE_PUID   0x08bb2d1fe3ea10a8d
 #define CMARKETSTOREBASE_PUID   0x04012d23f1dbf3d3a

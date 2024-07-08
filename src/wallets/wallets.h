@@ -33,6 +33,8 @@ class CWalletStore;
 DEFINE_MEMBER_API(WalletTransaction);
 DEFINE_WITHSCHEMA_API(WalletTransaction);
 
+template <> WalletTransaction &Zero( WalletTransaction &p );
+
 //////////////////////////////////////////////////////////////////////////////
 //! IWalletEvent Source
 
@@ -166,6 +168,8 @@ inline bool getWallet( const char *name ,CWalletServiceRef &service ) {
 //////////////////////////////////////////////////////////////////////////////
 //! coin book
 
+void initWalletAddresses();
+
 bool listWalletForCoin( const char *ticker ,ListOf<String> &walletNames );
 void listAddressForWallet( IWalletRef &wallet ,ListOf<String> &addresses );
 
@@ -175,6 +179,12 @@ void noteWalletHasAddress( const char *address ,IWalletRef &wallet );
 inline void noteWalletHasAddress( const char *address ,CWalletServiceRef &walletService ) {
     IWalletRef wallet; wallet = walletService; noteWalletHasAddress(address,wallet);
 }
+
+//////////////////////////////////////////////////////////////////////////////
+//! controls
+
+void makeAddressList( ListOf<String> &addresses ,const char *ticker );
+void makeAddressList( GuiComboBox &combo ,const char *ticker );
 
 //////////////////////////////////////////////////////////////////////////////
 } //namespace solominer

@@ -60,7 +60,7 @@ bool isValidHexChar( char ch ) {
 }
 
 byte hexPairToByte( const char ch[2] ) {
-    return ( hexToByte(ch[0]) >> 4 ) + hexToByte(ch[1]);
+    return ( hexToByte(ch[0]) << 4 ) + hexToByte(ch[1]);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -77,8 +77,8 @@ char byteToHex( byte bin ,bool lowcase=GUID_DEFAULT_LOWCASE ) {
 }
 
 char *byteToHexPair( char ch[2] ,byte bin ,bool lowcase=GUID_DEFAULT_LOWCASE ) {
-    ch[0] = byteToHex( bin & 0x0f ,lowcase );
-    ch[1] = byteToHex( bin >> 4 ,lowcase );
+    ch[0] = byteToHex( bin >> 4 ,lowcase );
+    ch[1] = byteToHex( bin & 0x0f ,lowcase );
 
     return ch;
 }
@@ -156,10 +156,12 @@ guid_t &fromString( guid_t &p ,const String &s ,size_t &size ) {
     while( isSpaceChar( *ch ) ) ++ch; //! skip initial space(s)
 
     while( ch[0] ) {
-        if( isValidHexChar(ch[0]) && isValidHexChar(ch[1]) ) {
-            *pp = hexPairToByte( ch ); ++pp; ch += 2; //! good pair
-        } else if( *ch != hexsep ) {
+        if( pp - p > 16 ) break;
+
+        if( *ch == hexsep ) {
             ++ch; //! separator
+        } else if( isValidHexChar(ch[0]) && isValidHexChar(ch[1]) ) {
+            *pp = hexPairToByte( ch ); ++pp; ch += 2; //! good pair
         } else {
             break; //! unknown, fail
         }

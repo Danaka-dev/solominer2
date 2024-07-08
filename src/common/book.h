@@ -20,7 +20,7 @@ namespace solominer {
 class CBookFile;
 
 //////////////////////////////////////////////////////////////////////////////
-#define INVALID_ENTRY_VALUE     0
+#define INVALID_ENTRY_VALUE     ((uint32_t) -1)
 
 typedef Guid Udbn; //! Universal Digital Book Number
 
@@ -230,6 +230,8 @@ public:
 
         T entry;
 
+        Zero( entry );
+
         if( !readEntry( id ,entry ) )
             return NullPtr;
 
@@ -305,6 +307,8 @@ protected:
 
         if( !CBookFile::readEntry( id ,m_buffer.ptr() ,sizeofEntry() ) )
             return false;
+
+        entry.sequence = id;
 
         switch( m_mode ) {
             case bookText:

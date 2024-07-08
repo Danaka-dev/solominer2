@@ -131,7 +131,7 @@ bool parseResponseList_( const String &response ,ListOf<T> &list ) {
     try {
         rapidjson::Document jsondoc;
 
-        if( strncmp( response.c_str() ,"error" ,6 ) )
+        if( strncmp( response.c_str() ,"error" ,6 ) == 0 )
             return false;
 
         jsondoc.Parse( response.c_str() );

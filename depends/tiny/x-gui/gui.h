@@ -480,9 +480,9 @@ typedef uint32_t controlid_t;
 class GuiControl : public IGuiEvents ,public IGuiControlEvents ,public IGuiMessageEvents ,public IGuiProperties ,COBJECT_PARENT {
 public: ///-- instance
     GuiControl( GuiControlWindow *root=NullPtr );
+        //TODO all controls to have this signature
 
     DECLARE_OBJECT(GuiControl,TINY_GUICONTROL_PUID);
-    // DECLARE_OBJECT_STD(CObject,GuiControl,TINY_GUICONTROL_PUID);
 
 public: ///-- getter/setter
     void setControlId( controlid_t id ) { m_id = id; } //TODO make sure id is unique ?
@@ -507,10 +507,10 @@ public: ///-- getter/setter
     const Rect &area() const{ return m_area; }
     Rect &area() { return m_area; }
 
-    bool isOrphan() const { return !m_root; }
-    GuiControlWindow &root() { return *m_root; }
     const GuiControlWindow &root() const { return *m_root; }
+    GuiControlWindow &root() { return *m_root; }
     void setRoot( GuiControlWindow &root ) { m_root = &root; }
+    bool isOrphan() const { return !m_root; }
 
     bool shouldDraw( const OsRect &updateArea ) const;
     void getCenteredArea( const OsPoint &dims ,Rect &r ) const;
@@ -895,6 +895,14 @@ public:
     }
 
     void selectTab( int at );
+
+    void prevTab() {
+        selectTab(getCurrentTabIndex()-1);
+    }
+
+    void nextTab() {
+        selectTab(getCurrentTabIndex()+1);
+    }
 
 public:
     API_IMPL(void) onLayout( const OsRect &clientArea ,OsRect &placeArea ) IOVERRIDE;
