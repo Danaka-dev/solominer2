@@ -57,7 +57,8 @@ struct IGuiProperties;
 //////////////////////////////////////////////////////////////////////////////
 //! Struct
 
-#define TINY_GUIALIGN_PUID          0x084f607186f639ada
+#define TINY_DIRECTION_PUID          0x0c5b17665ae26c997
+#define TINY_GUIALIGN_PUID           0x084f607186f639ada
 
 //////////////////////////////////////////////////////////////////////////////
 //! Class
@@ -163,6 +164,10 @@ enum Direction {
         //! etc... @note all values reserved
 };
 
+DEFINE_STRING_API(Direction);
+DECLARE_STRUCT(Direction,TINY_DIRECTION_PUID);
+
+///--
 inline bool goesLeft( Direction d ) { return (d & directionLeft) != 0; }
 inline bool goesRight( Direction d ) { return (d & directionRight) != 0; }
 inline bool goesTop( Direction d ) { return (d & directionTop) != 0; }
@@ -170,10 +175,6 @@ inline bool goesBottom( Direction d ) { return (d & directionBottom) != 0; }
 
 inline Direction getDimension( int i ,Direction d ) { return (Direction) ((d >> (2*i)) & 3); }
 inline int getDimSign( int i ,Direction d ) { Direction d0 = getDimension(i,d); return (d0 & 1) != 0 ? -1 : (d0 &2) ? 1 : 0; }
-
-//--
-
-//TODO to/from String
 
 //////////////////////////////////////////////////////////////////////////////
 //! Align
@@ -386,6 +387,7 @@ inline int getDragOpUser( DragOperation op ) { return (op >> 5); }
 #define GUI_MESSAGEID_HELP          31
 #define GUI_MESSAGEID_ENTER         32
 #define GUI_MESSAGEID_LEAVE         33
+#define GUI_MESSAGEID_SELECT        34
 
 #define GUI_COMMANDID_MENU          5001 //! @note base command id for menu command (default, if none provided)
 #define GUI_COMMANDID_MENUMAX       5499 //! @note maximum command id for default menu command
@@ -479,8 +481,8 @@ typedef uint32_t controlid_t;
 
 class GuiControl : public IGuiEvents ,public IGuiControlEvents ,public IGuiMessageEvents ,public IGuiProperties ,COBJECT_PARENT {
 public: ///-- instance
-    GuiControl( GuiControlWindow *root=NullPtr );
-        //TODO all controls to have this signature
+    GuiControl( GuiControlWindow *root=NullPtr ,const PUID &puid=TINY_GUICONTROL_PUID);
+    //TODO all controls to have at least root=null constructor
 
     DECLARE_OBJECT(GuiControl,TINY_GUICONTROL_PUID);
 
@@ -648,9 +650,14 @@ public:
     DECLARE_GUIPROPERTIES;
 
     messageid_t &commandId() { return m_commandId; }
+    long &commandParam() { return m_commandParam; }
 
+    //--
     messageid_t getCommandId() const { return m_commandId; }
     void setCommandId( messageid_t id ) { m_commandId = id; }
+
+    long getCommandParam() const { return m_commandParam; }
+    void setCommandParam( long param ) { m_commandParam = param; }
 
 public:
     API_IMPL(void) onClick( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) IOVERRIDE {
@@ -756,6 +763,13 @@ public:
     template <typename T>
     T *getControlAs_( const char *name ) {
         GuiControl *control = getControl( name );
+
+        return control ? control->As_<T>() : NullPtr;
+    }
+
+    template <typename T>
+    T *getControlAs_( int i ) {
+        GuiControl *control = getControl( i );
 
         return control ? control->As_<T>() : NullPtr;
     }
@@ -910,6 +924,9 @@ public:
     API_IMPL(void) onMouse( OsMouseAction mouseAction ,OsKeyState keyState ,OsMouseButton mouseButton ,int points ,const OsPoint *pos ) IOVERRIDE;
     API_IMPL(void) onKey( OsKeyAction keyAction ,OsKeyState keyState ,OsKeyCode keyCode ,char_t c ) IOVERRIDE;
 
+public:
+    API_IMPL(void) onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) IOVERRIDE;
+
 protected:
     int m_tab; //! currently selected tab
 };
@@ -992,16 +1009,25 @@ protected:
 
 class GuiTabBar : public GuiGroup {
 public:
-    GuiTabBar() DEFAULT
+    GuiTabBar() : m_direction(Direction::directionRight)
+    {}
 
     DECLARE_GUICONTROL(GuiGroup,GuiTabBar,TINY_GUITABBAR_PUID);
+    DECLARE_GUIPROPERTIES;
+
+    const char *getTitle( int i ,const char *defTitle );
+
+    void updateTitles();
 
     void Bind( GuiTab &tabs );
 
 protected:
     API_IMPL(void) onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) IOVERRIDE;
 
+    Direction m_direction;
     RefOf<GuiTab> m_tabs;
+
+    ListOf<String> m_titles;
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1092,6 +1118,8 @@ class GuiDialog : public GuiPublisher ,public GuiGroup {
 public:
     GuiDialog( const char *title=NullPtr );
 
+    Params &values() { return m_values; }
+
     virtual void Open();
     virtual void Help() {} //! std help button
     virtual void Close();
@@ -1103,6 +1131,7 @@ public:
 
 protected:
     GuiTitleBar m_title;
+    Params m_values;
 };
 
 //////////////////////////////////////////////////////////////////////////////

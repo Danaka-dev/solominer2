@@ -28,6 +28,7 @@ TINY_NAMESPACE {
 //! components
 
 #define TINY_GUIMARGIN_PUID       0x07b216a8921ce93d3
+#define TINY_GUISHAPE_PUID        0x045ce095b6007714b
 #define TINY_GUILABEL_PUID        0x0b7c677e34e3740ef
 #define TINY_GUILINK_PUID         0x0e96c0d38a60f2771
 #define TINY_GUIBUTTON_PUID       0x04be1712b20e346a9
@@ -152,14 +153,45 @@ protected:
 };
 
 //////////////////////////////////////////////////////////////////////////////
+//! GuiShape
+
+class GuiShape : public GuiControl {
+public:
+    enum Shape {
+        shapeNone ,shapeLine ,shapeRect ,shapeEllipse // ,shapePolygon
+    };
+
+public:
+    GuiShape( Shape shape=shapeLine ) : m_shape(shape)
+    {}
+
+    DECLARE_GUICONTROL(GuiControl,GuiShape,TINY_GUISHAPE_PUID);
+    DECLARE_GUIPROPERTIES;
+
+    Shape &shape() { return m_shape; }
+
+public:
+    API_IMPL(void) onDraw( const OsRect &updateArea ) IOVERRIDE;
+
+protected:
+    ColorRef m_color;
+
+    Shape m_shape;
+};
+
+//////////////////////////////////////////////////////////////////////////////
 //! GuiLabel
 
     //TODO use GuiWithText instead of with font
 class GuiLabel : public GuiWithFont ,GUICONTROL_PARENT {
 public:
     GuiLabel( const char *text="label" ,TextAlign textAlign=textalignNormal ,GuiFont *font=NullPtr ) :
-        GuiWithFont(font) ,m_text(text?text:"") ,m_textAlign(textAlign)
-    {}
+        GuiControl(NullPtr,TINY_GUILABEL_PUID) ,GuiWithFont(font) ,m_text(text?text:"") ,m_textAlign(textAlign)
+    {
+        // TINY_NAMESPACE_NAME::gui::VisualTheme &theme = !isOrphan() ? root().getTheme() : theTheme();
+
+        //m_colors = theme.getColors( MyPUID ,"normal" );
+    }
 
     DECLARE_GUICONTROL(GuiControl,GuiLabel,TINY_GUILABEL_PUID);
     DECLARE_GUIPROPERTIES;

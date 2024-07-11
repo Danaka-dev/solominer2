@@ -35,9 +35,9 @@ TINY_NAMESPACE {
 class ConfigDataSource : public CDataSource ,COBJECT_PARENT {
 public:
     ConfigDataSource( Config &config ,const char *section=NullPtr ) :
-            m_config(config) ,m_section(NullPtr) ,m_haveEdit(false)
+        m_config(config) ,m_section(NullPtr) ,m_haveEdit(false)
     {
-        if( section ) Seek( section );
+        if( section ) Bind( section );
     }
 
     IAPI_IMPL getInterface( PUID id ,void **ppv ) IOVERRIDE {
@@ -73,6 +73,13 @@ public: ///-- IDataSource
         return m_section ? IOK : INODATA;
     }
 
+    IAPI_IMPL getInfo( Params &params ) IOVERRIDE {
+        if( hasMember(params,"haveedit") ) toString( m_haveEdit ,params["haveedit"] );
+
+        return IOK;
+    }
+
+//--
     IAPI_IMPL Seek( const char *id ) IOVERRIDE {
         if( id && *id ) {} else return IBADARGS;
         if( !m_section ) return IBADENV;
@@ -137,7 +144,7 @@ public: ///-- IDataSource
         if( !m_section ) return INODATA;
 
         if( data.empty() ) {
-            //! @note client can datasource edit has started but doesn't want to transact the data yet
+            //! @note client can advise datasource edit has started but doesn't want to transact the data yet
             //! (e.g. an edit control received a char ...)
 
             adviseDataChanged(data);
@@ -171,23 +178,29 @@ public: ///-- IDataSource
         return result;
     }
 
+public:
+    void Update() { //! @note friendly name for updating using Discard
+        Discard();
+    }
+
 protected:
-    bool readValues( const char *id ) {
-        auto it = m_section->params.find( id );
+    API_DECL(bool) readValues( const char *id ) {
+        m_entry = id;
+
+        return readValues();
+    }
+
+    API_DECL(bool) readValues() {
+        auto it = m_section->params.find( m_entry );
         if( it == m_section->params.end() ) return false;
 
-        m_entry = id;
         fromString( m_values ,it->second );
         m_haveEdit = false;
 
         return true;
     }
 
-    bool readValues() {
-        return readValues( m_entry.c_str() );
-    }
-
-    bool writeValues() {
+    API_DECL(bool) writeValues() {
         String s;
 
         toString( m_values ,s );

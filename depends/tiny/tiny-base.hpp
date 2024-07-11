@@ -371,6 +371,9 @@ struct StringList : ListOf<String> {};
 
 DEFINE_STRING_API(StringList);
 
+int Split( const char *s ,StringList &list ,const char c );
+int Merge( String &s ,const StringList &list ,const char c );
+
 //////////////////////////////////////////////////////////////////////////////
 //! Manifest
 

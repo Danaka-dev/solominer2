@@ -486,7 +486,7 @@ REGISTER_CLASS(UiTradeMonitor);
 static const char *uiTrade = {
     "controls={"
         "header:GuiTabBar = {"
-            "align=top; anchor=vertical; coords={0,0,100%,6%}"
+            "align=top,vertical; coords={0,0,100%,6%} direction=right; titles={Trade,In progress,History}"
         "}"
         "body:GuiTab = {"
             "align=top; anchor=vertical; coords={0,0,100%,88%}"

@@ -457,6 +457,28 @@ String &toString( const StringList &p ,String &s ) {
     return s;
 }
 
+//--
+int Split( const char *s ,StringList &list ,const char c ) {
+    String field;
+
+    const char *p = s;
+
+    while( ParseField(p,c,&field,false) ) {
+        list.emplace_back( field );
+    }
+
+    return (int) list.size();
+}
+
+int Merge( String &s ,const StringList &list ,const char c ) {
+    for( const auto &it : list ) {
+        if( !s.empty() ) s += c;
+        s += it;
+    }
+
+    return (int) list.size();
+}
+
 //////////////////////////////////////////////////////////////////////////////
 //! Schema
 

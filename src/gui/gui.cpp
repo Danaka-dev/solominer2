@@ -72,7 +72,22 @@ bool uiInitialize( CConnectionList &connections ) {
 
     mainWindow->EnableEditor();
 
-    return mainWindow->Create() == ENOERROR;
+    if( mainWindow->Create() != ENOERROR )
+        return false;
+
+//-- login
+    if( getGlobalLogin().empty() )
+        return true;
+
+    mainWindow->showLoginDialog();
+
+    while( OsSystemDoEvents() == ENOERROR ) {
+        OsSleep(10);
+
+        if( globalIsLogged() ) break;
+    }
+
+    return true;
 }
 
 //////////////////////////////////////////////////////////////////////////////

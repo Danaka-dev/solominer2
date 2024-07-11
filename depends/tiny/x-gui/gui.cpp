@@ -83,6 +83,33 @@ DEFINE_TOSTRING(GuiCoords) {
 }
 
 //////////////////////////////////////////////////////////////////////////
+//! Direction
+
+template <>
+const char *Enum_<Direction>::names[] = {
+    "none"
+    ,"left" ,"right" ,"horizontal"
+    ,"bottom" ,"top" ,"vertical"
+};
+
+template <>
+const Direction Enum_<Direction>::values[] = {
+    directionNone
+    ,directionLeft ,directionRight ,directionHorizontal
+    ,directionBottom ,directionTop ,directionVertical
+};
+
+DEFINE_FROMSTRING(Direction) {
+    return enumFromStringList( p ,s ,size );
+}
+
+DEFINE_TOSTRING(Direction) {
+    return enumToStringList( p ,s );
+}
+
+REGISTER_STRUCTNAME( Direction );
+
+//////////////////////////////////////////////////////////////////////////
 //! Align
 
     //TODO merge TextAlign and GuiAlign ... ?
@@ -302,12 +329,12 @@ OsRect Emplace( GuiAlign align ,const GuiCoords &coords ,const OsRect &clientAre
 static bool g_controlRegister = registerClassName_<GuiControl>();
 
 //--
-GuiControl::GuiControl( GuiControlWindow *root ) :
+GuiControl::GuiControl( GuiControlWindow *root ,const PUID &puid ) :
     m_root(root)
 {
     TINY_NAMESPACE_NAME::gui::VisualTheme &theme = root ? root->getTheme() : theTheme();
 
-    m_colors = theme.getColors( MyPUID ,"normal" );
+    m_colors = theme.getColors( puid ,"normal" ); //! @note cannot use MyPUID, no virtual in constructor
 }
 
 IRESULT GuiControl::getInterface( puid_t id ,void **ppv ) {
@@ -644,8 +671,6 @@ void GuiCommandOnClick::setProperties( const Params &properties ) {
     if( cmd.size() > 0 ) fromString( m_commandId ,cmd[0] );
     if( cmd.size() > 1 ) fromString( m_commandParam ,cmd[1] );
 
-    // fromString( m_commandId ,getMember(properties,"commandId" ) );
-
     const char *s = getMember( properties ,"bind" );
 
     if( s && *s && !isOrphan() ) {
@@ -748,6 +773,7 @@ void GuiSet::setProperties( const Params &properties ) {
     for( const auto &it : controls ) {
         itemProps.clear();
 
+        itemDecl.type.clear();
         fromString( itemDecl ,it.key );
         fromString( itemProps ,it.value );
 
@@ -760,6 +786,9 @@ void GuiSet::setProperties( const Params &properties ) {
             String className;
             control->getMyClassName(className);
             assert( className == itemDecl.type );
+
+            if( control->isOrphan() )
+                control->setRoot( root() ); //! @note update root (might have not been, e.g. pre construct groups)
         }
 
         if( !control ) continue; //TODO log this
@@ -864,10 +893,30 @@ GuiControl *GuiSet::findControlById( controlid_t id ) {
 }
 
 GuiControl *GuiSet::findControlByName( const char *name ) {
-    auto *it = m_names.findItem( name );
+    StringList list;
 
-    if( it && hasControl(*it) )
-        return getControl(*it);
+    Split( name ,list ,'/' );
+
+    auto *it = m_names.findItem( list[0] );
+
+    if( it && hasControl(*it) ) {
+        GuiControl *p = getControl(*it);
+
+        if( p && list.size() > 1 ) {
+            String path;
+
+            auto *child = p->As_<GuiSet>(); if( !child ) return NullPtr;
+
+            list.erase(list.begin());
+
+            Merge( path ,list ,'/' );
+
+            return child->findControlByName( tocstr(path) );
+
+        } else {
+            return p;
+        }
+    }
 
     return NullPtr;
 }
@@ -996,6 +1045,8 @@ void GuiTab::selectTab( int at ) {
 
         p->onNotify( this ,GUI_MESSAGEID_ENTER ,from ,NullPtr ,(void*) "tab" );
     }
+
+    Refresh();
 }
 
 //--
@@ -1036,6 +1087,23 @@ void GuiTab::onKey( OsKeyAction keyAction ,OsKeyState keyState ,OsKeyCode keyCod
     GuiControl *p = getCurrentTab();
 
     if( p ) p->onKey( keyAction ,keyState ,keyCode ,c );
+}
+
+void GuiTab::onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) {
+    switch( commandId ) {
+        case GUI_MESSAGEID_SELECT:
+            selectTab( (int) param );
+            break;
+        case GUI_MESSAGEID_PREV:
+            prevTab();
+            break;
+        case GUI_MESSAGEID_NEXT:
+            nextTab();
+            break;
+        default:
+            GuiSet::onCommand( source ,commandId ,param ,params ,extra );
+            break;
+    }
 }
 
 ///--
@@ -1265,11 +1333,78 @@ REGISTER_CLASS(GuiTabBar)
 
 #define COMMANDID_TABSELECT     5000
 
+void GuiTabBar::getProperties( Params &properties ) const {
+    GuiGroup::getProperties(properties);
+
+    toString( m_titles ,properties["titles"] );
+}
+
+void GuiTabBar::setProperties( const Params &properties ) {
+    GuiGroup::setProperties(properties);
+
+    enumFromMember( m_direction ,properties ,"direction" );
+
+    if( hasMember(properties,"titles") ) {
+        m_titles.clear();
+        fromString( m_titles ,getMember(properties,"titles") );
+
+        updateTitles();
+    }
+
+    const char *bind = getMember( properties ,"bind" );
+
+    if( bind && *bind && !isOrphan() ) {
+        auto *tabs = root().getBindingAs_<GuiTab>(bind);
+
+        if( tabs ) Bind( *tabs );
+    }
+}
+
+const char *GuiTabBar::getTitle( int i ,const char *defTitle ) {
+    int n = (int) m_titles.size();
+
+    return i < n ? tocstr(m_titles[i]) : defTitle;
+}
+
+void GuiTabBar::updateTitles() {
+    int n = (int) getControlCount();
+
+    for( int i=0; i<n; ++i ) {
+        auto *p = getControlAs_<GuiButton>(i);
+
+        if( !p || i >= (int) m_titles.size() ) continue;
+
+        p->text() = m_titles[i];
+    }
+
+    Refresh();
+}
+
 void GuiTabBar::Bind( GuiTab &tabs ) {
     removeAllControls();
 
-    const char *buttonProps = "align=left,horizontal; coords={0,0,10%,100%} "; //! can be set, eg left side tabs etc...
+//-- direction
+    const char *buttonProps = "";
 
+    switch( m_direction ) {
+        default:
+        case directionHorizontal:
+        case directionRight:
+            buttonProps = "align=left,horizontal; coords={0,0,10%,100%}";
+            break;
+        case directionLeft:
+            buttonProps = "align=right,horizontal; coords={0,0,10%,100%}";
+            break;
+        case directionVertical:
+        case directionBottom:
+            buttonProps = "align=top,vertical; coords={0,0,100%,8%}";
+            break;
+        case directionTop:
+            buttonProps = "align=bottom,vertical; coords={0,0,100%,8%}";
+            break;
+    }
+
+//-- add buttons
     int n = (int) tabs.getControlCount();
 
     for( int i=0; i<n; ++i ) {
@@ -1279,8 +1414,9 @@ void GuiTabBar::Bind( GuiTab &tabs ) {
 
         p.setPropertiesWithString( buttonProps );
 
-        p.commandId() = (messageid_t) (COMMANDID_TABSELECT + i);
-        p.text() = name;
+        p.commandId() = (messageid_t) GUI_MESSAGEID_SELECT;
+        p.commandParam() = (long) i;
+        p.text() = getTitle( i ,name );
         p.Subscribe(*this);
 
         addControl( p );
@@ -1289,16 +1425,20 @@ void GuiTabBar::Bind( GuiTab &tabs ) {
     m_tabs = tabs;
 }
 
-void GuiTabBar::onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra )  {
-    if( m_tabs.isNull() ) return;
-
-    GuiTab &tabs = m_tabs.get();
-
-    if( commandId >= COMMANDID_TABSELECT && commandId < COMMANDID_TABSELECT+tabs.getControlCount() ) {
-        tabs.selectTab( (int) (commandId-COMMANDID_TABSELECT) );
-
-        Refresh();
+void GuiTabBar::onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) {
+    if( !m_tabs.isNull() ) {
+        switch( commandId ) {
+            case GUI_MESSAGEID_SELECT:
+            case GUI_MESSAGEID_PREV:
+            case GUI_MESSAGEID_NEXT:
+                m_tabs->onCommand( source ,commandId ,param ,params ,extra );
+                return;
+            default:
+                break;
+        }
     }
+
+    GuiGroup::onCommand( source ,commandId ,param ,params ,extra );
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1537,11 +1677,13 @@ GuiDialog::GuiDialog( const char *title ) {
         m_title.getControl("title")->As_<GuiLabel>()->text() = title;
 
         addControl( m_title );
+
+        m_title.Bind( *this );
     }
 }
 
 void GuiDialog::Open() {
-    m_title.Bind( *this );
+    PostNotify( GUI_MESSAGEID_OPEN ,(int) this->id() );
 }
 
 void GuiDialog::Close() {
@@ -2064,9 +2206,10 @@ const char *highlightNames[highlightCount] = {
 };
 
 static String g_themeTiny =
-"colors = { white=#C4C4C4; white1=#FAFAFA; gray0=#303030; gray=#808080; blue=#404080; blue2=#A0A0F0; blue1=#101080; blue0=#202040; green=#408040; black=#101010; black1=#161616; red=#804040; } "
+    "colors = { white=#C4C4C4; white1=#FAFAFA; gray0=#303030; gray=#808080; blue=#404080; blue2=#A0A0F0; blue1=#101080; blue0=#202040; green=#408040; black=#101010; black1=#161616; red=#804040; } "
     "fonts = { default=; }"
     "GuiControl = { normal={$black,$black,$white,0} disabled={$black,black,$gray,0} }"
+    "GuiLabel = { normal={0,0,$white,0} disabled={0,0,$gray,0} }"
     "GuiLink = { hoover={$black ,$black ,$blue2 ,$black} }"
     "GuiControlWindow = { normal={$black,$black,$white,$black} }"
     "GuiCheck = { outter={$white,$black,0,0} tick={$green,$black,0,0} cross={$red,$black,0,0} option={$white,$black,0,0} }"

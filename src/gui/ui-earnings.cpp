@@ -19,7 +19,7 @@ static const char *uiEarnings = {
     // "align=center; coords={0,0,100%,100%}"
     "controls={"
         "header:GuiTabBar = {"
-            "align=top; anchor=vertical; coords={0,0,100%,6%}"
+            "align=top; anchor=vertical; coords={0,0,100%,6%} direction=right; titles={Earnings,Trades,Orders}"
         "}"
         "body:GuiTab = {"
             "align=top; anchor=vertical; coords={0,0,100%,88%}"

@@ -11,6 +11,8 @@
 #include <connections.h>
 
 #include "ui.h"
+#include "ui-dialogs.h"
+#include "ui-settings.h"
 #include "ui-earnings.h"
 #include "ui-trade.h"
 #include "ui-wizard.h"
@@ -23,9 +25,9 @@ namespace solominer {
 
 //////////////////////////////////////////////////////////////////////////////
 class UiHeader;
+class UiFooter;
 class UiConnection;
 class UiConnectionList;
-class UiFooter;
 
 class CDashboardWindow;
 
@@ -58,15 +60,8 @@ class UiFooter : public GuiGroup {
 protected:
     CDashboardWindow &m_parent;
 
-    // GuiLink m_tradeLink;
-
 public:
     UiFooter( CDashboardWindow &parent );
-
-    // void onClickTradeLink();
-
-public:
-    // void onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) override;
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -103,58 +98,6 @@ public:
 };
 
 //////////////////////////////////////////////////////////////////////////////
-class UiCoreSettings : public IDataEvents ,public CDataSource ,public GuiDialog {
-public:
-    UiCoreSettings();
-
-    DECLARE_OBJECT_STD(GuiDialog,UiCoreSettings,99);
-
-    void setCoreByTicker( const char *ticker ,CConnection &connection );
-
-public:
-    void updateEditState( bool edit );
-    void loadBuiltInValue();
-
-    void onCoreCombo( int id ,bool update=false );
-
-    void onStart();
-    void onStop();
-
-    void onNewAddress();
-
-    void onConfirm();
-    void onCancel();
-    void onClose();
-
-    void onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) override;
-
-public: //-- data event
-    IAPI_IMPL onDataCommit( IDataSource &source ,Params &data ) IOVERRIDE;
-    IAPI_IMPL onDataChanged( IDataSource &source ,const Params &data ) IOVERRIDE;
-
-public: //-- data source
-    IAPI_IMPL readData( Params &data ) IOVERRIDE;
-    IAPI_IMPL onDataEdit( Params &data ) IOVERRIDE;
-
-public:
-    //! a data source to connect to each element
-    ConfigDataSource m_data;
-    bool m_hasEdit;
-
-    String m_coin;
-    CConnectionRef m_connection;
-};
-
-//////////////////////////////////////////////////////////////////////////////
-class UiMainSettings : public GuiDialog {
-public:
-    UiMainSettings();
-
-public:
-    void onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) override;
-};
-
-//////////////////////////////////////////////////////////////////////////////
 class CDashboardWindow : public GuiControlWindow {
 
 public:
@@ -162,8 +105,8 @@ public:
 
     DECLARE_OBJECT_STD(GuiControlWindow,CDashboardWindow,SOLOMINER_DASHBOARDWINDOW_PUID);
 
-    void showMainSettings() {
-        this->ShowModal( m_mainSettings );
+    void showLoginDialog() {
+        this->ShowModal( m_uiLoginDialog );
     }
 
     void showEarningsDialog() {
@@ -172,6 +115,10 @@ public:
 
     void showTradeDialog() {
         this->ShowModal( m_uiTradeDialog );
+    }
+
+    void showMainSettings() {
+        this->ShowModal( m_mainSettings );
     }
 
     void showCoreSettings( const char *ticker ,CConnection &connection ) {
@@ -190,6 +137,8 @@ public:
     UiFooter &footer() { return m_uiFooter; }
     UiConnectionList &connectionList() { return m_uiConnectionList; }
 
+    bool isLogged();
+
 protected:
     void onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) override;
     void onNotify( IObject *source ,messageid_t notifyId ,long param ,Params *params ,void *extra ) override;
@@ -202,9 +151,10 @@ protected:
     UiFooter m_uiFooter;
     UiConnectionList m_uiConnectionList;
 
-    UiMainSettings m_mainSettings;
+    UiLogin m_uiLoginDialog;
     UiEarningsDialog m_uiEarningsDialog;
     UiTradeDialog m_uiTradeDialog;
+    UiMainSettings m_mainSettings;
     UiCoreSettings m_coreSettings;
 
 ///--

@@ -127,6 +127,12 @@ public: ///-- IDataSource
         return IOK;
     }
 
+    IAPI_IMPL getInfo( Params &params ) IOVERRIDE {
+        if( hasMember(params,"haveedit") ) toString( m_haveEdit ,params["haveedit"] );
+
+        return IOK;
+    }
+
 //--
     IAPI_IMPL Seek( const char *id ) IOVERRIDE {
         if( id && *id ) {} else return IBADARGS;
@@ -232,7 +238,7 @@ public: ///-- CDataSource_
     API_DECL(bool) setEntry( TEntry &entry ) = 0;
 
 protected:
-    bool readValues( const char *id ) {
+    API_DECL(bool) readValues( const char *id ) {
         fromString( m_id ,id );
 
         return readValues();

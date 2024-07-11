@@ -252,6 +252,10 @@ inline OsColorRef &colorFromString( OsColorRef &p ,const String &s ,size_t &size
     ColorRef color; fromString( color ,s ,size ); p = color.color; return p;
 }
 
+inline OsColorRef &colorFromString( OsColorRef &p ,const String &s ) {
+    size_t size; return colorFromString( p ,s ,size );
+}
+
 inline String &colorToString( const OsColorRef &p ,String &s ) {
     ColorRef color(p); toString( color ,s ); return s;
 }

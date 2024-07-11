@@ -19,10 +19,26 @@
 namespace solominer {
 
 //////////////////////////////////////////////////////////////////////////////
+
+    //TODO this in <solominer.h>
+
+///--
+const String &getGlobalLogin();
+bool testGlobalPassword( const char *password );
+//bool setGlobalPassword( const char *password ) {}
+
+//--
+bool globalLogin( const char *password );
+bool globalCypher( const char *text ,String &s );
+bool globalDecypher( const char *cypher ,String &s );
+bool globalIsLogged();
+
+///--
 CPoolList &getPoolListInstance();
 
 ///--
 Config::Section &getGlobalConfig();
+Config &getCredentialConfig();
 
 //////////////////////////////////////////////////////////////////////////////
 } //namespace solominer

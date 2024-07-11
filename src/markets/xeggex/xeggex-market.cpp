@@ -555,8 +555,8 @@ bool CMarketSetupXeggex::connectNew( ServiceInfo &info ,const Params &params ,IS
     auto *xeggex = new CMarketXeggex( setup );
 
     xeggex->api().config().credential = {
-        getMember( params ,"api-key" ,"" )
-        ,getMember( params ,"api-secret" ,"" )
+        getMember( params ,"api_key" ,"" )
+        ,getMember( params ,"api_secret" ,"" )
     };
 
     service = xeggex;

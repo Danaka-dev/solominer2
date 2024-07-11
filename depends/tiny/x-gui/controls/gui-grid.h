@@ -34,7 +34,7 @@ TINY_NAMESPACE {
 //////////////////////////////////////////////////////////////////////////////
 //! GuiGrid
 
-class GuiGrid : public GuiWithFont ,public IDataEvents ,GUICONTROL_PARENT {
+class GuiGrid : public GuiWithFont ,public GuiPublisher ,public IDataEvents ,GUICONTROL_PARENT {
 public:
     struct Cell {
         String text; //! @note if edit present text might not be updated
@@ -89,6 +89,8 @@ public:
 
     size_t baseIndex() { return m_baseIndex; }
 
+    bool &selectable() { return m_selectable; }
+
     IDataSource *getDataSource() {
         return m_datasource.ptr();
     }
@@ -135,6 +137,9 @@ protected: ///-- IDataEvents
     IAPI_IMPL onDataCommit( IDataSource &source ,Params &data ) IOVERRIDE;
     IAPI_IMPL onDataChanged( IDataSource &source ,const Params &data ) IOVERRIDE;
 
+public: ///-- IGuiControlEvents
+    API_IMPL(void) onMouseLeave( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) IOVERRIDE;
+
 protected: ///-- IGuiEvents
     API_IMPL(void) onLayout( const OsRect &clientArea ,OsRect &placeArea ) IOVERRIDE;
     API_IMPL(void) onDraw( const OsRect &updateArea ) IOVERRIDE;
@@ -179,13 +184,18 @@ protected:
     ListOf<Col> m_cols;
     ListOf<Row> m_rows;
 
-
 //-- edit
     //! @note editors my be set manually per col/cell, or using NameType in title
     size_t m_baseIndex; //! @note base index (first row index)
 
     IDataSourceRef m_datasource;
     GuiEditBoxRef m_editFocus;
+
+//-- select
+    bool m_selectable;
+    int m_hooverRow;
+
+    ColorRef m_textHooverColor;
 };
 
 //--
@@ -257,9 +267,6 @@ public:
 
     ListOf<Heading> &headings() { return m_headings; }
 
-    // Params &headings() { return m_headings; }
-    // ListOf<String> &blacklist() { return m_blacklist; }
-
     bool hasHeading( const char *field );
 
 public: ///-- interface
@@ -272,9 +279,6 @@ public: ///-- GuiGrid
 
 protected:
     ListOf<Heading> m_headings;
-
-    // Params m_headings; //! fields name as they appear in
-    // ListOf<String> m_blacklist; //! field blacklist, these won't be added in the sheet
 };
 
 //////////////////////////////////////////////////////////////////////////////

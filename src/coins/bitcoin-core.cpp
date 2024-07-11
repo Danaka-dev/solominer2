@@ -289,7 +289,7 @@ IAPI_DEF CWalletBitcoinBase::sendToAddress( WalletTransaction &transaction ) {
 
     //-- unlock
     if( !m_unlocked ) {
-        String walletPassword = getMember( core().params() ,"wallet-password" );
+        String walletPassword = getMember( core().params() ,"wallet_password" );
 
         if( !walletPassword.empty() ) {
             m_unlocked = (unlock( walletPassword.c_str() ) == IOK);

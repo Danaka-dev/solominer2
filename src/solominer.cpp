@@ -7,6 +7,7 @@
 #include <common/logging.h>
 #include <common/option.h>
 
+#include <algo/crypth.h>
 #include <markets/markets.h>
 #include <markets/trader.h>
 #include <markets/broker.h>
@@ -162,6 +163,51 @@ static Config g_poolsConfig;
 
 Config &getPoolsConfig() {
     return g_poolsConfig;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+//! Login
+
+const String &getGlobalLogin() {
+    static String login = getCredentialConfig().getSection("GLOBAL").params["password"];
+
+    return login;
+}
+
+bool testGlobalPassword( const char *password ) {
+    const String &s = getGlobalLogin();
+    String r;
+
+    DecryptH( password ,tocstr(s) ,r );
+
+    return r == password;
+}
+
+//bool setGlobalPassword( const char *password ) {}
+
+//--
+static String g_password;
+
+static bool g_logged = false;
+
+bool globalLogin( const char *password ) {
+    if( !testGlobalPassword( password ) ) return false;
+
+    g_password = password;
+
+    return g_logged = true;
+}
+
+bool globalCypher( const char *text ,String &s ) {
+    return CryptH( tocstr(g_password) ,text ,s );
+}
+
+bool globalDecypher( const char *cypher ,String &s ) {
+    return DecryptH( tocstr(g_password) ,cypher ,s );
+}
+
+bool globalIsLogged() {
+    return g_logged;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -417,14 +463,17 @@ void mainAppLoop() {
 int main( int argc ,char *argv[] ) {
     using namespace solominer;
 
-    void *A = NullPtr;
+    //////////////////////////////////////////////////////////////////////////////
+    //! Basics
+
+    OsTimerGetResolution();
 
     //////////////////////////////////////////////////////////////////////////////
     //! TEST
 
     /* OsTimerGetResolution();
 
-    algo::test_graph();
+    // algo::test_graph();
 
     while( OsSystemDoEvents() == ENOERROR ) {
         OsSleep(10);
@@ -506,7 +555,7 @@ int main( int argc ,char *argv[] ) {
 
     PLOGI << LogCategory::config << "Initialize user interface";
 
-    //TODO if not no_gui option
+    //TODO if not no_gui option (if so, care for login from ui)
 
     if( !uiInitialize( getConnectionList() ) ) {
         PLOG_ERROR << LogCategory::config << "Error initializing UI";
@@ -519,8 +568,6 @@ int main( int argc ,char *argv[] ) {
 
     PLOGI << LogCategory::net << "Starting network interface";
     PLOGI << LogCategory::PoW << "Starting miner threads";
-
-    OsTimerGetResolution();
 
     OsSystemSetGlobalTimer(1000);
 

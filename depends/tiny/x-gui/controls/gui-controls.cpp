@@ -121,6 +121,58 @@ void GuiMargin::setProperties( const Params &properties ) {
 }
 
 //////////////////////////////////////////////////////////////////////////////
+//! GuiShape
+
+REGISTER_CLASS(GuiShape)
+
+template <>
+const char *Enum_<GuiShape::Shape>::names[] = {
+    "none" ,"line" ,"rect" ,"ellipse"
+};
+
+template <>
+const GuiShape::Shape Enum_<GuiShape::Shape>::values[] = {
+    GuiShape::shapeNone
+    ,GuiShape::shapeLine
+    ,GuiShape::shapeRect
+    ,GuiShape::shapeEllipse
+};
+
+//-- properties
+void GuiShape::getProperties( Params &properties ) const {
+    GuiControl::getProperties( properties );
+
+    enumToString( m_shape ,properties["shape"] );
+    colorToString( m_color ,properties["color"] );
+}
+
+void GuiShape::setProperties( const Params &properties ) {
+    GuiControl::setProperties( properties );
+
+    enumFromString( m_shape ,getMember( properties ,"shape" ) );
+    colorFromString( m_color ,getMember( properties ,"color" ) );
+}
+
+//-- control
+void GuiShape::onDraw( const OsRect &updateArea ) {
+    GuiControl::onDraw(updateArea);
+
+    SetForeColor( m_color );
+    SetFillColor( m_color );
+
+    if( !isOrphan() ) switch( m_shape ) {
+        case shapeLine:
+        root().DrawLine( area() ); break;
+        case shapeRect:
+        root().DrawRectangle( area() ); break;
+        case shapeEllipse:
+        root().DrawEllipse( area() ); break;
+        /* case shapePolygon:
+        root().DrawPolygon( n ,points ); break; */
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////////
 //! GuiLabel
 
 REGISTER_CLASS(GuiLabel)
@@ -645,6 +697,8 @@ void GuiDataEdit::setProperties( const Params &properties ) {
 
     fromMember( m_dataField ,properties ,"datafield" );
 
+    if( isOrphan() ) return;
+
     const char *s;
 
     if( (s = getMember( properties ,"datasource" )) != NullPtr && *s ) {
@@ -687,11 +741,6 @@ IAPI_DEF GuiDataEdit::onDataChanged( IDataSource &source ,const Params &data ) {
     if( getDecl( data ,tocstr(m_dataField) ,decl ,value ) ) {
         setValue( tocstr(value) );
     }
-
-    /* const String *field = peekMember( data ,tocstr(m_dataField) );
-
-    if( field )
-        setValue( field->c_str() ); */
 
     return IOK;
 }
@@ -1171,6 +1220,9 @@ REGISTER_CLASS(GuiGrid)
 GuiGrid::GuiGrid() {
     Init( config() );
 
+    m_selectable = false;
+    m_hooverRow = -1;
+
 //-- dimension
     m_cellMargin = 4; //TODO from theme
     m_titleCoord = m_rowCoord = GuiCoord(10.f);
@@ -1182,6 +1234,10 @@ GuiGrid::GuiGrid() {
     m_colors.col2 = theTheme().getColors( MyPUID ,"col2" );
     m_colors.row1 = theTheme().getColors( MyPUID ,"row1" );
     m_colors.row2 = theTheme().getColors( MyPUID ,"row2" );
+
+    ColorQuad hoover = theTheme().getColors( TINY_GUILINK_PUID ,"hoover" );
+
+    m_textHooverColor = hoover.textColor;
 }
 
 //-- properties
@@ -1210,7 +1266,10 @@ void GuiGrid::setProperties( const Params &properties ) {
         String title = ( i < titles.size() ? titles[i] : "" );
         String field = ( i < fields.size() ? fields[i] : "" );
 
-        addCol( coord ,tocstr(title) ,tocstr(field) );
+        const char *p = tocstr(field);
+        bool editable = (*p == '$');
+
+        addCol( coord ,tocstr(title) ,p + (editable ? 1 : 0) ,editable );
     }
 
     const char *pRows = getMember( properties ,"rows" ,NullPtr );
@@ -1219,6 +1278,21 @@ void GuiGrid::setProperties( const Params &properties ) {
 
         fromString( nRows ,pRows );
         setRows( nRows );
+    }
+
+    if( isOrphan() ) return;
+
+    const char *s;
+
+    if( (s = getMember( properties ,"datasource" )) != NullPtr && *s ) {
+        auto *datasource = root().getBindingAs_<IDataSource>( s );
+
+        if( datasource )
+            Bind( datasource );
+    }
+
+    if( (s = getMember(properties,"selectable")) != NullPtr && *s ) {
+        fromString( m_selectable ,s );
     }
 }
 
@@ -1267,6 +1341,9 @@ void GuiGrid::setRows( int rows ,size_t baseIndex ) {
     if( rows > 0 ) while( n > rows ) {
         m_rows.pop_back(); --n;
     }
+
+    //-- adjust
+    m_rowCoord = (float) ((100.f - m_titleCoord.value) / rows);
 }
 
 void GuiGrid::addCol( const GuiCoord &width ,const char *title ,const char *field ,bool editable ) {
@@ -1285,6 +1362,8 @@ void GuiGrid::addCol( const GuiCoord &width ,const char *title ,const char *fiel
 
             col.edit = makeEditBox( tocstr(col.field.type) );
         }
+
+        col.editable = editable;
     }
 
     //-- add col to existing rows if any
@@ -1441,7 +1520,18 @@ IAPI_DEF GuiGrid::onDataCommit( IDataSource &source ,Params &data ) {
 }
 
 IAPI_DEF GuiGrid::onDataChanged( IDataSource &source ,const Params &data ) {
-    return ENOEXEC; //TODO LATER
+    //TODO
+    /* Params info = {{"haveedit","false"}};
+
+    source.getInfo(info);
+
+    bool haveEdit = false;
+
+    if( !fromString(haveEdit,getMember(info,"haveedit")) ) return IOK;
+
+    UpdateData(); */
+
+    return IOK;
 }
 
 //-- IGuiEvents
@@ -1470,7 +1560,7 @@ void GuiGrid::onLayout( const OsRect &clientArea ,OsRect &placeArea )  {
     Rect rrow = { 0 ,0 ,size().x ,m_rowHeight };
 
     if( config().showTitle ) {
-        rrow += Point( 0 ,m_rowHeight );
+        rrow += Point( 0 ,m_titleHeight );
     }
 
     Rect rinner ,region;
@@ -1506,6 +1596,7 @@ void GuiGrid::onLayout( const OsRect &clientArea ,OsRect &placeArea )  {
 
 void GuiGrid::onDraw( const OsRect &updateArea )  {
     GuiControl::onDraw(updateArea);
+    GuiWithFont::onDraw(updateArea);
 
     if( !shouldDraw(updateArea) ) return;
 
@@ -1521,9 +1612,10 @@ void GuiGrid::onDraw( const OsRect &updateArea )  {
 
     if( config().showTitle ) {
         SetColors( m_colors.title );
-        DrawRectangle( rrow );
 
-        rrow.bottom = rrow.top + m_rowHeight;
+        rrow.bottom = rrow.top + m_titleHeight;
+
+        DrawRectangle( rrow );
 
         Rect rcell = rrow;
 
@@ -1571,6 +1663,12 @@ void GuiGrid::onDraw( const OsRect &updateArea )  {
                 // cell.edit->area() = redit;
                 cell.edit->onDraw( redit );
             } else {
+                if( m_hooverRow == j ) {
+                    SetTextColor( m_textHooverColor );
+                } else {
+                    SetTextColor( m_colors.normal.textColor );
+                }
+
                 DrawTextAlign( cell.text.c_str() ,rinner ,config().cellAlign );
             }
 
@@ -1585,21 +1683,33 @@ void GuiGrid::onDraw( const OsRect &updateArea )  {
     root().RegionSetArea( region ,false );
 }
 
+void GuiGrid::onMouseLeave( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) {
+    GuiControl::onMouseLeave( p ,mouseButton ,keyState );
+
+    m_hooverRow = -1; Refresh();
+}
+
 void GuiGrid::onMouse( OsMouseAction mouseAction ,OsKeyState keyState ,OsMouseButton mouseButton ,int points ,const OsPoint *pos ) {
     GuiControl::onMouse( mouseAction ,keyState ,mouseButton ,points ,pos );
-
-    if( mouseAction != osMouseButtonDown ) return;
 
     Point p = pos[0]; p -= area().getTopLeft();
 
 //-- row
     int y = (p.y - (config().showTitle ? m_titleHeight : 0) ) / m_rowHeight;
 
-    if( y < 0 || y >= m_rows.size() ) return;
+    if( y < 0 || y >= m_rows.size() ) {
+        m_hooverRow = -1; return;
+    }
+
+    if( m_selectable ) {
+        m_hooverRow = y; Refresh();
+    }
 
     Rect r = { 0 ,m_titleHeight + y*m_rowHeight ,0 ,m_rowHeight };
 
     r.bottom += r.top;
+
+    if( mouseAction != osMouseButtonDown ) return;
 
 //-- col
     int x=-1 ,width = 0;
@@ -1634,6 +1744,8 @@ void GuiGrid::onMouse( OsMouseAction mouseAction ,OsKeyState keyState ,OsMouseBu
             m_editFocus->onGotFocus();
             m_editFocus->onMouse( mouseAction ,keyState ,mouseButton ,points ,pos );
         }
+    } else if( m_selectable ) {
+        PostNotify( GUI_MESSAGEID_EDIT ,y ,NullPtr ,NullPtr );
     }
 }
 
@@ -1683,6 +1795,7 @@ void GuiGrid::drawRowLine( int i ,const Rect &r ,bool forceDraw ) {
     SetColors( getRowColors(i) );
     DrawRectangle( r );
 }
+
 
 //////////////////////////////////////////////////////////////////////////
 //! GuiNavBar
