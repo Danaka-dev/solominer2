@@ -7,6 +7,7 @@
 #include <coins/cores.h>
 #include <pools/pools.h>
 #include <algo/crypth.h>
+#include <markets/trader.h>
 
 #include "ui.h"
 #include "ui-settings.h"
@@ -46,7 +47,7 @@ struct UiTitle : GuiGroup {
         setPropertiesWithString(
             "controls={"
                 "line:GuiShape = { align=centerv; coords={0,0,100%,1} shape=line; color=#e0e0e0; }"
-                "label:GuiLabel = { align=center; coords={40%,0,60%,100%} background=#101010; text=title; textalign=center; }" // backcolor=#e01010; }"
+                "label:GuiLabel = { align=center; coords={40%,0,60%,45%} background=#804080; text=title; textalign=center; backcolor=#804080; }" // backcolor=#e01010; }"
             "}"
         );
     }
@@ -145,8 +146,8 @@ UiCoreSettings::UiCoreSettings() : GuiDialog( "core-settings")
 
 void UiCoreSettings::setCoreByTicker( const char *ticker ,CConnection &connection ) {
     Params props = {
-             { "image" ,ticker }
-            ,{ "text" ,ticker }
+         { "image" ,ticker }
+        ,{ "text" ,ticker }
     };
 
     m_coin = ticker;
@@ -394,7 +395,56 @@ IAPI_DEF UiCoreSettings::onDataEdit( Params &data ) {
 }
 
 //////////////////////////////////////////////////////////////////////////////
-//! DataSource
+//! TradeDataSource
+
+bool TradeDataSource::readValues() {
+    if( !ConfigDataSource::readValues() ) return false;
+
+    SchedulePeriod period;
+
+    fromString( period ,m_values["schedule"] );
+    toString( period.every ,m_values["every"] );
+    enumToString( period.period ,m_values["period"] );
+    toString( period.at ,m_values["at"] );
+
+    AmountValue value;
+
+    fromString( value ,m_values["minimum"] );
+    toString( value.amount ,m_values["minimumAmount"] );
+    toString( value.value ,m_values["minimumValue"] );
+
+    return true;
+}
+
+bool TradeDataSource::writeValues() {
+    Params data;
+
+    SchedulePeriod period;
+
+    fromString( period.every ,m_values["every"] );
+    enumFromString( period.period ,m_values["period"] );
+    fromString( period.at ,m_values["at"] );
+
+    toString( period ,data["schedule"] );
+
+    AmountValue value;
+
+    fromString( value.amount ,m_values["minimumAmount"] );
+    fromString( value.value ,m_values["minimumValue"] );
+
+    toString( value ,data["minimum"] );
+
+///--
+    String s;
+
+    toString( data ,s );
+    m_section->params[ m_entry ] = s;
+
+    return m_config.commitSection( *m_section ) && m_config.SaveFile();
+}
+
+//////////////////////////////////////////////////////////////////////////////
+//! CoreDataSource
 
 bool CoreDataSource::readValues( const char *id ) {
     int x=0;
@@ -439,11 +489,42 @@ bool CoreDataSource::writeValues() {
     String s;
 
     Params cypher = m_values;
+    cypher.erase("id");
 
     globalCypher( tocstr(m_values["wallet_password"]) ,cypher["wallet_password"] );
 
     toString( cypher ,s );
     m_section->params[ m_entry ] = s;
+
+    return m_config.commitSection( *m_section ) && m_config.SaveFile();
+}
+
+bool CoreDataSource::updatePassword( const char *password ) {
+    String s;
+
+    Params cypher = m_values;
+    cypher.erase("id");
+
+    CryptH( password ,tocstr(m_values["wallet_password"]) ,cypher["wallet_password"] );
+
+    toString( cypher ,s );
+    m_section->params[ m_entry ] = s;
+
+    return true;
+}
+
+bool CoreDataSource::updateAllPasswords( const char *password ) {
+    Params id;
+
+    const int n = (int) m_section->params.size();
+
+    for( auto &it : m_section->params ) {
+        m_entry = it.first;
+
+        readValues();
+
+        updatePassword( password );
+    }
 
     return m_config.commitSection( *m_section ) && m_config.SaveFile();
 }
@@ -485,34 +566,58 @@ bool MarketDataSource::writeValues() {
     return m_config.commitSection( *m_section ) && m_config.SaveFile();
 }
 
+bool MarketDataSource::updatePassword( const char *password ) {
+    String s;
+
+    Params cypher = m_values;
+
+    CryptH( password ,tocstr(m_values["api_key"]) ,cypher["api_key"] );
+    CryptH( password ,tocstr(m_values["api_secret"]) ,cypher["api_secret"] );
+
+    toString( cypher ,s );
+    m_section->params[ m_entry ] = s;
+
+    return true;
+}
+
+bool MarketDataSource::updateAllPasswords( const char *password ) {
+    updatePassword( password );
+
+    return m_config.commitSection( *m_section ) && m_config.SaveFile();
+}
+
 //////////////////////////////////////////////////////////////////////////////
 //! UiMainSeetings
 
 #define SOLOMINER_INTRO_1     "Welcome to your best buddy, mate, bro, fellow"
 #define SOLOMINER_INTRO_2     "software assistant to your solo mining adventures."
 
-#define SOLOMINER_BODY_1      "This is BETA 1 version of SOLOMINER 2, with full"
-#define SOLOMINER_BODY_2      "support for direct core mining and hopefully not too many bugs."
+#define SOLOMINER_BODY_1      "This is BETA 2 version of SOLOMINER2 supporting"
+#define SOLOMINER_BODY_2      "direct core mining and automatic reward trading."
 #define SOLOMINER_BODY_3      ""
-#define SOLOMINER_BODY_4      "Look out for soon to come BETA 2 or most recent version at:"
+#define SOLOMINER_BODY_4      "Look out for soon to come RC or most recent version at:"
 #define SOLOMINER_BODY_5      "https://github.com/danaka-dev/solominer2"
 
 #define SOLOMINER_DONATORS_1   "Top Donators"
 #define SOLOMINER_DONATORS_2   "M. Ganapati   0.001754 BTC"
 #define SOLOMINER_DONATORS_3   "Anonymous     0.2300 LTC"
 
-#define SOLOMINER_FOOTER_1    "Thanks for using SOLOMINER, may the blocks be with you!"
+#define SOLOMINER_FOOTER_1    "Thank You for using SOLOMINER, may the blocks be with you!"
 
 UiMainSettings::UiMainSettings( GuiControlWindow *root ) :
     GuiDialog( "Settings" )
     ,m_passwordDialog(root)
-    ,m_coreCredential( getCredentialConfig() ,"CORES" )
-    ,m_marketCredential( getCredentialConfig() ,"MARKETS" )
+    ,m_globalConfig( getConfig() ,"global" )
+    ,m_tradeConfig( getServiceConfig() )
+    ,m_coreCredential( getCredentialConfig() )
+    ,m_marketCredential( getCredentialConfig() )
     ,m_editing(false)
 {
     if( root ) {
         setRoot(*root);
         root->addBinding("dialog",this);
+        root->addBinding("global",&m_globalConfig);
+        root->addBinding("trade",&m_tradeConfig);
         root->addBinding("core",&m_coreCredential);
         root->addBinding("market",&m_marketCredential);
     }
@@ -525,7 +630,7 @@ UiMainSettings::UiMainSettings( GuiControlWindow *root ) :
             "body:GuiTab = { align=top,left; coords={0,0,88%,100%} controls={"
                 "about:GuiGroup = { background=#FF000000; textcolor=#FF808080; controls={"
                     "footer:GuiLabel = { coords={0,0,100%,40%} align=bottom; }"
-                    "heading:GuiLabel = { coords={0,0,100%,20%} font=huge; align=top,centerh,vertical; textalign=center; text=SOLOMINER v2 BETA 1; }"
+                    "heading:GuiLabel = { coords={0,0,100%,20%} font=huge; align=top,centerh,vertical; textalign=center; text=SOLOMINER2 version BETA 2; }"
                     "intro1:GuiLabel = { coords={0,0,100%,4%} textcolor=#ffd700; align=top,centerh,vertical; textalign=top,centerh; text=" SOLOMINER_INTRO_1 "; }"
                     "intro2:GuiLabel = { coords={0,0,100%,4%} textcolor=#ffd700; align=top,centerh,vertical; textalign=top,centerh; text=" SOLOMINER_INTRO_2 "; }"
                     "inter1:GuiLabel = { coords={0,0,100%,4%} align=top,centerh,vertical; textalign=top,centerh; text=; }"
@@ -540,17 +645,26 @@ UiMainSettings::UiMainSettings( GuiControlWindow *root ) :
                     "donators3:GuiLabel = { coords={0,0,100%,4%} align=top,centerh,vertical; textalign=top,centerh; text=" SOLOMINER_DONATORS_3 "; }"
                     "inter3:GuiLabel = { coords={0,0,100%,8%} align=top,centerh,vertical; textalign=top,centerh; text=; }"
                     "footer1:GuiLabel = { coords={0,0,100%,6%} align=top,centerh,vertical; textalign=top,centerh; text=" SOLOMINER_FOOTER_1 "; }"
-                    "close:GuiButton = { commandId=19; bind=dialog; coords={42%,90%,58%,95%} align=none; text=Keep mining; } "
+                    "close:GuiButton = { commandId=19; bind=dialog; coords={42%,85%,58%,90%} align=none; text=Keep mining; } "
                 "}}"
                 "settings:GuiGroup={ controls={"
                     "globalTitle:UiTitle = { align=top,vertical; coords={15%,0,85%,10%} /label={text=Global;} }"
-                    "workerLabel:GuiLabel = { align=top; coords={25%,0,35%,6%} text=Worker Name; textalign=left,centerv; }"
-                    "worker:GuiTextBox = { align=top,vertical; coords={40%,0,65%,5%} text=; }"
+                    "workerLabel:GuiLabel = { align=top; coords={25%,0,35%,5%} text=Worker Name; textalign=left,centerv; }"
+                    "worker:GuiTextBox = { align=top,vertical; coords={40%,0,65%,5%} text=; datafield=worker; datasource=global; }"
 
                     "tradeTitle:UiTitle = { align=top,vertical; coords={15%,0,85%,10%} /label={text=Trade;} }"
-                    "scheduleLabel:GuiLabel = { align=top; coords={25%,0,35%,6%} text=Trader schedule; textalign=left,centerv; }"
-                    "schedule:GuiTextBox = { align=top,vertical; coords={40%,0,65%,5%} text=; }"
-                    //+ minimum amount
+                    "scheduleLabel:GuiLabel = { align=top; coords={25%,0,35%,5%} text=Schedule every; textalign=left,centerv; }"
+                    "every:GuiTextBox = { align=top; coords={40%,0,48%,5%} text=; datafield=every; datasource=trade; }"
+                    "period:GuiComboBox = { align=top; coords={49%,0,60%,5%} text=; menu={items=immediate,second,minute,hour,day,week;} datafield=period; datasource=trade; }"
+                    "atLabel:GuiLabel = { align=top; coords={61%,0,64%,5%} text=at; textalign=center; }"
+                    "at:GuiTextBox = { align=top,vertical; coords={65%,0,73%,5%} text=; datafield=at; datasource=trade; }"
+                    "ma:GuiMargin = { align=top,vertical; coords={15%,0,85%,1%} }"
+                    "minimumLabel:GuiLabel = { align=top; coords={25%,0,35%,5%} text=Minimum value; textalign=left,centerv; }"
+                    "minimum:GuiTextBox = { align=top; coords={40%,0,55%,5%} text=; datafield=minimumAmount; datasource=trade; }"
+                    "value:GuiLabel = { align=top,vertical; coords={55%,0,60%,5%} text=USD; textalign=center; }"
+
+                    "cancel:GuiButton = { commandId=3,1; bind=dialog; enabled=false; coords={40%,85%,49%,90%} align=none; text=Cancel; } "
+                    "confirm:GuiButton = { commandId=2,1; bind=dialog; enabled=false; coords={51%,85%,60%,90%} align=none; text=Ok; } "
                 "}}"
                 "credential:GuiGroup={ controls={"
                     "generalTitle:UiTitle = { align=top,vertical; coords={15%,0,85%,10%} /label={text=General;} }"
@@ -571,13 +685,14 @@ UiMainSettings::UiMainSettings( GuiControlWindow *root ) :
                     "} }"
 
                     "marketTitle:UiTitle = { align=top,vertical; coords={15%,0,85%,10%} /label={text=Markets;} }"
+                    "xeggex:GuiLabel = { align=top,vertical; coords={25%,0,85%,6%} text=XeggeX; textalign=left,centerv; font=large; textcolor=#ebbe5a; }"
                     "lblApiKey:GuiLabel = { align=top; coords={25%,0,50%,6%} text=api-key; textalign=left,centerv; }"
                     "apikey:GuiTextBox = { align=top,vertical; coords={35%,0,85%,5%} text=; datafield=api_key; datasource=market; }"
                     "lblApiSecret:GuiLabel = { align=top; coords={25%,0,35%,6%} text=api-secret; textalign=left,centerv; }"
                     "apisecret:GuiTextBox = { align=top,vertical; coords={35%,0,85%,5%} text=; datafield=api_secret; datasource=market; }"
 
-                    "cancel:GuiButton = { commandId=3; bind=dialog; enabled=false; coords={40%,85%,49%,90%} align=none; text=Cancel; } "
-                    "confirm:GuiButton = { commandId=2; bind=dialog; enabled=false; coords={51%,85%,60%,90%} align=none; text=Ok; } "
+                    "cancel:GuiButton = { commandId=3,2; bind=dialog; enabled=false; coords={40%,85%,49%,90%} align=none; text=Cancel; } "
+                    "confirm:GuiButton = { commandId=2,2; bind=dialog; enabled=false; coords={51%,85%,60%,90%} align=none; text=Ok; } "
                 "}}"
             "}}"
         "}"
@@ -596,6 +711,10 @@ UiMainSettings::UiMainSettings( GuiControlWindow *root ) :
 
     if( tabbar ) tabbar->Bind( tab );
 
+//-- trade
+    m_globalConfig.Seek("general");
+    m_tradeConfig.Seek("global");
+
 //-- global
     auto &global = getCredentialConfig().getSection("GLOBAL");
 
@@ -611,6 +730,8 @@ UiMainSettings::UiMainSettings( GuiControlWindow *root ) :
 //-- cores
     auto *cores = getControlAs_<GuiNavGrid>("body/credential/trades");
 
+    GuiCoord h = 20.f;
+    cores->Grid()->setTitleHeight(h);
     cores->Grid()->Subscribe(*this);
 
 //-- market
@@ -618,10 +739,11 @@ UiMainSettings::UiMainSettings( GuiControlWindow *root ) :
     m_marketCredential.Update();
 
 //-- data
-    m_coreCredential.Subscribe(*this);
+    m_globalConfig.Subscribe(*this);
+    m_tradeConfig.Subscribe(*this);
     m_marketCredential.Subscribe(*this);
 
-    updateControlState(false);
+    updateControlState(NullPtr,false);
 }
 
 //--
@@ -671,18 +793,26 @@ void UiMainSettings::onGlobalPasswordSet() {
     getCredentialConfig().commitSection( global );
     getCredentialConfig().SaveFile();
 
-//-- rewrite all entries (new password)
-    Params data;
+//-- update passwords
+    m_coreCredential.updateAllPasswords( tocstr(password) );
+    m_marketCredential.updateAllPasswords( tocstr(password) );
 
-    m_coreCredential.onDataEdit(data);
-    m_marketCredential.onDataEdit(data);
+//-- done
+    if( !globalLogin( tocstr(password) ) ) { //! relog
+        //TODO should not happen, fatal ?
+    }
 
-    onEditConfirm(); //! update
+    auto *cores = getControlAs_<GuiNavGrid>("body/credential/trades");
+    SAFECALL(cores)->updatePage(0);
+
+    updateControlState( NullPtr ,m_editing=false );
+
+    Refresh();
 }
 
 void UiMainSettings::onCorePasswordSet( const char *id ) {
     if( m_coreCredential.Seek( id ) != IOK ) {
-        return; //TODO log this
+        return; //TODO warning/log this
     }
 
     Params data = {{"wallet_password",m_passwordDialog.values()["password"]}};
@@ -691,7 +821,6 @@ void UiMainSettings::onCorePasswordSet( const char *id ) {
     m_coreCredential.Commit();
 
     auto *cores = getControlAs_<GuiNavGrid>("body/credential/trades");
-
     SAFECALL(cores)->updatePage(0);
 }
 
@@ -707,34 +836,59 @@ void UiMainSettings::onPasswordSet() {
     }
 }
 
-void UiMainSettings::onEditConfirm() {
-    m_coreCredential.Commit();
-    m_marketCredential.Commit();
+void UiMainSettings::onEditConfirm( int id ) {
+    ConfigDataSource *source = NullPtr;
 
-    updateControlState( m_editing=false );
+    switch( id ) {
+        case 1: source = &m_tradeConfig; onEditConfirm(10); break;
+        case 10: source = &m_globalConfig; break;
+        case 2: source = &m_marketCredential; break;
+        default: return;
+    }
+
+    assert(source);
+
+    source->Commit();
+    updateControlState( source ,m_editing=false );
 
     Refresh();
 }
 
-void UiMainSettings::onEditCancel() {
-    m_coreCredential.Update();
-    m_marketCredential.Update();
+void UiMainSettings::onEditCancel( int id ) {
+    ConfigDataSource *source = NullPtr;
 
-    updateControlState( m_editing=false );
+    switch( id ) {
+        case 1: source = &m_tradeConfig; onEditCancel(10); break;
+        case 10: source = &m_globalConfig; break;
+        case 2: source = &m_marketCredential; break;
+        default: return;
+    }
+
+    assert(source);
+
+    source->Update();
+    updateControlState( source ,m_editing=false );
 
     Refresh();
 }
 
-void UiMainSettings::updateControlState( bool editing ) {
-    getControlAs_<GuiButton>("body/credential/cancel")->setState( editing ? highlightNormal : highlightDisabled );
-    getControlAs_<GuiButton>("body/credential/confirm")->setState( editing ? highlightNormal : highlightDisabled );
+void UiMainSettings::updateControlState( IDataSource *source ,bool editing ) {
+    if( source == NullPtr || m_globalConfig == *source || m_tradeConfig == *source ) {
+        getControlAs_<GuiButton>("body/settings/cancel")->setState( editing ? highlightNormal : highlightDisabled );
+        getControlAs_<GuiButton>("body/settings/confirm")->setState( editing ? highlightNormal : highlightDisabled );
+    }
+
+    if( source == NullPtr || m_marketCredential == *source ) {
+        getControlAs_<GuiButton>("body/credential/cancel")->setState( editing ? highlightNormal : highlightDisabled );
+        getControlAs_<GuiButton>("body/credential/confirm")->setState( editing ? highlightNormal : highlightDisabled );
+    }
 }
 
 //--
 IAPI_DEF UiMainSettings::onDataCommit( IDataSource &source ,Params &data ) {
     if( !m_editing ) return IOK;
 
-    updateControlState( m_editing=false );
+    updateControlState( &source ,m_editing=false );
     Refresh();
 
     return IOK;
@@ -748,7 +902,7 @@ IAPI_DEF UiMainSettings::onDataChanged( IDataSource &source ,const Params &data 
     source.getInfo(info);
 
     if( fromString(m_editing,getMember(info,"haveedit")) ) {
-        updateControlState( m_editing=true );
+        updateControlState( &source ,m_editing=true );
         Refresh();
     }
 
@@ -763,10 +917,10 @@ void UiMainSettings::onCommand( IObject *source ,messageid_t commandId ,long par
             break;
 
         case GUI_MESSAGEID_OK:
-            onEditConfirm();
+            onEditConfirm( (int) param );
             break;
         case GUI_MESSAGEID_CANCEL:
-            onEditCancel();
+            onEditCancel( (int) param );
             break;
 
 

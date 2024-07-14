@@ -11,6 +11,17 @@ namespace solominer {
 //////////////////////////////////////////////////////////////////////////////
 //! schedule
 
+template <>
+const char *Enum_<SchedulePeriod::Period>::names[] = {
+    "immediate" ,"second" ,"minute" ,"hour" ,"day" ,"week"
+};
+
+template <>
+const SchedulePeriod::Period Enum_<SchedulePeriod::Period>::values[] = {
+    SchedulePeriod::immediate ,SchedulePeriod::second ,SchedulePeriod::minute ,SchedulePeriod::hour ,SchedulePeriod::day ,SchedulePeriod::week
+};
+
+///--
 time_t getScheduleTime( const SchedulePeriod &period ) {
 
 //-- duration
@@ -237,7 +248,7 @@ IAPI_DEF CTrader::Start( Config &config ,const char *path ) {
         return IERROR;
 
 //-- set config
-    config.getSection("trader");
+    auto &traderConfig = config.getSection("trader");
 
     //TODO set m_config with configfile
 

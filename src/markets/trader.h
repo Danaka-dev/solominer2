@@ -47,19 +47,27 @@ time_t getScheduleTime( const SchedulePeriod &period );
 
 //--
 INLINE_FROMSTRING(SchedulePeriod) {
-    fromString( p.every ,s ,size );
-    enumFromString( p.period ,s ,size );
-    fromString( p.at ,s ,size );
+    StringList list;
+
+    fromString( list ,s );
+
+    if( list.size() > 0 ) fromString( p.every ,list[0] ,size );
+    if( list.size() > 1 ) enumFromString( p.period ,list[1] ,size );
+    if( list.size() > 2 ) fromString( p.at ,list[2] ,size );
 
     return p;
 }
 
 INLINE_TOSTRING(SchedulePeriod) {
-    toString( p.every ,s );
-    enumToString( p.period ,s );
-    toString( p.at ,s );
+    StringList list;
 
-    return s;
+    list.resize(3);
+
+    toString( p.every ,list[0] );
+    enumToString( p.period ,list[1] );
+    toString( p.at ,list[2] );
+
+    return toString( list ,s );
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -67,7 +75,9 @@ INLINE_TOSTRING(SchedulePeriod) {
 
 struct TraderConfig {
     SchedulePeriod schedule; //! default schedule for all markets
+    AmountValue minimumTrade;
 
+    //TODO LATER use below
     MapOf<String,SchedulePeriod> marketSchedule; //! schedule per market
     MapOf<String,double> minimumValues; //! minimum amount required to trade each value
 };

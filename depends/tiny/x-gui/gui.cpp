@@ -2206,7 +2206,7 @@ const char *highlightNames[highlightCount] = {
 };
 
 static String g_themeTiny =
-    "colors = { white=#C4C4C4; white1=#FAFAFA; gray0=#303030; gray=#808080; blue=#404080; blue2=#A0A0F0; blue1=#101080; blue0=#202040; green=#408040; black=#101010; black1=#161616; red=#804040; } "
+"colors = { white=#C4C4C4; white1=#FAFAFA; gray0=#303030; gray=#808080; blue=#404080; blue2=#A0A0F0; blue1=#101080; blue0=#202040; green=#408040; black=#101010; black1=#161616; red=#804040; orchid=#804080; teal=#008080; } "
     "fonts = { default=; }"
     "GuiControl = { normal={$black,$black,$white,0} disabled={$black,black,$gray,0} }"
     "GuiLabel = { normal={0,0,$white,0} disabled={0,0,$gray,0} }"
@@ -2224,7 +2224,7 @@ static String g_themeTiny =
     "}"
     "GuiGrid = {"
         "normal={none,$black,$white,none}"
-        "title={$white,$blue1,$white1,none}"
+        "title={$white,$teal,$white1,none}"
         "col1={$gray,$black1,$white,none}"
         "col2={$gray,$black,$white,none}"
         "row1={$gray0,none,$white,none}"

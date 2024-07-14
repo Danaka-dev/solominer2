@@ -845,6 +845,12 @@ struct OsEventMessage
 //-- green
 #define OS_COLOR_OLIVE          ((uint32_t)0x0ff008080)
 
+//-- teal
+#define OS_COLOR_TEAL           ((uint32_t)0x0ff808000)
+
+//-- magenta
+#define OS_COLOR_ORCHID          ((uint32_t)0x0ff804080)
+
 //-- blue
 #define OS_COLOR_AZURE          ((uint32_t)0x0ffff8000)
 #define OS_COLOR_ROYAL          ((uint32_t)0x0ffe16941)

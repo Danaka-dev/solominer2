@@ -37,6 +37,7 @@ bool globalIsLogged();
 CPoolList &getPoolListInstance();
 
 ///--
+Config &getConfig();
 Config::Section &getGlobalConfig();
 Config &getCredentialConfig();
 

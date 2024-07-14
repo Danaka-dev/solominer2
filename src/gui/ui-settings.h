@@ -65,18 +65,37 @@ public:
 };
 
 //////////////////////////////////////////////////////////////////////////////
+//! TradeDataSource
+
+class TradeDataSource : public ConfigDataSource {
+public:
+    TradeDataSource( Config &config ) :
+        ConfigDataSource(config,"TRADER")
+    {}
+
+protected:
+    // bool readValues( const char *id ) override;
+    bool readValues() override;
+    bool writeValues() override;
+};
+
+//////////////////////////////////////////////////////////////////////////////
 //! CoreDataSource
 
 class CoreDataSource : public ConfigDataSource {
 public:
-    CoreDataSource( Config &config ,const char *section=NullPtr ) :
-        ConfigDataSource(config,section)
+    CoreDataSource( Config &config ) :
+        ConfigDataSource(config,"CORES")
     {}
 
 protected:
-    API_DECL(bool) readValues( const char *id );
-    API_DECL(bool) readValues();
-    API_DECL(bool) writeValues();
+    bool readValues( const char *id ) override;
+    bool readValues() override;
+    bool writeValues() override;
+
+public:
+    bool updatePassword( const char *password );
+    bool updateAllPasswords( const char *password );
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -84,13 +103,17 @@ protected:
 
 class MarketDataSource : public ConfigDataSource {
 public:
-    MarketDataSource( Config &config ,const char *section=NullPtr ) :
-        ConfigDataSource(config,section)
+    MarketDataSource( Config &config ) :
+        ConfigDataSource(config,"MARKETS")
     {}
 
 public:
-    API_DECL(bool) readValues();
-    API_DECL(bool) writeValues();
+    bool readValues() override;
+    bool writeValues() override;
+
+public:
+    bool updatePassword( const char *password );
+    bool updateAllPasswords( const char *password );
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -113,10 +136,11 @@ public:
     void onCorePasswordSet( const char *id );
     void onPasswordSet();
 
-    void onEditConfirm();
-    void onEditCancel();
+    void onEditConfirm( int id );
+    void onEditCancel( int id );
 
-    void updateControlState( bool editing );
+    void updateCorePassword();
+    void updateControlState( IDataSource *source ,bool editing );
 
 public: ///-- Data
     IAPI_DECL onDataCommit( IDataSource &source ,Params &data );
@@ -129,6 +153,8 @@ public: ///-- control
 protected:
     UiPassword m_passwordDialog;
 
+    ConfigDataSource m_globalConfig;
+    TradeDataSource m_tradeConfig;
     CoreDataSource m_coreCredential;
     MarketDataSource m_marketCredential;
 

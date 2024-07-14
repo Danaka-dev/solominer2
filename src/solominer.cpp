@@ -169,9 +169,7 @@ Config &getPoolsConfig() {
 //! Login
 
 const String &getGlobalLogin() {
-    static String login = getCredentialConfig().getSection("GLOBAL").params["password"];
-
-    return login;
+    return getCredentialConfig().getSection("GLOBAL").params["password"];
 }
 
 bool testGlobalPassword( const char *password ) {
@@ -506,11 +504,15 @@ int main( int argc ,char *argv[] ) {
     //! @note keeping on even if config was not found
     loadConfigFile( config ,tocstr(getOptConfigFile()) );
 
-    auto &globalSection = getConfig().getSection("config");
+    auto &globalSection = getGlobalConfig(); // getGlobal getConfig().getSection("config");
 
-    const char *serviceConf = getMember( globalSection.params ,"service" ,"./credit.conf" );
-    const char *credentialConf = getMember( globalSection.params ,"credential" ,"./service.conf" );
-    const char *poolsConf = getMember( globalSection.params ,"pools" ,"./pools.conf" );
+    Params configs;
+
+    fromString( configs ,globalSection.params["config"] );
+
+    const char *serviceConf = getMember( configs ,"service" ,"./credit.conf" );
+    const char *credentialConf = getMember( configs ,"credential" ,"./service.conf" );
+    const char *poolsConf = getMember( configs ,"pools" ,"./pools.conf" );
 
     //////////////////////////////////////////////////////////////////////////////
     //! credential
@@ -548,7 +550,7 @@ int main( int argc ,char *argv[] ) {
     //////////////////////////////////////////////////////////////////////////////
     //! Trading
 
-    initTrading( config );
+    initTrading( getServiceConfig() );
 
     //////////////////////////////////////////////////////////////////////////////
     //! gui
