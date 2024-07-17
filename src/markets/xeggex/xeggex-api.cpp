@@ -221,8 +221,8 @@ void parseResponseValue_( rapidjson::Value &v ,Market2 &market ) {
     market.id = v["id"].GetString();
     market.symbol = v["symbol"].GetString();
 
-    String primaryAsset = v["primaryAsset"].GetString();
-    String secondaryAsset = v["secondaryAsset"].GetString();
+    market.primaryAsset = v["primaryAsset"].GetString();
+    market.secondaryAsset = v["secondaryAsset"].GetString();
 
     market.lastPrice = v["lastPrice"].GetString();
     market.highPrice = v["highPrice"].GetString();

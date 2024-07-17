@@ -507,10 +507,10 @@ IAPI_DEF CConnection::loadSettings( Params &settings ) {
 
 //-- get relatives
     getChain( "minerstat" ,m_chain );
-    getMarket( info().market.c_str() ,m_market );
+    getMarket( tocstr(info().market) ,m_market );
 
-    getWallet( info().mineCoin.wallet.c_str() ,m_coinWallet );
-    getWallet( info().tradeCoin.wallet.c_str() ,m_tradeWallet );
+    getWallet( tocstr(info().mineCoin.wallet) ,m_coinWallet );
+    getWallet( tocstr(info().tradeCoin.wallet) ,m_tradeWallet );
 
     //TODO auto in wallet on setup using ListAddresses
     if( m_coinWallet ) {

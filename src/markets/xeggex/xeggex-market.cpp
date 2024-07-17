@@ -55,8 +55,30 @@ MarketPair &fromManifest( MarketPair &p ,const xeggex::MarketByList &manifest ) 
     p.volume24h = manifest.volume;
 
     // p.chart24h;
-    p.lastTradeTime = manifest.lastTradeAt;
-    p.priceDecimal = manifest.priceDecimals;
+    p.lastTradeTime = (int) manifest.lastTradeAt;
+    p.priceDecimal = (int) manifest.priceDecimals;
+
+    p.hasMarket = manifest.isActive;
+
+    return p;
+}
+
+template <>
+MarketPair &fromManifest( MarketPair &p ,const xeggex::Market2 &manifest ) {
+    StringList list;
+    Split( tocstr(manifest.symbol) ,list ,'/' );
+
+    p.primaryCoin = (list.size() > 0) ? list[0] : "";
+    p.secondaryCoin = (list.size() > 1) ? list[1] : "";
+
+    p.lastPrice = manifest.lastPrice;
+    p.highPrice24h = manifest.highPrice;
+    p.lowPrice24h = manifest.lowPrice;
+    p.volume24h = manifest.volume;
+
+    p.chart24h = manifest.lineChart;
+    p.lastTradeTime = (int) manifest.lastTradeAt;
+    p.priceDecimal = (int) manifest.priceDecimals;
 
     p.hasMarket = manifest.isActive;
 
@@ -298,10 +320,10 @@ IAPI_DEF CMarketXeggex::getMarketPair( const char *primary ,const char *secondar
 
     ss << primary << "_" << secondary;
 
-    if( !api().marketGetBySymbol( ss.str().c_str() ,market ) )
+    if( !api().marketGetBySymbol( tocstr(ss.str()) ,market ) )
         return IERROR;
 
-    pair.lastPrice = market.lastPrice;
+    fromManifest( pair ,market );
 
     return IOK;
 }

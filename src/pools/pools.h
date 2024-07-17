@@ -30,40 +30,32 @@
 namespace solominer {
 
 //////////////////////////////////////////////////////////////////////////////
-#define CPOOL_PUID      0x05daa7ce872c20c1e
+#define SOLOMINER_CPOOLCONNECTIONINFO_PUID      0x0d5c80c5d1a4b3a77
 
-struct PoolInfo;
+#define SOLOMINER_CPOOL_PUID      0x05daa7ce872c20c1e
+
 struct PoolConnectionInfo; //! Rename to pool info
 
+///--
 class CPoolList;
 class CPool;
 
 //////////////////////////////////////////////////////////////////////////////
-//! PoolInfo
-
-struct PoolInfo {
-
-};
-
-//////////////////////////////////////////////////////////////////////////////
 //! PoolConnectionInfo
-
-///-- mining mode
-#define MININGMODE_NAME_SOLO_LOCAL      "SOLO"
-#define MININGMODE_NAME_SOLO_REMOTE     "SOLO_REMOTE"
-#define MININGMODE_NAME_POOL_SHARED     "POOL"
-#define MININGMODE_NAME_POOL_SOLO       "POOL_SOLO"
 
 enum MiningMode {
     mmUnknown = 0 ,SoloLocal ,SoloRemote ,PoolSolo ,PoolShared
 };
 
+//--
 struct PoolConnectionInfo {
     String coin;
     MiningMode mode;
 
+    String region;
+    bool ssl;
+
     String host;
-    int port;
     String user;
     String password;
 
@@ -71,30 +63,13 @@ struct PoolConnectionInfo {
     String args;
 };
 
+DECLARE_STRUCT(PoolConnectionInfo,SOLOMINER_CPOOLCONNECTIONINFO_PUID);
+
 template <>
 PoolConnectionInfo &Zero( PoolConnectionInfo &p );
 
-//-- Manifest
-template <>
-PoolConnectionInfo &fromManifest( PoolConnectionInfo &p ,const Params &manifest );
-
-template <>
-Params &toManifest( const PoolConnectionInfo &p ,Params &manifest );
-
-//-- String
-template <>
-inline PoolConnectionInfo &fromString( PoolConnectionInfo &p ,const String &s ,size_t &size ) {
-    Params params;
-    fromString( params ,s ,size );
-    return fromManifest( p ,params );
-}
-
-template <>
-inline String &toString( const PoolConnectionInfo &p ,String &s ) {
-    Params params;
-    toManifest( p ,params );
-    return toString( params ,s );
-}
+DEFINE_MEMBER_API(PoolConnectionInfo);
+DEFINE_WITHSCHEMA_API(PoolConnectionInfo);
 
 //////////////////////////////////////////////////////////////////////////////
 //! CPool
@@ -104,11 +79,13 @@ public:
     CPool( const char *name ) : m_name(name)
     {}
 
-    DECLARE_OBJECT(CPool,CPOOL_PUID);
+    DECLARE_OBJECT(CPool,SOLOMINER_CPOOL_PUID);
 
     const String &getName() {
         return m_name;
     }
+
+    ListOf<PoolConnectionInfo> &Connections() { return m_connections; }
 
 public:
     /**
@@ -118,8 +95,6 @@ public:
      */
 
     IAPI_DECL loadSettings( StringList &settings );
-
-    // IAPI_DECL getInfo( PoolInfo &info ); //TODO
 
 public:
     /**
@@ -138,7 +113,7 @@ public:
      * @param mode
      * @return
      */
-    bool findPoolConnections( ListOf<PoolConnectionInfo> &infos ,const char *coin=NullPtr ,MiningMode mode=MiningMode::mmUnknown );
+    bool findPoolConnections( ListOf<PoolConnectionInfo> &infos ,const char *coin=NullPtr ,MiningMode mode=MiningMode::mmUnknown ,const char *region=NullPtr ,const bool *ssl=NullPtr );
 
     /**
      * @brief configure a connection info
@@ -150,7 +125,7 @@ public:
     //! script replace with relevant info
 
 protected:
-    String m_name; //! TODO replace with PoolInfo
+    String m_name;
 
     ListOf<PoolConnectionInfo> m_connections;
 };
@@ -158,19 +133,15 @@ protected:
 typedef RefOf<CPool> CPoolRef;
 
 //////////////////////////////////////////////////////////////////////////////
-/**
- * @brief list of configured pools
- */
+//! CPoolList
+
+    //! @brief list of configured pools
 
 class CPoolList : public Store_<String,CPoolRef>
     ,public Singleton_<CPoolList>
 {
 public:
-    /**
-     * @brief register a pool configuration using configLine text
-     * @param config
-     * @return
-     */
+    //! @brief build pool list from config
     IAPI_DECL loadConfig( Config &config );
 
     //! event ... from IPFS
@@ -179,6 +150,8 @@ public:
     bool findPoolByName( const char *name ,CPoolRef &pool );
 
     bool listPools( ListOf<String> &pools ,const char *coin=NullPtr ,MiningMode mode=MiningMode::mmUnknown );
+
+    bool getPoolRegionList( ListOf<String> &regions );
 };
 
 //////////////////////////////////////////////////////////////////////////////

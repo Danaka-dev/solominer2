@@ -336,11 +336,16 @@ bool initServices( Config &config ) {
         return false;
     }
 
+    auto &cores = config.getSection("cores");
     auto &coreCredit = credit.getSection("cores");
 
-    StartCore( "maxe-core" ,&getCredential(coreCredit,"maxe-core",params) );
-    StartCore( "rtc-core" ,&getCredential(coreCredit,"rtc-core",params) );
-    StartCore( "rtm-core" ,&getCredential(coreCredit,"rtm-core",params) );
+    for( const auto &it : cores.params ) {
+        const char *s = tocstr(it.first);
+
+        if( s && *s ) {} else continue;
+
+        StartCore( s ,&getCredential(coreCredit,s,params) );
+    }
 
 ///-- markets
     // getMarketStore().loadConfig( config ); //TODO later

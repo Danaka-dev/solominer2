@@ -23,37 +23,11 @@ namespace solominer {
 class UiWizardDialog : public GuiDialog  {
 public:
     struct PageInfo {
-        String title; //? where title
+        String title;
 
-        //LATER steps
+        //! LATER steps within a page
     };
-
-protected:
-    struct Header : GuiGroup {
-        Header() {
-            addControl( "title" ,title );
-
-            setPropertiesWithString( "controls={ title={ align=center; coords={0,0,100%,25%} font=huge; text=title; textalign=center; } }");
-        }
-
-        GuiLabel title;
-    } m_header;
-
-    GuiTab m_body;
-
-    struct Footer : GuiGroup {
-        /* Footer() {
-            addControl( "info" ,info );
-
-            setPropertiesWithString( "controls={ info={ align=bottom; coords={0,0,100%,25%} text=info; textalign=center; } }");
-        }
-
-        GuiLabel info; */
-
-    } m_footer;
-
 //--
-    ListOf<PageInfo> m_pages;
 
 public:
     UiWizardDialog( GuiControlWindow &parent );
@@ -77,37 +51,13 @@ public:
         return getCurrentPage() == getPageCount();
     }
 
-    void addPage( GuiControl &page ,const PageInfo &info ) {
-        m_body.addControl( page );
-        m_pages.emplace_back( info );
-    }
-
     GuiControl *getPage( int index ) {
         return m_body.getControl( index );
     }
 
-    bool selectPage( int index ) {
-        if( index < 0 || index >= getPageCount() ) {
-            // assert(false);
-            return false;
-        }
+    void addPage( GuiControl &page ,const PageInfo &info );
 
-        int icurrent = getCurrentPage();
-
-        if( !onStepLeave( icurrent ,index ) ) return false;
-
-        m_body.selectTab( index );
-
-        m_header.title.text() = m_pages[ index ].title;
-
-        onStepEnter( index ,icurrent );
-
-        // GuiPublisher::PostNotify( GUI_MESSAGEID_OPEN ,getCurrentPage() );
-
-        Refresh();
-
-        return true;
-    }
+    bool selectPage( int index );
 
 //--
     bool PreviousPage() {
@@ -127,6 +77,12 @@ public: ///-- interface
 
 public: ///-- IGuiEvents
     void onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) override;
+
+protected:
+    GuiLabel m_title;
+    GuiTab m_body;
+
+    ListOf<PageInfo> m_pages;
 };
 
 //////////////////////////////////////////////////////////////////////////////

@@ -16,39 +16,14 @@ namespace solominer {
 //////////////////////////////////////////////////////////////////////////////
 
 template <>
-MiningMode &fromString( MiningMode &p ,const String &s ,size_t &size ) {
-    String key = s; tolower(key);
+const char *Enum_<MiningMode>::names[] = {
+    "none" ,"solo" ,"remote" ,"pool_solo" ,"pool_shared"
+};
 
-    const char *str = s.c_str();
-    size = ParseToken( str );
-
-    if( strimatch( key.c_str() ,MININGMODE_NAME_SOLO_LOCAL )==0 ) {
-        p = MiningMode::SoloLocal;
-    } else if( strimatch( key.c_str() ,MININGMODE_NAME_SOLO_REMOTE )==0 ) {
-        p = MiningMode::SoloRemote;
-    } else if( strimatch( key.c_str() ,MININGMODE_NAME_POOL_SHARED )==0 ) {
-        p = MiningMode::PoolSolo;
-    } else if( strimatch( key.c_str() ,MININGMODE_NAME_POOL_SOLO )==0 ) {
-        p = MiningMode::PoolShared;
-    } else {
-        p = MiningMode::SoloLocal;
-        //? error
-    }
-
-    return p;
-}
-
-template <> String &toString( const MiningMode &p ,String &s ) {
-    switch( p ) {
-        default:
-        case MiningMode::SoloLocal: s = MININGMODE_NAME_SOLO_LOCAL; break;
-        case MiningMode::SoloRemote: s = MININGMODE_NAME_SOLO_REMOTE; break;
-        case MiningMode::PoolSolo: s = MININGMODE_NAME_POOL_SHARED; break;
-        case MiningMode::PoolShared: s = MININGMODE_NAME_POOL_SOLO; break;
-    }
-
-    return s;
-}
+template <>
+const MiningMode Enum_<MiningMode>::values[] = {
+    MiningMode::mmUnknown ,MiningMode::SoloLocal ,MiningMode::SoloRemote ,MiningMode::PoolSolo ,MiningMode::PoolShared
+};
 
 ///-- PoolConnectionInfo
 template <>
@@ -56,8 +31,11 @@ PoolConnectionInfo &Zero( PoolConnectionInfo &p ) {
     p.coin = "";
     p.mode = MiningMode::SoloLocal;
 
+    p.region = "*";
+    p.ssl = false;
+
     p.host = "";
-    p.port = 0;
+    // p.port = 0;
     p.user = "";
     p.password = "";
 
@@ -70,27 +48,48 @@ PoolConnectionInfo &Zero( PoolConnectionInfo &p ) {
     return p;
 }
 
+//--
 template <>
-PoolConnectionInfo &fromManifest( PoolConnectionInfo &p ,const Params &manifest ) {
-    p.coin = getMember(manifest,"coin");
-    fromString( p.mode ,getMember(manifest,"mode") );
+const Schema Schema_<PoolConnectionInfo>::schema = fromString( Schema::getStatic() ,String(
+    "coin:string"
+    ",mode:EnumMiningMode"
+    ",region:string"
+    ",ssl:bool"
+    ",host:String"
+    ",user:string"
+    ",password:string"
+    ",options:ConnectionInfoOptions"
+    ",args:string"
+) );
 
-    p.host = getMember(manifest,"host");
-    fromString( p.port ,getMember(manifest,"port") );
-    p.user = getMember(manifest,"user");
-    p.password = getMember(manifest,"password");
-
-    fromString( p.options ,getMember(manifest,"options") );
-    p.args = getMember(manifest,"args");
-
-    return p;
+DEFINE_SETMEMBER(PoolConnectionInfo) {
+    switch( m ) {
+        case 0: fromString( p.coin ,s ); return;
+        case 1: enumFromString( p.mode ,s ); return;
+        case 2: fromString( p.region ,s ); return;
+        case 3: fromString( p.ssl ,s ); return;
+        case 4: fromString( p.host ,s ); return;
+        case 5: fromString( p.user ,s ); return;
+        case 6: fromString( p.password ,s ); return;
+        case 7: fromString( p.options ,s ); return;
+        case 8: fromString( p.args ,s ); return;
+        default: break;
+    }
 }
 
-template <>
-Params &toManifest( const PoolConnectionInfo &p ,Params &manifest ) {
-    _TODO;
-
-    return manifest;
+DEFINE_GETMEMBER(PoolConnectionInfo) {
+    switch( m ) {
+        case 0: toString( p.coin ,s ); return s;
+        case 1: enumToString( p.mode ,s ); return s;
+        case 2: toString( p.region ,s ); return s;
+        case 3: toString( p.ssl ,s ); return s;
+        case 4: toString( p.host ,s ); return s;
+        case 5: toString( p.user ,s ); return s;
+        case 6: toString( p.password ,s ); return s;
+        case 7: toString( p.options ,s ); return s;
+        case 8: toString( p.args ,s ); return s;
+        default: return s;
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -168,15 +167,16 @@ bool CPool::hasPoolConnections( const char *coin ,solominer::MiningMode mode ) {
     return false;
 }
 
-bool CPool::findPoolConnections( ListOf<PoolConnectionInfo> &infos ,const char *coin ,MiningMode mode ) {
+bool CPool::findPoolConnections( ListOf<PoolConnectionInfo> &infos ,const char *coin ,MiningMode mode ,const char *region ,const bool *ssl ) {
     infos.clear();
 
     for( auto &info : m_connections ) {
-        if( (coin == NullPtr || info.coin == coin)
-            && (mode == MiningMode::mmUnknown || info.mode == mode )
-        ) {
-            infos.emplace_back( info );
-        }
+        if( coin && *coin && info.coin != coin ) continue;
+        if( mode != MiningMode::mmUnknown && info.mode != mode ) continue;
+        if( region && *region && info.region != region ) continue;
+        if( ssl && info.ssl != *ssl ) continue;
+
+        infos.emplace_back( info );
     }
 
     return !infos.empty();
@@ -201,7 +201,7 @@ IAPI_DEF CPoolList::loadConfig( Config &config ) {
         auto &pool = map()[ index ];
 
         if( pool.isNull() ) {
-            pool = new CPool( index.c_str() );
+            pool = new CPool( tocstr(index) );
         }
 
         StringList settings;
@@ -230,6 +230,26 @@ bool CPoolList::listPools( ListOf<String> &pools ,const char *coin ,MiningMode m
     for( auto it : map() ) {
         if( it.second->hasPoolConnections( coin ,mode ) )
             pools.emplace_back( it.first );
+    }
+
+    return true;
+}
+
+bool CPoolList::getPoolRegionList( ListOf<String> &regions ) {
+    MapOf<String,int> unique;
+
+    for( auto pool : map() ) {
+        if( pool.second.isNull() ) continue;
+
+        for( const auto &it : pool.second->Connections() ) {
+            if( it.region.empty() ) continue;
+
+            unique[it.region] = 1;
+        }
+    }
+
+    for( const auto &it : unique ) {
+        regions.emplace_back( it.first );
     }
 
     return true;

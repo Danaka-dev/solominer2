@@ -41,8 +41,8 @@ iresult_t CChainMinerstat::getInfo( const char *coin ,ChainInfo &info ,ChainInfo
 // return IERROR; //! TEST
     CHttpRequest request;
 
-    if( m_http.sendRequest( ss.str().c_str() ,HttpMethod::methodGET ,message ,request ,response ) != IOK )
-        return false;
+    if( m_http.sendRequest( ss.str().c_str() ,HttpMethod::methodGET ,message ,request ,response ) != IOK || response.content.empty() )
+        return IERROR;
 
     double reward1Hps1h = 0;
     String rewardCoin;
@@ -50,7 +50,10 @@ iresult_t CChainMinerstat::getInfo( const char *coin ,ChainInfo &info ,ChainInfo
     try {
         rapidjson::Document jdoc;
 
-        jdoc.Parse( response.content.c_str() );
+        jdoc.Parse( tocstr(response.content) );
+
+        if( jdoc.GetArray().Empty() )
+            return INODATA;
 
         auto &v = jdoc[0];
 

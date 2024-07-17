@@ -131,13 +131,23 @@ bool CCoinStore::findCoinByTicker( const char *name ,CCoinRef &p ) {
 //////////////////////////////////////////////////////////////////////////////
 //! Well-known coins
 
+class CCoinBTC : public CCoin {
+public:
+    CCoinBTC() : CCoin( "bitcoin" ,"BTC" ,PowAlgorithm::algoAuto ,"" )
+    {}
+};
+
 class CCoinUSDT : public CCoin {
 public:
     CCoinUSDT() : CCoin( "tether" ,"USDT" ,PowAlgorithm::algoAuto ,"" )
     {}
 };
 
-static bool g_hasCoin = CCoinStore::getInstance().RegisterItem( "USDT" ,RefOf<CCoin>( new CCoinUSDT() ) );
+///--
+static bool g_hasCoin =
+    CCoinStore::getInstance().RegisterItem( "BTC" ,RefOf<CCoin>( new CCoinBTC() ) )
+    && CCoinStore::getInstance().RegisterItem( "USDT" ,RefOf<CCoin>( new CCoinUSDT() ) )
+;
 
 //////////////////////////////////////////////////////////////////////////////
 } //namespace solominer

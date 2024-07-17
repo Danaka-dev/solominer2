@@ -37,6 +37,8 @@ bool uiInitialize( CConnectionList &connections ) {
 
     //-- coins //TODO list them all and add
     gui::Assets::Image().addFromManifest(
+        "BTC = { file=assets/coins/btc.png; }"
+        "BTRM = { file=assets/coins/btrm.png; }"
         "MAXE = { file=assets/coins/maxe.png; }"
         "RTC = { file=assets/coins/rtc.png; }"
         "RTM = { file=assets/coins/rtm.png; }"
