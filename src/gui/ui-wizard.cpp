@@ -108,7 +108,7 @@ public:
         getMarket( "xeggex" ,m_market );
     }
 
-    void buildList() {
+    void buildList( const char *opt=NullPtr ) {
         removeAllControls();
 
         const auto &coins = CCoinStore::getInstance().getList();
@@ -123,6 +123,16 @@ public:
 
             thumb.backgroundColor() = 0;
             thumb.text() = ticker;
+
+            addControl( thumb );
+        }
+
+        if( opt ) {
+            auto *image = Assets::Image().get( "none" );
+            auto &thumb = * new GuiImageBox( image );
+
+            thumb.backgroundColor() = 0;
+            thumb.text() = opt;
 
             addControl( thumb );
         }
@@ -492,20 +502,25 @@ struct WizSelectCoin : UiCoinList ,CGuiTabControl {
         direction() = (Direction) (directionBottom | directionRight);
         origin() = center;
 
-        // if( m_whichCoin == miningCoin )
-        buildList();
+        if( m_whichCoin == miningCoin ) {
+            buildList();
+        }
+    }
+
+    bool hasTrade( const char *trade ,const char *mine ) {
+        return trade && *trade && stricmp(trade,"No Trade")!=0 && stricmp(mine,trade)!=0;
     }
 
     void onTabEnter( int fromTabIndex ) override {
         if( m_whichCoin == tradeCoin ) {
-            buildList();
+            buildList("No Trade");
             Update(false,refreshResized);
         }
     }
 
     void onItemSelect( GuiControl &item ,int index ,bool selected ) override {
         auto *box = item.As_<GuiImageBox>();
-        assert( box );
+        assert( box ); if( !box ) return;
 
         const char *ticker = tocstr( box ? box->text() : "" );
 
@@ -515,7 +530,7 @@ struct WizSelectCoin : UiCoinList ,CGuiTabControl {
                 m_wizard.info().mineCoin.wallet = "core"; //! LATER wallet select
                 break;
             case tradeCoin:
-                if( m_wizard.info().tradeCoin.coin != m_wizard.info().mineCoin.coin )
+                if( hasTrade( ticker ,tocstr(m_wizard.info().mineCoin.coin) ) )
                     makeTrade( m_wizard.info() ,ticker );
                 else
                     noTrade( m_wizard.info() );
@@ -587,9 +602,6 @@ struct WizSelectAddress : UiAddressList ,CGuiTabControl {
 
 struct WizSelectPool : GuiGroup ,CGuiTabControl {
     UiConnectionWizard &m_wizard;
-    UiPoolList m_pools;
-    Params m_vars;
-    String m_pool; //! selected pool (with multi step select)
 
     WizSelectPool( UiConnectionWizard &wizard ) : m_wizard(wizard)
     {
@@ -751,13 +763,18 @@ struct WizSelectPool : GuiGroup ,CGuiTabControl {
     }
 
     void onNotify( IObject *source ,messageid_t notifyId ,long param ,Params *params ,void *extra ) override {
-        if( m_pools == *source && notifyId ==GUI_MESSAGEID_SELECT ) {
+        if( m_pools == *source && notifyId == GUI_MESSAGEID_SELECT ) {
             onItemSelect( (int) abs(param) ,param < 0 );
             return;
         }
 
         CGuiTabControl::onNotify( source ,notifyId ,param ,params ,extra );
     }
+
+//-- members
+    UiPoolList m_pools;
+    Params m_vars;
+    String m_pool; //! selected pool (with multi step select)
 };
 
 //////////////////////////////////////////////////////////////////////////////
