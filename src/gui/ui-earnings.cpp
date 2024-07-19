@@ -68,14 +68,17 @@ UiEarningsDialog::UiEarningsDialog( CEarningBook &book ) : GuiDialog("Accounts")
     if( tabbar ) tabbar->Bind( tab );
 
 //-- earnings
+    m_earningData.Reversed() = true;
     m_earnings = tab.getControlAs_<GuiNavGrid>("earnings");
     m_earnings->Grid()->Bind( &m_earningData );
 
 //-- trades
+    m_tradeData.Reversed() = true;
     m_trades = tab.getControlAs_<GuiNavGrid>("trades");
     m_trades->Grid()->Bind( &m_tradeData );
 
 //-- orders
+    m_orderData.Reversed() = true;
     m_orders = tab.getControlAs_<GuiNavGrid>("orders");
     m_orders->Grid()->Bind( &m_orderData );
 }

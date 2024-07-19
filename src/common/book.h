@@ -408,7 +408,10 @@ template <class TEntry ,class TEntry2>
 class CBookDataSource_ : public CDataSource_<CBookFile_<TEntry>,TEntry2> ,COBJECT_PARENT {
 public:
     CBookDataSource_( CBookFile_<TEntry> &source  ) : CDataSource_<CBookFile_<TEntry> ,TEntry2>( source )
+        ,m_reverse(false)
     {}
+
+    bool &Reversed() { return m_reverse; }
 
 public:
     IAPI_IMPL getInfo( Params &params ) IOVERRIDE {
@@ -432,7 +435,17 @@ public: ///-- CDataSource_
     }
 
     API_IMPL(bool) getEntry( TEntry2 &entry ) IOVERRIDE {
-        auto *p = this->m_source->getEntry( this->m_id );
+        size_t id = this->m_id;
+
+        if( Reversed() ) {
+            size_t n = this->m_source->getEntryCount();
+
+            if( n == 0 ) return false;
+
+            id = (n-1) - id;
+        }
+
+        auto *p = this->m_source->getEntry( id ); // this->m_id );
 
         if( !p ) return false;
 
@@ -442,8 +455,21 @@ public: ///-- CDataSource_
     }
 
     API_IMPL(bool) setEntry( TEntry2 &entry ) IOVERRIDE {
-        return this->m_source->updateEntry( this->m_id ,entry ,false );
+        size_t id = this->m_id;
+
+        if( Reversed() ) {
+            size_t n = this->m_source->getEntryCount();
+
+            if( n == 0 ) return false;
+
+            id = (n-1) - id;
+        }
+
+        return this->m_source->updateEntry( id ,entry ,false ); // this->m_id
     }
+
+protected:
+    bool m_reverse; //! @note reverse record order
 };
 
 //////////////////////////////////////////////////////////////////////////////

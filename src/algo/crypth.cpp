@@ -1,7 +1,7 @@
 /*
  * CryptH - Simple symmetric encryption/decryption
  *
- * Copyright 2012-2024 M. Ganapati
+ * Copyright 2012-2024 M. Ganapati <m.ganapati@proton.me>
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -16,9 +16,6 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-
-// Distributed under the MIT software license, see the accompanying
-// file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
 //////////////////////////////////////////////////////////////////////////////
 #include "crypth.h"

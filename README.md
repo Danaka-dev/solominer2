@@ -1,7 +1,7 @@
 # SOLOMINER 2
 
 [![badge](https://img.shields.io/badge/Language-C++-green)]()
-[![badge](https://img.shields.io/badge/Release-v2.0.beta1-blue)]()
+[![badge](https://img.shields.io/badge/Release-v2.0.beta2-blue)]()
 [![badge](https://img.shields.io/badge/Platform-Linux-orange)]()
 [![badge](https://img.shields.io/badge/License-MIT-blue)](https://github.com/Danaka-dev/solominer2/blob/main/LICENSE)
 
@@ -24,6 +24,8 @@ BTC... it's all there.*
 \
 *No fee, no centralization, all the fun. Several cpu mineable blockchains supported, use your existing own core 
 daemon/wallet or the ones provided, all fully configurable from the comfort of the user interface.*
+\
+(currently supported BTRM, MAXE, RTC, RTM)
 
 
 + A nifty dashboard and mining monitor\
@@ -39,15 +41,21 @@ it as much as we do :)*
 currency you are mining with a click or let solominer auto mode select the blockchain with the highest earnings
 for you automatically.*   
 
+
++ Automatically trade your reward \
+\
+*Manually or automatically trade of your mining reward to another currency such as BTC or USDT and track your earnings
+and trading directly from your user interface.*
+\
+(BETA feature, for testing only. XeggeX currently supported)
+
 ### ![text](https://cdn.jsdelivr.net/gh/Readme-Workflows/Readme-Icons@main/icons/octicons/ApprovedChanges.svg) *version*
 
-**Solominer** current version is **BETA 1**, which is an early access version, hopefully not too much riddled 
+**Solominer** current version is **BETA 2**, which is an early access version, hopefully not too much riddled 
 with bugs.
 
 At this stage, we do not recommend to use the software for any serious mining operation, nor to use Solominer source
 code as part of your project yet. (unless a passion for the aforementioned hymenoptera compels you to do so of course).
-
-As Solominer is under heavy development expect many dramatic architectural changes and fixes to the code base.
 
 But do have a look, test the software, tell us what you think. Your feedback is important!
 
@@ -147,11 +155,11 @@ The **Solominer** adventure is that of community and is open for everyone to par
 
 + Using the software, providing feedback.
 + Giving Solominer a shout-out, tell your friends, let the world know!
-+ Propose features and improvements.
 + Report on bugs, isolate bugs, propose fixes.
 + Review code, write test units, fix typoes.
 + Write documentation, tutorials, samples.
 + Provide translation.
++ Propose features and improvements.
 + And more... 
 
 ### *Code of conduct*
@@ -160,9 +168,10 @@ A positive attitude and constructive mindset is all you need to participate to S
 
 Coming soon
 -------------
-We are looking forward the release of **Solominer** version **BETA 2** which will feature automatic currency exchange
-of mining rewards in the coins of your choice (BTC, ETH, LTC, USDT...), support for more blockchains and more gorgeous
-features...
+We are working torward the release of **Solominer** debugged and tested version **RELEASE CANDIDATE (RC)**, adding
+support for more pools and blockchains on the way.
+\
+Windows/MSVC port will follow right after. 
 
 ### ***Stay tuned !***
 
