@@ -3,11 +3,11 @@
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
 //////////////////////////////////////////////////////////////////////////////
+#include <solominer.h>
 #include <coins/cores.h>
 #include <wallets/wallets.h>
-// #include <bitcoinapi/bitcoinapi.h>
-#include <bitcoin-rpc.h>
 
+#include <bitcoin-rpc.h>
 #include "bitcoin-core.h"
 
 //////////////////////////////////////////////////////////////////////////////
@@ -58,12 +58,31 @@ iresult_t CallDaemon( TCore &core ,TLambda &&method ) {
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-//! Wallet
+//! CWalletBitcoinBase
 
 ref_t CWalletBitcoinBase::AddRef() { return m_core.AddRef(); }
 ref_t CWalletBitcoinBase::Release() { return m_core.Release(); }
 
-//--
+bool CWalletBitcoinBase::getWalletPassword( String &s ) {
+    String walletPassword = getMember( core().params() ,"wallet_password" );
+
+    if( walletPassword.empty() ) return false;
+
+    String decypher;
+
+    return globalDecypher( tocstr(decypher) ,s );
+}
+
+//////////////////////////////////////////////////////////////////////////////
+///-- CWalletBitcoinBase
+
+IAPI_DEF CWalletBitcoinBase::getCoin( String &coin ) {
+    return m_core.getCoin(coin);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+///-- IService
+
 IAPI_DEF CWalletBitcoinBase::Start( const Params &params ) {
     if( m_core.state() != serviceStarted )
         return m_core.Start(params);
@@ -92,7 +111,7 @@ IAPI_DEF CWalletBitcoinBase::getCoinList( ListOf<String> &coins ) {
 }
 
 //////////////////////////////////////////////////////////////////////////////
-//! manage
+///-- IWallet
 
 IAPI_DEF CWalletBitcoinBase::unlock( const char *password ) {
     const String passphrase = password;
@@ -113,12 +132,12 @@ IAPI_DEF CWalletBitcoinBase::lock() {
 }
 
 //////////////////////////////////////////////////////////////////////////////
-//! accounts
+///-- accounts
 
     ///...
 
 //////////////////////////////////////////////////////////////////////////////
-//! addresses
+///-- addresses
 
 void setTransaction( const char *coin ,WalletTransaction &t ,const transactioninfo_t &tx ) {
     t.txid = tx.txid;
@@ -200,7 +219,7 @@ IAPI_DEF CWalletBitcoinBase::getAddressBalance( const char *address ,AmountValue
 
             WalletTransaction t;
 
-            setTransaction( coin.c_str() ,t ,it );
+            setTransaction( tocstr(coin) ,t ,it );
 
             CWalletEventSource::PostTransaction( *this ,t );
         }
@@ -289,10 +308,10 @@ IAPI_DEF CWalletBitcoinBase::sendToAddress( WalletTransaction &transaction ) {
 
     //-- unlock
     if( !m_unlocked ) {
-        String walletPassword = getMember( core().params() ,"wallet_password" );
+        String walletPassword;
 
-        if( !walletPassword.empty() ) {
-            m_unlocked = (unlock( walletPassword.c_str() ) == IOK);
+        if( getWalletPassword( walletPassword ) && !walletPassword.empty() ) {
+            m_unlocked = (unlock( tocstr(walletPassword) ) == IOK);
         }
     }
 
@@ -308,13 +327,6 @@ IAPI_DEF CWalletBitcoinBase::sendToAddress( WalletTransaction &transaction ) {
     transaction.txid = txid;
 
     return IOK;
-}
-
-//////////////////////////////////////////////////////////////////////////////
-///-- CWalletBitcoinBase
-
-IAPI_DEF CWalletBitcoinBase::getCoin( String &coin ) {
-    return m_core.getCoin(coin);
 }
 
 //////////////////////////////////////////////////////////////////////////////

@@ -140,8 +140,12 @@ Config &getConfig() {
 }
 
 //-- global
+Config::Section &getGlobalSection( Config &config ) {
+    return config.getSection( "global" );
+}
+
 Config::Section &getGlobalConfig() {
-    return getConfig().getSection( "global" );
+    return getGlobalSection( getConfig() );
 }
 
 //-- credential config
@@ -310,8 +314,9 @@ Params &getCredential( Config::Section &section ,const char *name ,Params &param
 
     params.clear();
 
-    if( *credit )
+    if( *credit ) {
         fromString( params ,credit );
+    }
 
     return params;
 }
@@ -361,13 +366,47 @@ bool initServices( Config &config ) {
 //////////////////////////////////////////////////////////////////////////////
 //-- trading
 
+static bool g_traderEnabled = false;
+
+bool isTraderEnabled() {
+    return g_traderEnabled;
+}
+
+static bool g_brokerEnabled = false;
+
+bool isBrokerEnabled() {
+    return g_brokerEnabled;
+}
+
+bool getGlobalEnabled( Config &config ,const char *name ) {
+    auto *section = config.peekSection(name);
+
+    if( !section ) return false;
+
+    const char *s = getMember( section->params ,"global" ,"" );
+
+    Params params;
+
+    fromString( params ,s );
+
+    bool result = false;
+
+    return fromString( result ,getMember( params ,"enabled" ,"false" ) );
+}
+
 bool initTrading( Config &config ) {
     bool result = true;
 
+    g_traderEnabled = getGlobalEnabled( config ,"trader" );
+    g_brokerEnabled = getGlobalEnabled( config ,"broker" );
+
     initWalletAddresses();
 
-    result &= ISUCCESS( getTrader().Start( config ) );
-    result &= ISUCCESS( getBroker().Start( config ) );
+    // if( isTraderEnabled() ) //! @note still starting the service as book keeping info provider
+        result &= ISUCCESS( getTrader().Start( config ) );
+
+    // if( isBrokerEnabled() )
+        result &= ISUCCESS( getBroker().Start( config ) );
 
     return result;
 }

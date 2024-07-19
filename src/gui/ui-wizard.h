@@ -48,7 +48,7 @@ public:
     }
 
     bool isLastPage() {
-        return getCurrentPage() == getPageCount();
+        return getCurrentPage() >= getPageCount() -1;
     }
 
     GuiControl *getPage( int index ) {
@@ -60,6 +60,14 @@ public:
     bool selectPage( int index );
 
 //--
+    bool FirstPage() {
+        return selectPage(0);
+    }
+
+    bool LastPage() {
+        return selectPage( getPageCount()-1 );
+    }
+
     bool PreviousPage() {
         return selectPage( getCurrentPage()-1 );
     }
@@ -101,6 +109,7 @@ struct CDataConnectionInfo2 : CDataConnectionInfo {
     }
 
     IAPI_IMPL readData( Params &data ) IOVERRIDE {
+        toString( info.status.isAuto ,data["Auto:bool"] );
         toString( info.status.nThreads ,data["Threads"] );
         toString( info.mineCoin.coin ,data["mineCoin"] );
         toString( info.mineCoin.address ,data["mineAddress"] );
@@ -120,9 +129,7 @@ struct CDataConnectionInfo2 : CDataConnectionInfo {
     }
 
     IAPI_IMPL onDataEdit( Params &data ) IOVERRIDE {
-        fromParamsWithSchema( info ,data );
-
-        //! sub schema
+        fromMember( info.status.isAuto ,data ,"Auto" );
         fromMember( info.status.nThreads ,data ,"Threads" );
         fromMember( info.mineCoin.coin ,data ,"mineCoin" );
         fromMember( info.mineCoin.address ,data ,"mineAddress" );
@@ -130,8 +137,13 @@ struct CDataConnectionInfo2 : CDataConnectionInfo {
         fromMember( info.tradeCoin.address ,data ,"tradeAddress" );
         fromMember( info.trading.percent ,data ,"tradePercent" );
         fromMember( info.trading.withdraw ,data ,"tradeWithdraw" );
+        fromMember( info.market ,data ,"Market" );
+        fromMember( info.pool ,data ,"Pool" );
+        fromMember( info.connection ,data ,"Host" );
         fromMember( info.credential.user ,data ,"User" );
         fromMember( info.credential.password ,data ,"Password" );
+        fromMember( info.options ,data ,"Options" );
+        fromMember( info.args ,data ,"Args" );
 
         return IOK;
     }
@@ -153,54 +165,25 @@ public:
 
     ConnectionInfo &info() { return m_info; }
 
-    void showAddConnection( GuiControlWindow &parent ) {
-        m_index = -1; Zero(m_info);
-        selectPage(0);
+    void showAddConnection( GuiControlWindow &parent );
+    void showEditConnection( GuiControlWindow &parent ,int index ,const ConnectionInfo &info );
 
-        parent.ShowModal( *this );
-    }
+    void confirmAddConnection();
+    void confirmEditConnection();
 
-    void showEditConnection( GuiControlWindow &parent ,int index ,const ConnectionInfo &info ) {
-        m_index = index; m_info = info;
-        selectPage(0);
-
-        parent.ShowModal( *this );
-    }
-
-    //--
-    void confirmAddConnection() {
-        Params settings;
-
-        toManifest( m_info ,settings );
-
-        root().onCommand( this ,GUI_MESSAGEID_OK ,-1 ,&settings ,(void*) "connection" );
-    }
-
-    void confirmEditConnection() {
-        Params settings;
-
-        toManifest( m_info ,settings );
-
-        root().onCommand( this ,GUI_MESSAGEID_OK ,m_index ,&settings ,(void*) "connection" );
-    }
-
-    //--
-    void updateData() {
-        Params data;
-
-        readData( data );
-
-        CDataConnectionInfo::adviseDataChanged( data );
-    }
+    void updateData();
 
 public: ///-- UiWizardDialog
-    void onStepEnter( int step ,int fromStep ) override;
+    void onStepEnter( int step ,int fromStep ) override {}
 
     void onConfirm() override;
     void onCancel() override;
 
 protected:
     int m_index = 0; //! Connection index in ConnectionList (-1 = new)
+
+    GuiSheet *m_settings;
+
     ConnectionInfo m_info;
 };
 

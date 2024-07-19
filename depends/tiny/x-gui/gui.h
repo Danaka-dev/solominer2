@@ -70,6 +70,10 @@ struct IGuiProperties;
 #define TINY_GUIGROUP_PUID            0x03738884453df6435
 #define TINY_GUITABBAR_PUID           0x0f6524432b75a5ed1
 #define TINY_GUIMENU_PUID             0x05a27c3b2b902d95f
+#define TINY_GUIPOPUP_PUID            0x001186c7e663ed039
+#define TINY_GUITITLEBAR_PUID         0x01ee93a698ea97179
+#define TINY_GUIDIALOG_PUID           0x046149c0bf7b0a9c2
+#define TINY_GUIMESSAGEBOX_PUID       0x040b7102752d36968
 #define TINY_GUICONTROLWINDOW_PUID    0x0911441da7a69fe53
 
 class GuiControl;
@@ -79,6 +83,10 @@ class GuiTab;
 class GuiGroup;
 class GuiTabBar;
 class GuiMenu;
+class GuiPopup;
+class GuiTitleBar;
+class GuiDialog;
+class GuiMessageBox;
 class GuiControlWindow;
 
 namespace gui {
@@ -517,6 +525,8 @@ public: ///-- getter/setter
     bool shouldDraw( const OsRect &updateArea ) const;
     void getCenteredArea( const OsPoint &dims ,Rect &r ) const;
 
+    VisualTheme &getTheme();
+
 public: ///-- IProperties
     API_IMPL(void) getProperties( Params &properties ) const IOVERRIDE;
     API_IMPL(void) setProperties( const Params &properties ) IOVERRIDE;
@@ -777,10 +787,11 @@ public:
     bool setControl( int i ,GuiControl &control );
 
     int addControl( GuiControl &control );
-    int addControl( const char *name ,GuiControl &control );
+    int addControl( const char *path ,GuiControl &control ); //TODO use/honer RefOf
+    int addControl( const char *path ,GuiControl *control=NullPtr );
 
     bool removeControl( GuiControl &control );
-    bool removeControl( const char *name );
+    bool removeControl( const char *name ); //? path ?
     void removeControl( int i );
     void removeControl(); //! topmost
 
@@ -803,6 +814,10 @@ public:
     const char *digControlName( GuiControl &control ) {
         return digControlName( findControlIndex(control) );
     }
+
+protected:
+    int addSubControl( const char *name ,GuiControl **pp );
+    int addSubControl( const char *name ,GuiControl &control );
 
 public:
     OsError onDropAccept( const OsPoint &p ,IObject *source ,DragOperation operation ,IObject *object ,bool preview ) override;
@@ -1145,6 +1160,8 @@ protected:
 class GuiMessageBox : public GuiPublisher ,public GuiGroup {
 public:
     GuiMessageBox( IGuiMessage &listener ,const char *title ,const char *text ,const Params &options );
+
+    DECLARE_OBJECT_STD(GuiGroup,GuiMessageBox,TINY_GUIMESSAGEBOX_PUID);
 
     virtual void Open();
     virtual void Close();

@@ -93,8 +93,11 @@ void GuiWithText::getProperties( Params &properties ) const {
 void GuiWithText::setProperties( const Params &properties ) {
     GuiWithFont::setProperties( properties );
 
-    enumFromStringList( m_textAlign ,getMember( properties ,"textalign" ) );
-    m_text = getMember( properties ,"text" );
+    if( hasMember( properties ,"textalign" ) ) {
+        enumFromStringList( m_textAlign ,getMember( properties ,"textalign" ) );
+    }
+
+    fromMember( m_text ,properties ,"text" );
 }
 
 //--
@@ -352,16 +355,42 @@ REGISTER_CLASS(GuiCheckBox)
 
 REGISTER_CLASS(GuiList)
 
-void GuiList::onItemSelect( GuiControl &item ,int index ,bool selected ) {
+//-- properties
+void GuiList::getProperties( Params &properties ) const {
+    GuiControl::getProperties( properties );
 
+    //TODO
 }
 
+void GuiList::setProperties( const Params &properties ) {
+    GuiControl::setProperties( properties );
+
+    // enumFromString( m_placer.placement ,getMember(properties,"placement") );
+    // fromMember( m_placer.placement ,properties ,"placement" );
+    // fromMember( m_placer.placement ,properties ,"placement" );
+
+    const char *s = getMember( properties ,"bind" );
+
+    if( s && *s && !isOrphan() ) {
+        auto *binding = root().getBindingAs_<IGuiMessage>( s );
+
+        if( binding )
+            GuiPublisher::Subscribe( *binding );
+    }
+}
+
+//--
+void GuiList::onItemSelect( GuiControl &item ,int index ,bool selected ) {
+    this->PostNotify( GUI_MESSAGEID_SELECT ,(long) (selected ? index : -index) ,NullPtr ,NullPtr );
+}
+
+//--
 void GuiList::onLayout( const OsRect &clientArea ,OsRect &placeArea ) {
     GuiGroup::onLayout( clientArea ,placeArea );
 
     Rect group = area();
 
-    int n = controls().size();
+    int n = (int) controls().size();
 
     int i=0; for( auto &it : controls() ) {
         Rect area ,r;
@@ -1044,6 +1073,15 @@ void GuiComboBox::setProperties( const Params &properties ) {
         //! list
 
     }
+
+    const char *s = getMember( properties ,"bind" );
+
+    if( s && *s && !isOrphan() ) {
+        auto *binding = root().getBindingAs_<IGuiMessage>( s );
+
+        if( binding )
+            Subscribe( *binding );
+    }
 }
 
 //--
@@ -1055,6 +1093,26 @@ void GuiComboBox::setListonly( bool listonly ) {
 
 void GuiComboBox::Subscribe( IGuiMessage &listener ) {
     if( m_events ) m_events->Subscribe(listener);
+}
+
+//--
+void GuiComboBox::makeMenu( const ListOf<String> &items ) {
+    int i=0; bool hasText = false;
+
+    menu().clear();
+
+    for( const auto &it : items ) {
+        const char *str = tocstr( it );
+
+        if( str && *str ) {} else continue;
+
+        hasText |= (text() == str);
+
+        menu().addItem( i ,str ,NullPtr ); ++i;
+    }
+
+    if( m_listonly && !hasText )
+        text() = !items.empty() ? items[0] : "";
 }
 
 //--
@@ -1297,6 +1355,24 @@ void GuiGrid::setProperties( const Params &properties ) {
 }
 
 //--
+void GuiGrid::adjustRowHeigh() {
+    m_rowCoord = (float) ((100.f - m_titleCoord.value) / rowCount());
+}
+
+void GuiGrid::setTitleHeight( const GuiCoord &height ,bool adjustRows ) {
+    m_titleCoord = height;
+
+    if( adjustRows )
+        adjustRowHeigh();
+}
+
+void GuiGrid::setRowHeight( const GuiCoord &height ,bool adjustRows ) {
+    m_rowCoord = height;
+
+    if( adjustRows )
+        adjustRowHeigh();
+}
+
 void GuiGrid::Reset( bool withRefresh ) {
     m_rows.clear();
     m_cols.clear();
@@ -1343,7 +1419,7 @@ void GuiGrid::setRows( int rows ,size_t baseIndex ) {
     }
 
     //-- adjust
-    m_rowCoord = (float) ((100.f - m_titleCoord.value) / rows);
+    adjustRowHeigh();
 }
 
 void GuiGrid::addCol( const GuiCoord &width ,const char *title ,const char *field ,bool editable ) {
@@ -1538,13 +1614,13 @@ IAPI_DEF GuiGrid::onDataChanged( IDataSource &source ,const Params &data ) {
 void GuiGrid::onLayout( const OsRect &clientArea ,OsRect &placeArea )  {
     GuiControl::onLayout( clientArea ,placeArea );
 
-    size() = 0; //! nb used for scroll etc...
+    size() = 0; //! @note size used for placement & scroll...
 
-    m_titleHeight = m_titleCoord.get( area().getHeight() );
-
-    //-- calc row/col placement
+    bool hasTitle = config().showTitle;
+    m_titleHeight = hasTitle ? m_titleCoord.get( area().getHeight() ) : 0;
     m_rowHeight = m_rowCoord.get( area().getHeight() );
 
+//-- col placement and overall X/Y size
     for( auto &col : m_cols ) {
         col.width = col.coord.get( area().getWidth() );
 
@@ -1553,17 +1629,11 @@ void GuiGrid::onLayout( const OsRect &clientArea ,OsRect &placeArea )  {
         //TODO layout cell edit if any ...
     }
 
-    //-- calc client area size (nb used for scroll)
     size().y = (int) (m_titleHeight + m_rowHeight * m_rows.size());
 
-    //-- layout edit if any
-    Rect rrow = { 0 ,0 ,size().x ,m_rowHeight };
-
-    if( config().showTitle ) {
-        rrow += Point( 0 ,m_titleHeight );
-    }
-
-    Rect rinner ,region;
+//-- layout row/col
+    Rect rrow = { 0 ,m_titleHeight ,size().x ,m_titleHeight+m_rowHeight };
+    Rect rinner;
 
     int j=0; for( auto &row : m_rows ) {
         rrow.bottom = rrow.top + m_rowHeight;
@@ -1969,7 +2039,7 @@ void GuiSheet::Bind( IDataSource *datasource ) {
 
         int iRow = addRow();
 
-        setCellText( iRow ,0 ,tocstr(it.first) );
+        setCellText( iRow ,0 ,tocstr(decl.name) );
         setCellText( iRow ,1 ,tocstr(it.second) );
 
         if( !decl.type.empty() ) {

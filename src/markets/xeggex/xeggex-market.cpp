@@ -6,6 +6,8 @@
 //////////////////////////////////////////////////////////////////////////////
 #include "xeggex-market.h"
 
+#include <solominer.h>
+
 #include <rapidjson/document.h>
 #include <rapidjson/reader.h>
 #include <rapidjson/stringbuffer.h>

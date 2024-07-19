@@ -226,7 +226,7 @@ IAPI_DEF CServiceStore::getServiceSetup( const char *name ,IServiceSetupRef &set
 bool CServiceStore::Connect( ServiceInfo &info ,const Params &params ,IServiceRef &service ) {
     IServiceSetupRef setup;
 
-    if( getServiceSetup( info.name.c_str() ,setup ) != IOK )
+    if( getServiceSetup( tocstr(info.name) ,setup ) != IOK )
         return false;
 
     return setup->Connect( info ,params ,service ) == IOK;

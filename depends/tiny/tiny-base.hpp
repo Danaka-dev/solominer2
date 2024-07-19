@@ -371,8 +371,10 @@ struct StringList : ListOf<String> {};
 
 DEFINE_STRING_API(StringList);
 
-int Split( const char *s ,StringList &list ,const char c );
-int Merge( String &s ,const StringList &list ,const char c );
+int Split( const char *s ,ListOf<String> &list ,const char c );
+int Merge( String &s ,const ListOf<String> &list ,const char c );
+
+bool ReplaceEntry( ListOf<String> &list ,const char *find ,const char *replace );
 
 //////////////////////////////////////////////////////////////////////////////
 //! Manifest

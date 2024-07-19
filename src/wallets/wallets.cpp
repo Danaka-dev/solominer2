@@ -250,6 +250,7 @@ bool findWalletForAddress( const char *address ,IWalletRef &wallet ) {
 }
 
 //////////////////////////////////////////////////////////////////////////////
+//! Controls
 void makeAddressList( ListOf<String> &addresses ,const char *ticker ) {
     String name = ticker;
 

@@ -46,6 +46,8 @@ public:
 
     CCoreBitcoinBase &core() { return m_core; }
 
+    bool getWalletPassword( String &s );
+
 public: ///-- CWalletBitcoinBase
     IAPI_DECL getCoin( String &coin ); //TODO ?? here ?
 

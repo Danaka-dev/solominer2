@@ -32,7 +32,9 @@ UiWizardDialog::UiWizardDialog( GuiControlWindow &parent ) :
                 "title={ align=center; coords={0,0,100%,25%} font=huge; text=title; textalign=center; }"
             "} }"
             "footer = { background=#101010; coords={0,0,100%,5%} align=bottom,vertical; controls={"
+                "first:GuiLink = { bind=dialog; commandId=24; align=left,horizontal; coords={0,5%,5%,95%} text=|<; textalign=center; font=large; }"
                 "prev:GuiLink = { bind=dialog; commandId=22; align=left,horizontal; coords={0,5%,5%,95%} text=<<; textalign=center; font=large; }"
+                "last:GuiLink = { bind=dialog; commandId=25; align=right,horizontal; coords={0,5%,5%,95%} text=>|; textalign=center; font=large; }"
                 "next:GuiLink = { bind=dialog; commandId=23; align=right,horizontal; coords={0,5%,5%,95%} text=>>; textalign=center; font=large; }"
             "} }"
             "body = { background=#0; coords={0,0,100%,100%} align=fill; }"
@@ -69,12 +71,17 @@ bool UiWizardDialog::selectPage( int index ) {
 //--
 void UiWizardDialog::onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) {
     switch( commandId ) {
+        case GUI_MESSAGEID_FIRST:
+            FirstPage();
+            return;
         case GUI_MESSAGEID_PREV:
             PreviousPage();
             return;
-
         case GUI_MESSAGEID_NEXT:
             NextPage();
+            return;
+        case GUI_MESSAGEID_LAST:
+            LastPage();
             return;
 
         case GUI_MESSAGEID_CANCEL:
@@ -128,7 +135,7 @@ public:
         }
 
         if( opt ) {
-            auto *image = Assets::Image().get( "none" );
+            auto *image = Assets::Image().get( "nocoin" );
             auto &thumb = * new GuiImageBox( image );
 
             thumb.backgroundColor() = 0;
@@ -334,7 +341,7 @@ public:
             addControl("thumb",thumb);
 
             setPropertiesWithString( "background=0;"
-                "/thumb={ align=top,vertical; coords={0,0,100%,80%} }"
+                "/thumb={ align=top,vertical; coords={0,0,100%,80%} background=0; }"
                 "/label:GuiLabel={ align=top,vertical; coords={0,80%,100%,100%} text=; textalign=center; }"
             );
 
@@ -530,11 +537,13 @@ struct WizSelectCoin : UiCoinList ,CGuiTabControl {
                 m_wizard.info().mineCoin.wallet = "core"; //! LATER wallet select
                 break;
             case tradeCoin:
-                if( hasTrade( ticker ,tocstr(m_wizard.info().mineCoin.coin) ) )
+                if( hasTrade( ticker ,tocstr(m_wizard.info().mineCoin.coin) ) ) {
                     makeTrade( m_wizard.info() ,ticker );
-                else
+                }
+                else {
                     noTrade( m_wizard.info() );
-
+                    m_wizard.NextPage(); //! @note skip next page (trading)
+                }
                 break;
         }
 
@@ -879,23 +888,64 @@ struct WizSettings : GuiGroup ,CGuiTabControl {
 ///-- wizard
 
 UiConnectionWizard::UiConnectionWizard( GuiControlWindow &parent ) :
-    CDataConnectionInfo2(m_info) ,UiWizardDialog(parent)
+    CDataConnectionInfo2(m_info) ,UiWizardDialog(parent) ,m_settings(NullPtr)
 {
     setRoot(parent);
+
+    WizSettings *wizSettings;
 
     addPage( * new WizSelectCoin( *this ,WizSelectCoin::miningCoin ) ,{"What do you want to mine ?"} );
     addPage( * new WizSelectAddress( *this ) ,{"Your mining address"} );
     addPage( * new WizSelectPool( *this ) ,{"Where do you want to mine ?"} );
     addPage( * new WizSelectCoin( *this ,WizSelectCoin::tradeCoin ) ,{"What reward do you want to get (exchange) ?"} );
     addPage( * new WizSelectTrade( *this ) ,{"Configure trading"} );
-    addPage( * new WizSettings( *this ) ,{"Verify connection settings"} );
+    addPage( * (wizSettings = new WizSettings( *this )) ,{"Verify connection settings"} );
+
+    m_settings = &wizSettings->m_sheet;
 
     selectPage(0);
 }
 
-void UiConnectionWizard::onStepEnter( int step ,int fromStep ) {
+//--
+void UiConnectionWizard::showAddConnection( GuiControlWindow &parent ) {
+    m_index = -1; Zero(m_info);
+    selectPage(0);
+
+    parent.ShowModal( *this );
 }
 
+void UiConnectionWizard::showEditConnection( GuiControlWindow &parent ,int index ,const ConnectionInfo &info ) {
+    m_index = index; m_info = info;
+    selectPage(0);
+
+    parent.ShowModal( *this );
+}
+
+void UiConnectionWizard::confirmAddConnection() {
+    Params settings;
+
+    toManifest( m_info ,settings );
+
+    root().onCommand( this ,GUI_MESSAGEID_OK ,-1 ,&settings ,(void*) "connection" );
+}
+
+void UiConnectionWizard::confirmEditConnection() {
+    Params settings;
+
+    toManifest( m_info ,settings );
+
+    root().onCommand( this ,GUI_MESSAGEID_OK ,m_index ,&settings ,(void*) "connection" );
+}
+
+void UiConnectionWizard::updateData() {
+    Params data;
+
+    readData( data );
+
+    CDataConnectionInfo::adviseDataChanged( data );
+}
+
+//--
 void UiConnectionWizard::onConfirm()  {
     if( m_index < 0 )
         confirmAddConnection();

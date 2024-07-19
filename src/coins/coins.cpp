@@ -5,9 +5,7 @@
 //////////////////////////////////////////////////////////////////////////////
 #include "coins.h"
 
-#include <cassert>
-
-#include <tiny.h>
+#include <wallets/wallets.h>
 
 //////////////////////////////////////////////////////////////////////////////
 namespace solominer {
@@ -148,6 +146,72 @@ static bool g_hasCoin =
     CCoinStore::getInstance().RegisterItem( "BTC" ,RefOf<CCoin>( new CCoinBTC() ) )
     && CCoinStore::getInstance().RegisterItem( "USDT" ,RefOf<CCoin>( new CCoinUSDT() ) )
 ;
+
+//////////////////////////////////////////////////////////////////////////////
+bool coinHasWallet( const char *ticker ) {
+    String name = ticker;
+
+    name += "-core";
+    tolower(name);
+
+    CWalletServiceRef pwallet;
+
+    return getWallet( tocstr(name) ,pwallet ) && !pwallet.isNull();
+}
+
+bool coinHasMarket( IMarket *market ,const char *ticker ,const char *peer ) {
+    if( !market ) return false; //! no market
+
+    if( ticker && *ticker && peer && *peer ) {} else return false; //! bad arguments
+
+    if( stricmp(ticker,peer) == 0 ) return false; //! no market to self
+
+    MarketPair pair;
+
+    if( market->getMarketPair( ticker ,peer ,pair ) != IOK && market->getMarketPair( peer ,ticker ,pair ) != IOK )
+        return false;
+
+    return pair.hasMarket;
+}
+
+//--
+ListOf<String> &getCoinList( ListOf<String> &coins ) {
+    const auto &list = CCoinStore::getInstance().getList();
+
+    for( const auto &it : list ) if( !it.isNull() ) {
+        coins.emplace_back( it->getTicker() );
+    }
+
+    return coins;
+}
+
+ListOf<String> &getCoinsWithWallet( ListOf<String> &coins ) {
+    const auto &list = CCoinStore::getInstance().getList();
+
+    for( const auto &it : list ) if( !it.isNull() ) {
+        const char *str = tocstr(it->getTicker());
+
+        if( !coinHasWallet( str ) ) continue;
+
+        coins.emplace_back( str );
+    }
+
+    return coins;
+}
+
+ListOf<String> &getCoinsWithTrade( IMarket *market ,const char *ticker ,ListOf<String> &coins ) {
+    const auto &list = CCoinStore::getInstance().getList();
+
+    for( const auto &it : list ) if( !it.isNull() ) {
+        const char *str = tocstr(it->getTicker());
+
+        if( !coinHasMarket( market ,ticker ,str ) ) continue;
+
+        coins.emplace_back( str );
+    }
+
+    return coins;
+}
 
 //////////////////////////////////////////////////////////////////////////////
 } //namespace solominer

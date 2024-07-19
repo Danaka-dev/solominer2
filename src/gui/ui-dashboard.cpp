@@ -188,12 +188,14 @@ struct UiConnection : public GuiGroup ,public IMinerListener {
             coinThumbnail.text() = coinName;
             coinThumbnail.align() = (GuiAlign) (alignLeft | alignAnchor);
             coinThumbnail.coords() =  { 0 ,0 ,(int) (UI_CONNECTION_HEIGHT*0.8f) ,90.f  };
+            coinThumbnail.colors().fillColor = OS_COLOR_TRANSPARENT;
             addControl( coinThumbnail );
 
             if( m_connection.hasTrade() ) {
                 tradeIcon.setImage( getAssetImage( "EXCHANGE" ) );
                 tradeIcon.align() = (GuiAlign) (alignLeft | alignAnchor);
                 tradeIcon.coords() = { 0 ,0 ,12 ,90.f  };
+                tradeIcon.colors().fillColor = OS_COLOR_TRANSPARENT;
                 addControl( tradeIcon );
 
                 statLeftPos += 16;
@@ -202,6 +204,7 @@ struct UiConnection : public GuiGroup ,public IMinerListener {
                 tradeThumbnail.text() = tradeName;
                 tradeThumbnail.align() = (GuiAlign) (alignLeft | alignAnchor);
                 tradeThumbnail.coords() =  { 0 ,0 ,(int) (UI_CONNECTION_HEIGHT*0.8f) ,90.f  };
+                tradeThumbnail.colors().fillColor = OS_COLOR_TRANSPARENT;
                 addControl( tradeThumbnail );
 
                 statLeftPos += (int) (UI_CONNECTION_HEIGHT*0.8f);
@@ -233,11 +236,13 @@ struct UiConnection : public GuiGroup ,public IMinerListener {
 
         { //! pool
             poolIcon.setImage( getAssetPoolImage( poolName ) );
-            poolIcon.setText( poolName );
+            poolIcon.setText( "" ); // poolName );
             poolIcon.coords() = { poolLeftPos ,10.f ,actionLeftPos,70.f };
+            poolIcon.colors().fillColor = OS_COLOR_TRANSPARENT;
             addControl( poolIcon );
 
             poolLabel.setPropertiesWithString( "text=disconnected; textalign=center; font=normal;" );
+            poolLabel.colors().fillColor = OS_COLOR_TRANSPARENT;
             poolLabel.colors().textColor = OS_COLOR_GRAY;
             poolLabel.setCommandId( COMMAND_CONNECTION );
             poolLabel.coords() = { poolLeftPos ,70.f ,actionLeftPos ,100.f };
@@ -252,7 +257,7 @@ struct UiConnection : public GuiGroup ,public IMinerListener {
             actionAuto.text() = "AUTO";
             actionAuto.checked() = connection.info().status.isAuto;
             actionAuto.coords() = { actionLeftPos ,0.f ,balanceLeftPos ,25.f };
-            // actionAuto.align() = (GuiAlign) (GuiAlign::alignLeft | GuiAlign::alignTop);
+            actionAuto.colors().fillColor = OS_COLOR_TRANSPARENT;
             addControl( actionAuto );
 
             actionButton.setCommandId( COMMAND_MINING );
@@ -270,6 +275,7 @@ struct UiConnection : public GuiGroup ,public IMinerListener {
             balanceLabel.textAlign() = (TextAlign) (textalignRight | textalignCenterV);
             balanceLabel.setFont( getFontLarge() );
             balanceLabel.coords() = { balanceLeftPos ,0 ,97.f ,80.f };
+            balanceLabel.colors().fillColor = OS_COLOR_TRANSPARENT;
             balanceLabel.hooverColor() = OS_RGB(160,160,250);
             addControl( balanceLabel );
 
@@ -279,6 +285,7 @@ struct UiConnection : public GuiGroup ,public IMinerListener {
             earningLabel.textAlign() = (TextAlign) (textalignRight | textalignCenterV);
             earningLabel.setFont( getFontSmall() );
             earningLabel.coords() = { balanceLeftPos ,60.f ,97.f ,100.f };
+            earningLabel.colors().fillColor = OS_COLOR_TRANSPARENT;
             earningLabel.hooverColor() = OS_RGB(160,160,250);
             addControl( earningLabel );
         }
@@ -688,19 +695,6 @@ struct UiConnection : public GuiGroup ,public IMinerListener {
         }
     }
 
-///-- edit
-    /* void onEditConnection( int page ) {
-        const int *index = parent().connections().connections().digItem( m_connection );
-
-        assert(index);
-
-        parent().connectionList().onEditConnection( *index );
-    }
-
-    void onDeleteConnection() {
-        parent().showConfirmDelete();
-    } */
-
 ///-- ICommandListener
     void onCommand( IObject *source ,messageid_t commandId ,long param ,Params *params ,void *extra ) override {
         switch( commandId ) {
@@ -720,11 +714,6 @@ struct UiConnection : public GuiGroup ,public IMinerListener {
             /* case GUI_MESSAGEID_MOVE:
                 //TODO drag & drop
                 break;
-
-            case GUI_MESSAGEID_EDIT:
-                onEditConnection(0);
-            case GUI_MESSAGEID_DELETE:
-                onDeleteConnection(0);
                 */
 
             default:

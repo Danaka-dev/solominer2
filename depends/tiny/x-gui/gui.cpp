@@ -368,6 +368,10 @@ void GuiControl::getCenteredArea( const OsPoint &dims ,Rect &r ) const {
     r.top += h2; r.bottom = r.top + dims.y;
 }
 
+VisualTheme &GuiControl::getTheme() {
+    return !isOrphan() ? root().getTheme() : theTheme();
+}
+
 ///-- properties
 void GuiControl::getProperties( Params &properties ) const {
     toMember( m_id ,properties ,"id" );
@@ -771,6 +775,19 @@ void GuiSet::setProperties( const Params &properties ) {
     Params itemProps;
 
     for( const auto &it : controls ) {
+        /*
+        GuiControl *control = NullPtr;
+
+        if( addSubControl( tocstr(it.key) ,&control ) < 0 || !control )
+            continue; //TODO log this
+
+        itemProps.clear();
+        fromString( itemProps ,it.value );
+
+        control->setProperties( itemProps ); //! @note set properties after addControl, so context has a chance of being
+        //! captured (e.g. binding to root)
+        */
+
         itemProps.clear();
 
         itemDecl.type.clear();
@@ -821,12 +838,41 @@ int GuiSet::addControl( GuiControl &control ) {
     return (int) n;
 }
 
-int GuiSet::addControl( const char *name ,GuiControl &control ) {
-    int i = addControl( control );
+int GuiSet::addControl( const char *path ,GuiControl &control ) {
+    return addControl( path ,&control );
+}
 
-    m_names[name] = i;
+int GuiSet::addControl( const char *path ,GuiControl *control ) {
+    if( path && *path ) {} else return -1;
 
-    return i;
+//-- path
+    StringList list;
+
+    if( Split( path ,list ,'/' ) < 1 )
+        return -1;
+
+    int n = (int) list.size();
+
+//-- each
+    GuiControl *p;
+    GuiSet *set = this;
+
+    int id = -1;
+
+    int i=0; for( const auto &it : list ) {
+        if( !set ) return -1;
+
+        p = (i==n-1) ? control : NullPtr;
+
+        id = set->addSubControl( tocstr(it) ,&p );
+
+        if( p )
+            set = p->As_<GuiSet>();
+
+        ++i;
+    }
+
+    return id;
 }
 
 bool GuiSet::removeControl( GuiControl &control ) {
@@ -927,6 +973,61 @@ const char *GuiSet::digControlName( int i ) {
     auto *name = m_names.digItem( i );
 
     return name ? tocstr( *name ) : NullPtr;
+}
+
+//--
+int GuiSet::addSubControl( const char *name ,GuiControl **pp ) {
+
+//-- declaration
+    NameType decl;
+
+    fromString( decl ,name );
+
+//-- exists?
+    GuiControl *control = getControl( tocstr( decl.name ));
+
+    int id = -1;
+
+    if( control ) { //! control already exists
+        if( !decl.type.empty()) { //! if decl type, check correction
+            String className;
+            control->getMyClassName( className );
+            assert( className == decl.type );
+            return -1;
+        }
+
+        control->setRoot( root()); //! @note update root when adding, it might not have been set
+
+        id = m_names[decl.name];
+
+    } else { //! add control
+        control = (pp && *pp) ? *pp : ICreateGuiControl( tocstr(decl.type) );
+
+        if( !control ) return -1;
+
+        id = addSubControl( tocstr(decl.name) ,*control );
+    }
+
+    if( pp ) *pp = control;
+
+    return id;
+}
+
+int GuiSet::addSubControl( const char *name ,GuiControl &control ) {
+    int id = (int) m_controls.size();
+
+    if( control.id() == CONTROLID_NONE ) {
+        control.setControlId( (controlid_t) (CONTROLID_AUTOID+id) );
+    }
+
+    control.setRoot( root() );
+
+    m_controls.emplace_back( &control );
+
+    if( name )
+        m_names[name] = id;
+
+    return id;
 }
 
 //--
@@ -1714,6 +1815,10 @@ void GuiDialog::onCommand( IObject *source ,messageid_t commandId ,long param ,P
 //! GuiMessageBox
 
 GuiMessageBox::GuiMessageBox( IGuiMessage &listener ,const char *title ,const char *text ,const Params &options ) {
+    auto &theme = getTheme();
+
+    m_colors = theme.getColors( TINY_GUIMESSAGEBOX_PUID ,"normal" );
+
     setPropertiesWithString(
         "coords={25%,30%,75%,70%} "
         "controls = {"
@@ -2211,6 +2316,7 @@ static String g_themeTiny =
     "GuiControl = { normal={$black,$black,$white,0} disabled={$black,black,$gray,0} }"
     "GuiLabel = { normal={0,0,$white,0} disabled={0,0,$gray,0} }"
     "GuiLink = { hoover={$black ,$black ,$blue2 ,$black} }"
+    "GuiMessageBox = { normal={$black1,$black1,$white,0} }"
     "GuiControlWindow = { normal={$black,$black,$white,$black} }"
     "GuiCheck = { outter={$white,$black,0,0} tick={$green,$black,0,0} cross={$red,$black,0,0} option={$white,$black,0,0} }"
     "GuiButton = {"

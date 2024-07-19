@@ -3,6 +3,8 @@
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
 //////////////////////////////////////////////////////////////////////////////
+#include <solominer.h>
+
 #include <common/stats.h>
 #include <coins/cores.h>
 #include <pools/pools.h>
@@ -178,6 +180,13 @@ static const Params ALL_DEFAULT = {
 
 //TODO get default config from coins
 
+static const Params BTRM_DEFAULT = {
+         { "filename" ,"bitoreum-qt" }
+        ,{ "location" ,"./cores/bitoreum/3.0.2.01/" }
+        ,{ "datapath" ,"./cores/bitoreum/blockchain/" }
+        ,{ "port" ,"17086" }
+};
+
 static const Params MAXE_DEFAULT = {
      { "filename" ,"maxeter-qt" }
     ,{ "location" ,"./cores/maxeter/1.14.23.1/" }
@@ -216,7 +225,9 @@ void UiCoreSettings::loadBuiltInValue() {
     data = ALL_DEFAULT;
     m_data.onDataEdit( data );
 
-    if( m_coin == "MAXE" ) {
+    if( m_coin == "BTRM" ) {
+        data = BTRM_DEFAULT;
+    } else if( m_coin == "MAXE" ) {
         data = MAXE_DEFAULT;
     } else if( m_coin == "RTC" ) {
         data = RTC_DEFAULT;
@@ -662,6 +673,7 @@ UiMainSettings::UiMainSettings( GuiControlWindow *root ) :
                     "minimumLabel:GuiLabel = { align=top; coords={25%,0,35%,5%} text=Minimum value; textalign=left,centerv; }"
                     "minimum:GuiTextBox = { align=top; coords={40%,0,55%,5%} text=; datafield=minimumAmount; datasource=trade; }"
                     "value:GuiLabel = { align=top,vertical; coords={55%,0,60%,5%} text=USD; textalign=center; }"
+        "warning:GuiLabel = { align=top,vertical; coords={15%,0,85%,5%} text=Trading is disabled, developer may enable from config file for testing.; textcolor=#ff0000; textalign=center; }"
 
                     "cancel:GuiButton = { commandId=3,1; bind=dialog; enabled=false; coords={40%,85%,49%,90%} align=none; text=Cancel; } "
                     "confirm:GuiButton = { commandId=2,1; bind=dialog; enabled=false; coords={51%,85%,60%,90%} align=none; text=Ok; } "
@@ -673,19 +685,19 @@ UiMainSettings::UiMainSettings( GuiControlWindow *root ) :
                     "setpassword:GuiButton = { commandId=29,0; bind=dialog; align=top,vertical; coords={66%,0,70%,5%} text=set; }"
 
                     "coreTitle:UiTitle = { align=top,vertical; coords={15%,0,85%,10%} /label={text=Cores;} }"
-                    "trades:GuiNavGrid = { align=top,vertical; coords={25%,0,75%,25%} controls={ "
+                    "trades:GuiNavGrid = { align=top,vertical; coords={25%,0,75%,30%} controls={ "
                         "grid:GuiGrid = { datasource=core; "
                             "cols={30%,70%}"
                             "titles={Core,Wallet Password}"
                             "fields={id,wallet_password}"
-                            "rows=3;"
+                            "rows=4;"
                             "selectable=true;"
                         "}"
                         "nav = { visible=false; }"
                     "} }"
 
                     "marketTitle:UiTitle = { align=top,vertical; coords={15%,0,85%,10%} /label={text=Markets;} }"
-                    "xeggex:GuiLabel = { align=top,vertical; coords={25%,0,85%,6%} text=XeggeX; textalign=left,centerv; font=large; textcolor=#ebbe5a; }"
+                    "xeggex:GuiLabel = { align=top,vertical; coords={15%,0,85%,6%} text=XeggeX; textalign=center; font=large; textcolor=#ebbe5a; }"
                     "lblApiKey:GuiLabel = { align=top; coords={25%,0,50%,6%} text=api-key; textalign=left,centerv; }"
                     "apikey:GuiTextBox = { align=top,vertical; coords={35%,0,85%,5%} text=; datafield=api_key; datasource=market; }"
                     "lblApiSecret:GuiLabel = { align=top; coords={25%,0,35%,6%} text=api-secret; textalign=left,centerv; }"
@@ -731,12 +743,16 @@ UiMainSettings::UiMainSettings( GuiControlWindow *root ) :
     auto *cores = getControlAs_<GuiNavGrid>("body/credential/trades");
 
     GuiCoord h = 20.f;
-    cores->Grid()->setTitleHeight(h);
+    cores->Grid()->setTitleHeight(h,true);
     cores->Grid()->Subscribe(*this);
 
 //-- market
     m_marketCredential.Seek("xeggex");
     m_marketCredential.Update();
+
+    if( isTraderEnabled() && isBrokerEnabled() ) {
+        setPropertiesWithString( "/body = { /settings = { /warning = { visible=false; }}}" );
+    }
 
 //-- data
     m_globalConfig.Subscribe(*this);

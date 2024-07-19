@@ -5,6 +5,7 @@
 //////////////////////////////////////////////////////////////////////////////
 #include "broker.h"
 
+#include <solominer.h>
 #include <markets/markets.h>
 #include <wallets/wallets.h>
 
@@ -243,10 +244,14 @@ IAPI_DEF CBroker::Start( Config &config ,const char *path ) {
 //-- done
     m_nextProcessTime = Now();
 
+    m_started = true;
+
     return IOK;
 }
 
 IAPI_DEF CBroker::Stop() {
+    m_started = false;
+
     m_orderBook.Close();
 
     return IOK;
@@ -327,6 +332,12 @@ IAPI_DEF CBroker::makeOrder( BrokerOrder &order ) {
 }
 
 IAPI_DEF CBroker::placeOrder( BrokerOrder &order ) {
+    if( !isStarted() )
+        return IBADENV;
+
+    if( !isBrokerEnabled() )
+        return IREFUSED;
+
     //TODO do due diligence on the order
 
     //! deposit
@@ -367,6 +378,12 @@ IAPI_DEF CBroker::cancelOrder( BrokerOrder::Id sequence ) {
 ///--
 IAPI_DEF CBroker::processOrders() {
     IRESULT result;
+
+    if( !isStarted() )
+        return IBADENV;
+
+    if( !isBrokerEnabled() )
+        return IREFUSED;
 
     time_t now = Now();
 

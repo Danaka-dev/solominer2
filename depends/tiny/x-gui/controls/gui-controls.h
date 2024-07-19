@@ -420,7 +420,7 @@ protected:
 //////////////////////////////////////////////////////////////////////////////
 //! GuiList
 
-class GuiList : public GuiGroup ,GUICONTROL_PARENT {
+class GuiList : public GuiPublisher ,public GuiGroup ,GUICONTROL_PARENT {
 public:
     enum Placement {
         placeLine ,placeZigzag ,placeGrid ,placeDiamond ,placeSpiral
@@ -439,7 +439,7 @@ public:
     }
 
     DECLARE_GUICONTROL(GuiGroup,GuiList,TINY_GUILIST_PUID);
-    // DECLARE_GUIPROPERTIES;
+    DECLARE_GUIPROPERTIES;
 
     Placement &placement() { return m_placer.placement; }
     Direction &direction() { return m_placer.direction; }
@@ -452,7 +452,6 @@ public:
 
 public:
     API_IMPL(void) onLayout( const OsRect &clientArea ,OsRect &placeArea ) IOVERRIDE;
-
     API_IMPL(void) onClick( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) IOVERRIDE;
 
 protected:

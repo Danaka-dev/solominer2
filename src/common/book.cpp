@@ -535,6 +535,8 @@ bool CBookFile::getEntryOffset( entryid_t id ,size_t &offset ) {
 
     int n = (int) priv().bookHeader.entryPerPage; //! IE n = entry per page
 
+    if( n == 0 ) return false;
+
     int pageId = (int) (id / n);
 
     if( !priv().findPage( pageId ,page ) )

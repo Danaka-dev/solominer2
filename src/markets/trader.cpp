@@ -5,6 +5,8 @@
 //////////////////////////////////////////////////////////////////////////////
 #include "trader.h"
 
+#include <solominer.h>
+
 //////////////////////////////////////////////////////////////////////////////
 namespace solominer {
 
@@ -272,11 +274,15 @@ IAPI_DEF CTrader::Start( Config &config ,const char *path ) {
 //-- subscribe to broker events
     getBroker().Subscribe(*this);
 
+    m_started = true;
+
     return IOK;
 }
 
 IAPI_DEF CTrader::Stop() {
     //TODO update m_config with configfile + close
+
+    m_started = false;
 
     m_tradeBook.Close();
 
@@ -339,6 +345,12 @@ IAPI_DEF CTrader::makeTrade( TradeInfo &info ) {
 }
 
 IAPI_DEF CTrader::placeTrade( const TradeInfo &trade ,TradeInfo::Id &id ) {
+    if( !isStarted() )
+        return IBADENV;
+
+    if( !isTraderEnabled() )
+        return IREFUSED;
+
     if( !validateTrade(trade) )
         return IBADARGS;
 
@@ -367,6 +379,13 @@ IAPI_DEF CTrader::cancelTrade( TradeInfo::Id sequence ) {
 
 ///--
 IAPI_DEF CTrader::processTrades() {
+    if( !isStarted() )
+        return IBADENV;
+
+    if( !isTraderEnabled() )
+        return IREFUSED;
+
+//--
     time_t now = Now();
 
     if( m_nextScheduleTime > now )
@@ -441,7 +460,7 @@ IAPI_DEF CTrader::onOrderUpdate( CBroker &broker ,const BrokerOrder &order ) {
         //-- update trade on status changed
         if( trade.status != status ) {
             if( status == TradeInfo::executing )
-                trade.timeToExecute = Now();
+                trade.timeExecuted = Now();
             else
                 trade.timeCompleted = Now();
 

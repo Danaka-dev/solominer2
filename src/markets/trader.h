@@ -208,11 +208,13 @@ public: //-- definitions
     typedef Map_<TradeInfo::Id,TradeInfo> ledger_t;
 
 public: //-- instance
-    CTrader() DEFAULT
+    CTrader() : m_started(false) {}
 
     DECLARE_OBJECT_STD(CObject,CTrader,CTRADER_UUID)
 
     CTradeBook &getTradeBook() { return m_tradeBook; }
+
+    bool isStarted() { return m_started; }
 
 public: ///-- ITrader
     IAPI_DECL Start( Config &config ,const char *path="" );
@@ -254,6 +256,8 @@ protected:
     bool placeBrokerOrder( const TradeOrder &order );
 
 protected:
+    bool m_started;
+
     TraderConfig m_config;
 
     CTradeBook m_tradeBook;

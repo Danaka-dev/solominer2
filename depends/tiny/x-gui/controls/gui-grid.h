@@ -98,13 +98,10 @@ public:
 public:
     Config &config() { return m_config; }
 
-    void setTitleHeight( const GuiCoord &height ) {
-        m_titleCoord = height;
-    }
+    void adjustRowHeigh();
 
-    void setRowHeight( const GuiCoord &height ) {
-        m_rowCoord = height;
-    }
+    void setTitleHeight( const GuiCoord &height ,bool adjustRows=false );
+    void setRowHeight( const GuiCoord &height ,bool adjustRows=false );
 
     void setCellMargin( int margin ) {
         m_cellMargin = margin;

@@ -117,10 +117,20 @@ T getByName( const char *s ) {
     return Enum_<T>::getValue( s );
 }
 
+template <typename T>
+ListOf<String> &listEnum( ListOf<String> &list ) {
+    size_t n = Enum_<T>::getCount();
+
+    for( int i=0; i<(int) n; ++i )
+        list.emplace_back( Enum_<T>::names[i] );
+
+    return list;
+}
+
 //--
 template <typename T>
 T &enumFromString( T &v ,const String &s ,size_t &size ) {
-    Enum_<T>::findValue( s.c_str() ,v ,size );
+    Enum_<T>::findValue( tocstr(s) ,v ,size );
 
     return v;
 }

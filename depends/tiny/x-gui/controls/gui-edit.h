@@ -201,6 +201,9 @@ public:
     void Subscribe( IGuiMessage &listener );
 
 public:
+    void makeMenu( const ListOf<String> &items );
+
+public:
     // API_IMPL(void) onClick( const OsPoint &p ,OsMouseButton mouseButton ,OsKeyState keyState ) IOVERRIDE;
         //! @note probably not a good idea to handle event in onMouse (no move/drag detect) //TODO find better
 

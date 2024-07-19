@@ -51,7 +51,7 @@ static const char *uiPlacer = {
         "mb:GuiMargin={ align=top,vertical; coords={0,0,100%,2%} }"
         "lblTo:GuiLabel={ align=top; coords={15%,0,30%,6%} text=To Address; textalign=left+centerv; }"
         "toAddress:GuiComboBox = { align=top,vertical; coords={30%,0,80%,6%} menu={ background=#101010; } }"
-        "toIcon:GuiImageBox = { align=none; coords={82%,28%,98%,47%} image=; text=; }"
+        "toIcon:GuiImageBox = { align=none; coords={82%,29%,98%,48%} image=; text=; }"
 
         "ok:GuiButton ={ commandId=2; bind=set; align=bottom,vertical; coords={40%,0,60%,8%} text=Trade; textalign=center; }"
         "info:GuiLabel ={ align=bottom,vertical; coords={40%,0,60%,40%} text=; textalign=center; font=large; textcolor=#00e000; }"
@@ -60,10 +60,9 @@ static const char *uiPlacer = {
 
 struct UiTradePlacer : GuiGroup ,CGuiTabControl {
     UiTradePlacer() {
-        // setRoot(parent);
-        // root().addBinding("self",this);
-
         setPropertiesWithString(uiPlacer);
+
+        getMarket( "xeggex" ,m_market );
 
         //-- from
         m_fromAmount = getControlAs_<GuiTextBox>("fromAmount");
@@ -73,7 +72,7 @@ struct UiTradePlacer : GuiGroup ,CGuiTabControl {
         if( m_fromValue ) {
             m_fromValue->Subscribe(*this);
             m_fromValue->menu().clear();
-            makeCoinList( *m_fromValue );
+            m_fromValue->makeMenu( getCoinList() );
 
             if( m_fromAddress ) makeAddressList( *m_fromAddress ,m_fromValue->getText() );
         }
@@ -86,37 +85,34 @@ struct UiTradePlacer : GuiGroup ,CGuiTabControl {
         if( m_toValue ) {
             m_toValue->Subscribe(*this);
             m_toValue->menu().clear();
-            makeCoinList( *m_toValue );
+            m_toValue->makeMenu( getCoinsWithMarket( m_market.ptr() ,tocstr(m_fromValue->text()) ) );
 
             if( m_toAddress ) makeAddressList( *m_toAddress ,m_toValue->getText() );
         }
 
         //-- ok
         getControlAs_<GuiButton>("ok")->Subscribe(*this);
+
+        updateImages();
     }
 
     DECLARE_GUICONTROL(GuiGroup,UiTradePlacer,SOLOMINER_UITRADEPLACER_PUID);
 
-//--
-    static void makeCoinList( GuiComboBox &combo ) { //TODO in coin ?
-        const auto &coins = CCoinStore::getInstance().getList();
-
-        int i=0; for( const auto &it : coins ) if( !it.isNull() ) {
-            const char *ticker = it->getTicker().c_str();
-
-            // if( !filter(ticker) ) continue; //! filter for trade pairs (2 hops ?)
-
-            combo.menu().addItem( i ,ticker ,NullPtr );
-        }
+///-- events
+    void updateImages() {
+        setPropertiesWithString( "controls={ fromIcon={ image=${a}; text=${a} } }" ,{{"a",m_fromValue->getText()}} );
+        setPropertiesWithString( "controls={ toIcon={ image=${a}; text=${a} } }" ,{{"a",m_toValue->getText()}} );
     }
 
-///-- events
     void onFromSelect() {
         if( m_fromValue && m_fromAddress ) {} else return;
 
         makeAddressList( *m_fromAddress ,m_fromValue->getText() );
 
-        setPropertiesWithString( "controls={ fromIcon={ image=${a}; text=${a} } }" ,{{"a",m_fromValue->getText()}} );
+        m_toValue->menu().clear();
+        m_toValue->makeMenu( getCoinsWithMarket( m_market.ptr() ,tocstr(m_fromValue->getText())) );
+
+        updateImages();
     }
 
     void onToSelect() {
@@ -124,7 +120,7 @@ struct UiTradePlacer : GuiGroup ,CGuiTabControl {
 
         makeAddressList( *m_toAddress ,m_toValue->getText() );
 
-        setPropertiesWithString( "controls={ toIcon={ image=${a}; text=${a} } }" ,{{"a",m_toValue->getText()}} );
+        updateImages();
     }
 
     void startTrade() {
@@ -206,6 +202,8 @@ struct UiTradePlacer : GuiGroup ,CGuiTabControl {
     }
 
 //--
+    CMarketServiceRef m_market;
+
     GuiTextBox *m_fromAmount;
     GuiComboBox *m_fromValue;
     GuiComboBox *m_fromAddress;
@@ -268,7 +266,7 @@ struct UiTradeMonitor : GuiGroup {
         setPropertiesWithString(uiMonitor);
 
         m_header = getControlAs_<GuiGroup>("header");
-        assert(m_body);
+        assert(m_header);
 
         m_body = getControlAs_<GuiGroup>("body");
         assert(m_body);
@@ -339,15 +337,26 @@ struct UiTradeMonitor : GuiGroup {
         }
     }
 
+    void formatTradeValue( const char *name ,double amount ,double price=1. ,const char *marketLabel=NullPtr ) {
+        double value = amount * price;
+
+        if( value > DBL_EPSILON )
+            toString( value ,m_header->getControlAs_<GuiLabel>(name)->text() );
+        else
+            m_header->getControlAs_<GuiLabel>(name)->text() = marketLabel;
+    }
+
     void updateTrade( TradeInfo &info ) {
         String guid;
 
     //-- header
-        toString( info.amount.amount ,m_header->getControlAs_<GuiLabel>("fromAmount")->text() );
-        toString( info.amount.amount*info.price ,m_header->getControlAs_<GuiLabel>("toAmount")->text() );
+        double amount = info.amount.amount;
 
-        setPropertiesWithString( "/header={ /fromValue={ image=${a}; text=${a}; } }}" ,{{"a",info.amount.value}} );
-        setPropertiesWithString( "/header={ /toValue={ image=${a}; text=${a};} }}" ,{{"a",info.toValue}} );
+        formatTradeValue( "fromAmount" ,amount );
+        formatTradeValue( "toAmount" ,amount ,info.price ,"(spot)" );
+
+        setPropertiesWithString( "/header={ /fromValue={ image=${a}; text=${a}; } } }" ,{{"a",info.amount.value}} );
+        setPropertiesWithString( "/header={ /toValue={ image=${a}; text=${a}; } } }" ,{{"a",info.toValue}} );
 
     //-- trade
         toString( info.id ,guid );
@@ -372,7 +381,7 @@ struct UiTradeMonitor : GuiGroup {
 
         setPropertiesWithString( "/header={ /toValue={ image=${a}; text=${a};} }}" ,{{"a",info.toValue}} );
 
-        toString( order.order.amount.amount * order.order.price ,m_header->getControlAs_<GuiLabel>("toAmount")->text() ); //! @note override with order value
+        formatTradeValue( "toAmount" ,order.order.amount.amount ,order.order.price ,"(spot)" ); //! @note override with order value
 
         //--
         formatOrderString( "deposit" ,order.stages[0] );
@@ -390,7 +399,16 @@ struct UiTradeMonitor : GuiGroup {
     void updateTrades() {
         auto &trader = getTrader();
 
-        trader.listOpenTrades( m_trades );
+    //-- list trades
+        ListOf<TradeInfo::Id> trades;
+
+        trader.listOpenTrades( trades );
+
+        for( auto it : trades ) {
+            if( std::find( m_trades.begin() ,m_trades.end() ,it ) != m_trades.end() ) continue;
+
+            m_trades.emplace_back(it);
+        }
 
         int n = (int) m_trades.size();
 
@@ -399,7 +417,7 @@ struct UiTradeMonitor : GuiGroup {
             m_tradeCount = n;
         }
 
-        //--
+    //-- update pages
         String page ,count;
 
         toString( m_tradeId+1 ,page );
@@ -410,7 +428,7 @@ struct UiTradeMonitor : GuiGroup {
             return;
         }
 
-        //--
+    //-- update current
         setPropertiesWithString( "/footer={/info={ text=Trades ${a}/${b};}}" ,{{"a",tocstr(page)},{"b",tocstr(count)}} );
 
         TradeInfo info;
@@ -488,8 +506,12 @@ static const char *uiTrade = {
         "header:GuiTabBar = {"
             "align=top,vertical; coords={0,0,100%,6%} direction=right; titles={Trade,In progress,History}"
         "}"
+
+        "warning1:GuiLabel={ align=top,vertical; coords={0,0,100%,5%} background=#101010; text=Warning: this is a BETA version, bug involving double trades and; textcolor=#ff8000; textalign=center; font=medium; }"
+        "warning2:GuiLabel={ align=top,vertical; coords={0,0,100%,5%} background=#101010; text=ther costly annoyance might remain, only use as a developer for testing!; textcolor=#ff8000; textalign=center; font=medium; }"
+
         "body:GuiTab = {"
-            "align=top; anchor=vertical; coords={0,0,100%,88%}"
+            "align=top; anchor=vertical; coords={0,0,100%,78%}" // 88
             "controls = {"
                 "trade:UiTradePlacer = { align=top,vertical; coords={25%,0,75%,100%} }"
                 "progress:UiTradeMonitor = { align=top,vertical; coords={25%,0,75%,100%} }"
@@ -533,79 +555,6 @@ void UiTradeDialog::Open() {
     GuiDialog::Open();
 
     m_trades->updatePage(0);
-
-/*
-    auto &trader = getTrader();
-
-    CTrader::ledger_t ledger;
-
-    if( ISUCCESS(trader.findOpenTrades( ledger )) && !ledger.map().empty() ) {
-        auto &info = ledger.map().begin()->second;
-        readTrade( info );
-        updateTrade( info );
-
-        m_orderId = ledger.map().begin()->first;
-        m_isTrading = true;
-
-        return;
-    }
-
-    m_isTrading = false; */
-}
-
-
-void UiTradeDialog::readTrade( TradeInfo &info ) {
-    /* toString( info.amount.amount ,m_fromAmount->text() );
-    toString( info.amount.value ,m_fromValue->text() );
-
-    toString( info.price ,m_toAmount->text() );
-    toString( info.toValue ,m_toValue->text() );
-
-    m_fromAddress->text() = info.depositFromAddress;
-    m_toAddress->text() = info.withdrawToAddress;
-     */
-}
-
-void UiTradeDialog::updateTrade( TradeInfo &info ) {
-    /*
-    String guid;
-
-    toString( info.id ,guid );
-    Format( m_guid->text() ,"TRADE ID : %s" ,128 ,(const char*) tocstr(guid) );
-
-    //+ order id
-    // get order , from order stage
-    // makingDeposit=0 ,exchanging=1 ,withdrawing=2 ,completed=3
-
-    Format( m_started->text() ,"(%d) Recorded" ,128 ,(int) info.timeRecorded );
-    Format( m_placed->text() ,"(%d) Placed" ,128 ,(int) info.timePlaced );
-    Format( m_executed->text() ,"(%d) Executed" ,128 ,(int) info.timeExecuted );
-    Format( m_completed->text() ,"(%d) Completed" ,128 ,(int) info.timeCompleted );
-
-    if( info.timeExecuted == 0 ) {
-        BrokerOrder order;
-
-        getBroker().findOrder( info.orderId ,order );
-
-        Format( m_executed->text() ,"Deposit confirmation %d" ,128 ,(int) order.deposit.confirmations );
-    }
-     */
-}
-
-void UiTradeDialog::onUpdateTradeStatus() {
-    /*
-    if( !m_isTrading ) return;
-
-    auto &trader = getTrader();
-
-    TradeInfo info;
-
-    trader.getTrade( m_orderId ,info );
-
-    updateTrade( info );
-
-    Refresh();
-     */
 }
 
 //--
@@ -620,14 +569,6 @@ void UiTradeDialog::onCommand( IObject *source ,messageid_t commandId ,long para
             return;
     }
 }
-
-/* void UiTradeDialog::onTimer( OsTimerAction timeAction ,OsEventTime now ,OsEventTime last ) {
-    GuiSet::onTimer( timeAction ,now ,last );
-
-    if( now - last > 1000 ) {
-        // onUpdateTradeStatus();
-    }
-} */
 
 //////////////////////////////////////////////////////////////////////////////
 } //namespace solominer

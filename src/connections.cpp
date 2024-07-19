@@ -5,6 +5,7 @@
 //////////////////////////////////////////////////////////////////////////////
 #include "connections.h"
 
+#include <markets/trader.h>
 #include <common/logging.h>
 
 //////////////////////////////////////////////////////////////////////////////
@@ -679,12 +680,11 @@ IAPI_DEF CConnection::onTransaction( IWallet &wallet ,const WalletTransaction &t
 
     connectionList().updateEarningSums();
 
-//-- processing trade
+//-- process trade
     if( !hasTrade() )
         return IOK;
 
-    //TODO
-    //! look out for BETA 2 featuring automated trading !
+    tradeIncome( earning );
 
     return IOK;
 }
@@ -804,6 +804,38 @@ double CConnection::estimateEarnings( double hostHps ,const ValueOfReference &va
 }
 
 void CConnection::tradeIncome( Earning &earning ) {
+    const WalletTransaction &transaction = earning.transaction;
+
+    auto &trader = CTrader::getInstance();
+    auto &info = m_info;
+
+    earning.tradeAmount = transaction.amount.amount * info.trading.percent / 100.;
+
+    TradeInfo trade;
+    trader.makeTrade( trade );
+
+    trade.amount = { earning.tradeAmount ,info.mineCoin.coin };
+    trade.toValue = info.tradeCoin.coin;
+    trade.price = -1.; //! spot trade
+
+    trade.depositFromAddress = !transaction.toAddress.empty() ? transaction.toAddress : info.mineCoin.address;
+
+    if( info.trading.withdraw ) {
+        trade.withdrawToAddress = info.tradeCoin.address;
+    }
+
+    trade.schedule = TradeInfo::executeOnSchedule;
+
+    TradeInfo::Id id;
+
+    if( trader.placeTrade( trade ,id ) != IOK ) {
+        //! LOG THIS
+        return;
+    }
+
+    earning.tradePlacedAt = Now();
+
+    connectionList().earnings().addEntry( earning ,true );
 }
 
 //////////////////////////////////////////////////////////////////////////////

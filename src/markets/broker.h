@@ -182,11 +182,13 @@ public: //-- definitions
     typedef Map_<BrokerOrder::Id,BrokerOrder> ledger_t;
 
 public: //-- instance
-    CBroker() DEFAULT;
+    CBroker() : m_started(false) {}
 
     DECLARE_OBJECT_STD(CObject,CBroker,CBROKER_UUID);
 
     COrderBook &getOrderBook() { return m_orderBook; }
+
+    bool isStarted() { return m_started; }
 
 public: ///-- IBroker interface
     IAPI_DECL Start( Config &config ,const char *path="" );
@@ -245,6 +247,8 @@ protected: ///--
     iresult_t confirmWithdraw( BrokerOrder &order ,BrokerOp &op );
 
 protected: ///-- members
+    bool m_started;
+
     COrderBook m_orderBook;
 
     ListOf<BrokerOrder> m_openOrders;

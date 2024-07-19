@@ -251,6 +251,9 @@ NameType &fromString( NameType &p ,const String &s ,size_t &size ) {
     const char *str = s.c_str();
     const char *s0 = str;
 
+    p.name.clear();
+    p.type.clear();
+
     if( ParseToken( str ,&p.name ) && SkipSymbol( str ,':' ) && ParseToken( str ,&p.type ) ) {} else return p;
 
     trim(p.name); trim(p.type);
@@ -458,7 +461,7 @@ String &toString( const StringList &p ,String &s ) {
 }
 
 //--
-int Split( const char *s ,StringList &list ,const char c ) {
+int Split( const char *s ,ListOf<String> &list ,const char c ) {
     String field;
 
     const char *p = s;
@@ -470,13 +473,23 @@ int Split( const char *s ,StringList &list ,const char c ) {
     return (int) list.size();
 }
 
-int Merge( String &s ,const StringList &list ,const char c ) {
+int Merge( String &s ,const ListOf<String> &list ,const char c ) {
     for( const auto &it : list ) {
         if( !s.empty() ) s += c;
         s += it;
     }
 
     return (int) list.size();
+}
+
+bool ReplaceEntry( ListOf<String> &list ,const char *find ,const char *replace ) {
+    bool r = false;
+
+    for( auto &it : list ) {
+        if( it == find ) it = replace ,r = true;
+    }
+
+    return r;
 }
 
 //////////////////////////////////////////////////////////////////////////////

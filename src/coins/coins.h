@@ -9,7 +9,9 @@
 
 //////////////////////////////////////////////////////////////////////////////
 #include <common/common.h>
+
 #include <interface/ICoin.h>
+#include <interface/IMarket.h>
 
 #include <vector>
 #include <string>
@@ -122,6 +124,30 @@ inline const char *getDevAddress( const char *ticker ) {
         return "";
 
     return p->getDevAdress().c_str();
+}
+
+//////////////////////////////////////////////////////////////////////////////
+//! Helper
+
+bool coinHasWallet( const char *ticker );
+bool coinHasMarket( IMarketRef &market ,const char *ticker ,const char *peer );
+
+//--
+ListOf<String> &getCoinList( ListOf<String> &coins );
+ListOf<String> &getCoinsWithWallet( ListOf<String> &coins );
+ListOf<String> &getCoinsWithTrade( IMarket *market ,const char *ticker ,ListOf<String> &coins );
+
+//--
+inline ListOf<String> getCoinList() {
+    ListOf<String> coins; return getCoinList( coins );
+}
+
+inline ListOf<String> getCoinsWithWallet() {
+    ListOf<String> coins; return getCoinsWithWallet( coins );
+}
+
+inline ListOf<String> getCoinsWithMarket( IMarket *market ,const char *ticker ) {
+    ListOf<String> coins; return getCoinsWithTrade( market ,ticker ,coins );
 }
 
 //////////////////////////////////////////////////////////////////////////////

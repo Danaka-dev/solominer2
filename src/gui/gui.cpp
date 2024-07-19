@@ -3,6 +3,8 @@
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
 //////////////////////////////////////////////////////////////////////////////
+#include <solominer.h>
+
 #include "ui.h"
 #include "ui-theme.h"
 #include "ui-assets.h"
@@ -37,6 +39,7 @@ bool uiInitialize( CConnectionList &connections ) {
 
     //-- coins //TODO list them all and add
     gui::Assets::Image().addFromManifest(
+        "nocoin = { file=assets/coins/nocoin.png; }"
         "BTC = { file=assets/coins/btc.png; }"
         "BTRM = { file=assets/coins/btrm.png; }"
         "MAXE = { file=assets/coins/maxe.png; }"

@@ -4,6 +4,8 @@
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
 //////////////////////////////////////////////////////////////////////////////
+#include <solominer.h>
+
 #include "xeggex-api.h"
 
 #include <sstream>
@@ -607,6 +609,15 @@ bool ApiSign( const ApiCredential &credential ,const char *url ,const char *body
 //////////////////////////////////////////////////////////////////////////////
 //! IHttp
 
+void signApiBasic( const ApiCredential &credential ,String &userpass ) {
+    String apiKey,apiSecret;
+
+    solominer::globalDecypher( tocstr(credential.apiKey) ,apiKey );
+    solominer::globalDecypher( tocstr(credential.apiSecret) ,apiSecret );
+
+    userpass = apiKey + ":" + apiSecret;
+}
+
 bool signApiHmac( const ApiCredential &credential ,IHttp::Headers &headers ,const char *url ,const char *body ) {
     String nonce ,signature;
 
@@ -668,12 +679,22 @@ bool CApi2::marketGetById( const char *id ,Market &market ) {
 }
 
 bool CApi2::marketGetBySymbol( const char *symbol ,Market2 &market ) {
+    static MapOf<String,bool> noMarket; //! @note avoid calling again if market doesn't exist (will not be cached because of error)
+
+    if( noMarket.find(symbol) != noMarket.end() )
+        return false;
+
     String response; long status;
 
-    if( !HttpSend( "/market/getbysymbol/" ,symbol ,nullptr ,response ,status ,false ,false ) )
+    if( !HttpSend( "/market/getbysymbol/" ,symbol ,nullptr ,response ,status ,false ,false ) ) {
         return( false );
+    }
 
-    return parseResponseStruct_( response ,market );
+    if( !parseResponseStruct_( response ,market ) ) {
+        return noMarket[symbol] = false;
+    }
+
+    return true;
 }
 
 bool CApi2::marketGetOrderBookBySymbol( const char *symbol ,OrderBook &book ) {
@@ -902,7 +923,7 @@ bool CApi2::HttpSend( const char *path ,const char *param ,const char *body ,Str
         switch( m_apiAuthorization ) {
             default:
             case authBasic:
-                userpass = m_config.credential.apiKey + ":" + m_config.credential.apiSecret;
+                signApiBasic( m_config.credential ,userpass );
                 break;
             case authHmac:
                 signApiHmac( m_config.credential ,headers ,url.c_str() ,"" );
