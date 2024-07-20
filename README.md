@@ -134,7 +134,9 @@ The application requires [CMake](http://www.cmake.org/cmake/resources/software.h
 
 ```sh
 sudo apt-get install cmake libcurl4-openssl-dev libjsoncpp-dev libuv1-dev libssl-dev libhwloc-dev
+sudo apt-get install libx11-dev libxcursor-dev zlib1g zlib1g-dev libpng-dev uuid-dev 
 ```
+(NB: zlib1g is with a '1', not an 'l' :)
 
 + **Build and run**
 
@@ -148,12 +150,13 @@ make -j8
 ```
 *(NB: you may replace -j8 with the actual number of cores on your machine if different)*
 
-Run the applciation from /bin directory which contains the release assets and conf files:
+Run the application from /bin directory which contains the release assets and conf files:
 ```sh
 cd ../bin
 sudo ./solominer
 ```
-See notes in section **'Running the software'** above for details on running and configuring solominer
+*At first start gui may take a bit of time to appear. See notes in section **'Running the software'** above for details
+about running and configuring solominer*
 
 + **Using daemon/wallet/core**
 
