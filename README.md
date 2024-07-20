@@ -113,17 +113,22 @@ application.
 Building the software
 ---------------------
 
-**Get the source code**
++ **Make sure your system is up to date**
+```sh
+sudo apt-get update
+```
+
++ **Get the source code**
 
 You may download the source the code from [gitHub](https://github.com/Danaka-dev/solominer2) or clone the repository
 using [Git](https://github.com/git-guides/install-git) :
 
 ```sh
 sudo apt-get install git build-essential
-git clone https://github.com/Danaka-dev/solominer2/solominer2.git
+git clone https://github.com/Danaka-dev/solominer2.git
 ```
 
-**Dependencies**
++ **Dependencies**
 
 The application requires [CMake](http://www.cmake.org/cmake/resources/software.html), [Curl](http://curl.haxx.se/libcurl/), [libjson-cpp](https://github.com/open-source-parsers/jsoncpp) and other packages to be built. They may be installed on Linux as follows:
 
@@ -131,7 +136,7 @@ The application requires [CMake](http://www.cmake.org/cmake/resources/software.h
 sudo apt-get install cmake libcurl4-openssl-dev libjsoncpp-dev libuv1-dev libssl-dev libhwloc-dev
 ```
 
-**Build and Run**
++ **Build and run**
 
 Navigate to solominer directory and proceed to build as follows:
 
@@ -150,7 +155,7 @@ sudo ./solominer
 ```
 See notes in section **'Running the software'** above for details on running and configuring solominer
 
-**Using daemon/wallet/core**
++ **Using daemon/wallet/core**
 
 Solominer will communicate with running daemon(s) or wallet(s) (such as MAXE,RTC,RTM...) to provide earnings information,
 direct mining on your full node, and automatic mining reward exchange. Make sure your ip port, --rpcuser and --rpcpass 
