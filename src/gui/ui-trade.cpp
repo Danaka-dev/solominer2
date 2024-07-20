@@ -3,7 +3,7 @@
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
 //////////////////////////////////////////////////////////////////////////////
-// #include <common/stats.h>
+#include <solominer.h>
 
 #include "ui.h"
 #include "ui-trade.h"
@@ -507,8 +507,9 @@ static const char *uiTrade = {
             "align=top,vertical; coords={0,0,100%,6%} direction=right; titles={Trade,In progress,History}"
         "}"
 
-        "warning1:GuiLabel={ align=top,vertical; coords={0,0,100%,5%} background=#101010; text=Warning: this is a BETA version, bug involving double trades and; textcolor=#ff8000; textalign=center; font=medium; }"
-        "warning2:GuiLabel={ align=top,vertical; coords={0,0,100%,5%} background=#101010; text=ther costly annoyance might remain, only use as a developer for testing!; textcolor=#ff8000; textalign=center; font=medium; }"
+        "warning1:GuiLabel={ align=top,vertical; coords={0,0,100%,4%} background=#101010; text=Warning: this is a BETA version, bug involving double trades and; textcolor=#ff8000; textalign=center; font=medium; }"
+        "warning2:GuiLabel={ align=top,vertical; coords={0,0,100%,4%} background=#101010; text=ther costly annoyance might remain, only use as a developer for testing!; textcolor=#ff8000; textalign=center; font=medium; }"
+    "warning3:GuiLabel = { align=top,vertical; coords={5%,0,95%,2%} background=#101010; text=Trading is disabled, developer may enable from config file for testing.; textcolor=#ff0000; textalign=center; }"
 
         "body:GuiTab = {"
             "align=top; anchor=vertical; coords={0,0,100%,78%}" // 88
@@ -549,6 +550,10 @@ UiTradeDialog::UiTradeDialog( GuiControlWindow &parent ) : GuiDialog("Trade")
     //-- orders
     m_trades = m_body->getControlAs_<GuiNavGrid>("history");
     m_trades->Grid()->Bind( &m_tradeData );
+
+    if( isTraderEnabled() && isBrokerEnabled() ) {
+        setPropertiesWithString( "/warning3 = { visible=false; }" );
+    }
 }
 
 void UiTradeDialog::Open() {

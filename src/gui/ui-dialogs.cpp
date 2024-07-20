@@ -47,7 +47,7 @@ void UiLogin::Open() {
     fromString( m_retries ,getMember( values() ,"retry" ,"3" ) );
     m_tries = 0;
 
-    setPropertiesWithString( "/body = { /password={text=123;} }" );
+    setPropertiesWithString( "/body = { /password={text=;} }" );
 }
 
 bool UiLogin::onConfirm() {

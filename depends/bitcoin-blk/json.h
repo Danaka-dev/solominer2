@@ -92,7 +92,7 @@ inline const char *getString( const Value &value ,const char *key ,const char *d
 ///--
 static const rapidjson::Value nullValue;
 
-static const rapidjson::Value &getArray( const rapidjson::Value &value ,const char *key ) {
+inline const rapidjson::Value &getArray( const rapidjson::Value &value ,const char *key ) {
     if( isEmpty(value) )
         return nullValue;
 
@@ -104,7 +104,7 @@ static const rapidjson::Value &getArray( const rapidjson::Value &value ,const ch
     return i->value.IsArray() ? i->value : nullValue;
 }
 
-static const rapidjson::Value &getObject( const rapidjson::Value &value ,const char *key ) {
+inline const rapidjson::Value &getObject( const rapidjson::Value &value ,const char *key ) {
     if( isEmpty(value) )
         return nullValue;
 

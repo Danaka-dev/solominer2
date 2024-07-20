@@ -364,7 +364,7 @@ static uint256 getHashFromHex( const std::string &hex ) {
     return getHashFromBin( bin );
 }
 
-static uint256 ComputeMerkleRoot( std::vector<uint256> hashes ) {
+inline uint256 ComputeMerkleRoot( std::vector<uint256> hashes ) {
     while( hashes.size() > 1 ) {
         if( hashes.size() & 1 ) { //! duplicate last hash for odd number of hashes
             hashes.push_back( hashes.back() );
@@ -578,7 +578,7 @@ struct TxOut {
     Script script;
 };
 
-static TxOut getTxOutForAddress( const std::string &address ,int64_t amount ) {
+inline TxOut getTxOutForAddress( const std::string &address ,int64_t amount ) {
     TxOut tx;
 
     tx.amount = amount;
@@ -587,7 +587,7 @@ static TxOut getTxOutForAddress( const std::string &address ,int64_t amount ) {
     return tx;
 }
 
-static TxOut getTxOutWithScript( const std::string &script ,int64_t amount ) {
+inline TxOut getTxOutWithScript( const std::string &script ,int64_t amount ) {
     TxOut tx;
 
     tx.amount = amount;
@@ -748,7 +748,7 @@ struct Block {
 };
 
 //////////////////////////////////////////////////////////////////////////////
-static uint256 ComputeMerkleRoot( const Block &block ) {
+inline uint256 ComputeMerkleRoot( const Block &block ) {
     std::vector<uint256> leaves;
 
     leaves.resize( block.vtx.size());

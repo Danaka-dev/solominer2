@@ -8,6 +8,8 @@
 **Howdy fellow solo adventurers and welcome to your very own one-stop, jack of all trades, swiss knife digital
 currency mining assistant.**
 
+![](https://github.com/Danaka-dev/solominer2/blob/main/assets/images/screenshot/solominer2-beta2.png)
+
 **Solominer** lets you pilot optimized mining algorithms and manage the complex configuration and communication involved 
 with mining digital currency from a straightforward, comfortable and great looking (or at least we think so) graphic user
 interface.
@@ -24,8 +26,6 @@ BTC... it's all there.*
 \
 *No fee, no centralization, all the fun. Several cpu mineable blockchains supported, use your existing own core 
 daemon/wallet or the ones provided, all fully configurable from the comfort of the user interface.*
-\
-(currently supported BTRM, MAXE, RTC, RTM)
 
 
 + A nifty dashboard and mining monitor\
@@ -44,10 +44,10 @@ for you automatically.*
 
 + Automatically trade your reward \
 \
-*Manually or automatically trade of your mining reward to another currency such as BTC or USDT and track your earnings
-and trading directly from your user interface.*
+*Manually or automatically trade your mining reward to another currency such as BTC or USDT and track your earnings
+and trading directly from the user interface.*
 \
-(BETA feature, for testing only. XeggeX currently supported)
+(WARNING: this is a non fully debugged BETA feature, only use for testing or development purpose at this time!)
 
 ### ![text](https://cdn.jsdelivr.net/gh/Readme-Workflows/Readme-Icons@main/icons/octicons/ApprovedChanges.svg) *version*
 
@@ -55,12 +55,12 @@ and trading directly from your user interface.*
 with bugs.
 
 At this stage, we do not recommend to use the software for any serious mining operation, nor to use Solominer source
-code as part of your project yet. (unless a passion for the aforementioned hymenoptera compels you to do so of course).
+code as part of your project yet. (unless a passion for the aforementioned hymenoptera compels you to do so of course :-)
 
 But do have a look, test the software, tell us what you think. Your feedback is important!
 
 
-Installing the software
+Running the software
 -----------------------
 
 ![](https://github.com/Danaka-dev/solominer2/blob/main/assets/images/os/linux-16x16.png)
@@ -78,7 +78,7 @@ To enable the use of huge pages and advanced cpu configuration requires root pri
 binary's directory:
 
 ```sh
-sudo ./solominer
+sudo ./solominer-beta2-x64-linux
 ```
 ***NOTE***
 *there might be a delay before the gui appears as the program is gathering run-time information about the blockchains.*
@@ -110,8 +110,8 @@ application.
 
  *coming soon in a later version!*
 
-Building the library
---------------------
+Building the software
+---------------------
 
 **Get the source code**
 
@@ -131,9 +131,9 @@ The application requires [CMake](http://www.cmake.org/cmake/resources/software.h
 sudo apt-get install cmake libcurl4-openssl-dev libjsoncpp-dev libuv1-dev libssl-dev libhwloc-dev
 ```
 
-**Build and install**
+**Build and Run**
 
-Navigate to the root directory of the application and proceed as follows:
+Navigate to solominer directory and proceed to build as follows:
 
 ```sh
 mkdir build
@@ -141,8 +141,24 @@ cd build
 cmake ..
 make -j8
 ```
+*(NB: you may replace -j8 with the actual number of cores on your machine if different)*
 
-(NB: you may replace -j8 with the actual number of cores on your machine if different)
+Run the applciation from /bin directory which contains the release assets and conf files:
+```sh
+cd ../bin
+sudo ./solominer
+```
+See notes in section **'Running the software'** above for details on running and configuring solominer
+
+**Using daemon/wallet/core**
+
+Solominer will communicate with running daemon(s) or wallet(s) (such as MAXE,RTC,RTM...) to provide earnings information,
+direct mining on your full node, and automatic mining reward exchange. Make sure your ip port, --rpcuser and --rpcpass 
+is set and match core configuration in solominer.
+\
+You can also start and stop daemon/wallet from solominer which will configure this for you. By default solominer assumes
+daemon or wallet is located in '.bin/cores/' directory, this can be changed in solominer core settings or in section
+[CORES] from service.conf file.  
 
 Contribute
 ----------
@@ -153,7 +169,7 @@ The **Solominer** adventure is that of community and is open for everyone to par
 
 ### *Many ways one can contribute to Solominer:* 
 
-+ Using the software, providing feedback.
++ Using the software, participating in GitHub discussion and providing feedback.
 + Giving Solominer a shout-out, tell your friends, let the world know!
 + Report on bugs, isolate bugs, propose fixes.
 + Review code, write test units, fix typoes.
@@ -168,7 +184,7 @@ A positive attitude and constructive mindset is all you need to participate to S
 
 Coming soon
 -------------
-We are working torward the release of **Solominer** debugged and tested version **RELEASE CANDIDATE (RC)**, adding
+We are working torward the release of **Solominer** debugged and tested **RELEASE CANDIDATE (RC)** version, adding
 support for more pools and blockchains on the way.
 \
 Windows/MSVC port will follow right after. 
