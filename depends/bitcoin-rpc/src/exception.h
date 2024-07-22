@@ -21,8 +21,11 @@
 #include <sstream>
 #include <iostream>
 
-#include <jsoncpp/json/json.h>
-// #include <json/json.h> //! uncomment if above include is not found on your configuration
+#ifdef CMAKE_PAK
+ #include <json/json.h> //! uncomment if above include is not found on your configuration
+#else
+ #include <jsoncpp/json/json.h>
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 using Json::Value;

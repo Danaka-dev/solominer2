@@ -9,12 +9,21 @@
 
 //////////////////////////////////////////////////////////////////////////////
 #include <common/common.h>
+#include <pools/pools.h>
 
 //////////////////////////////////////////////////////////////////////////////
 namespace solominer {
 
 //////////////////////////////////////////////////////////////////////////////
 //! Config
+
+Config &getConfig();
+Config::Section &getGlobalConfig();
+Config &getCredentialConfig();
+
+//--
+bool getConfigSectionValue( Config &config ,const char *section ,const char *entry ,const char *member ,String &s ,const char *defaultValue );
+bool getGlobalSectionValue( Config &config ,const char *entry ,const char *member ,String &s ,const char *defaultValue );
 
 //////////////////////////////////////////////////////////////////////////////
 //! Login & Credential
@@ -28,6 +37,11 @@ bool globalLogin( const char *password );
 bool globalCypher( const char *text ,String &s );
 bool globalDecypher( const char *cypher ,String &s );
 bool globalIsLogged();
+
+//////////////////////////////////////////////////////////////////////////////
+//! Pools
+
+CPoolList &getPoolListInstance();
 
 //////////////////////////////////////////////////////////////////////////////
 //! Trading

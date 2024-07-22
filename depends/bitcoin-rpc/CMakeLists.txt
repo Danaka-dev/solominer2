@@ -20,18 +20,20 @@ set( CMAKE_MODULE_PATH
     # (if not already present add vcpkg plugin from market place)
     # in main menu go to : view->Tool Windows->Vcpkg
     # in the vcpkg tool window : Packages -> vcpkg -> find:jsoncpp -> install
-    # add "-DCMAKE_TOOLCHAIN_FILE=<vcpkg-root>/scripts/buildsystems/vcpkg.cmake" to cmake options :
+    # add "-DCMAKE_TOOLCHAIN_FILE=<vcpkg-root>/scripts/buildsystems/vcpkg.cmake -DCMAKE_PAK=VCPKG" to cmake options :
         # menu -> File -> Settings -> Build,Execution,Deployment -> Cmake .. "CMake options:" textbox in the right pane
         # e.g. <vcpkg-root> will probably be "/home/<username>/.vcpkg-clion/" on Linux
-    # replace "JSONCPP" to lower case "jsoncpp" herebelow :
-        # FIND_PACKAGE(jsoncpp REQUIRED)
 
-#IF CLION
- # FIND_PACKAGE(jsoncpp CONFIG REQUIRED)
- # set( JSONCPP_LIBRARY JsonCpp::JsonCpp )
-#ELSE
+# add_compile_definitions(CMAKE_PAK=${CMAKE_PAK})
+# target_compile_definitions(bitcoinrpc PRIVATE CMAKE_PAK=${CMAKE_PAK} )
+
+
+if( ${CMAKE_PAK} MATCHES "VCPKG" )
+ FIND_PACKAGE(jsoncpp CONFIG REQUIRED)
+ set( JSONCPP_LIBRARY JsonCpp::JsonCpp )
+else()
  FIND_PACKAGE(JSONCPP REQUIRED)
-#ENDIF
+endif()
 
 FIND_PACKAGE(CURL REQUIRED)
 
@@ -52,6 +54,11 @@ ADD_LIBRARY( bitcoinrpc_static STATIC ${bitcoinrpc_source} )
 
 # Set output name of static library
 SET_TARGET_PROPERTIES( bitcoinrpc_static PROPERTIES OUTPUT_NAME bitcoinrpc )
+
+if( ${CMAKE_PAK} MATCHES "VCPKG" )
+    target_compile_options( bitcoinrpc PUBLIC -DCMAKE_PAK=1 )
+    target_compile_options( bitcoinrpc_static PUBLIC -DCMAKE_PAK=1 )
+endif()
 
 # Link the library with depends
 TARGET_LINK_LIBRARIES( bitcoinrpc

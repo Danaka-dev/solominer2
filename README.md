@@ -128,19 +128,26 @@ sudo apt-get install git build-essential
 git clone https://github.com/Danaka-dev/solominer2.git
 ```
 
+If you already cloned the repository and simply want to update with the most recent code, from your local repository
+directory: 
+```sh
+git pull
+```
+
 + **Dependencies**
 
 The application requires [CMake](http://www.cmake.org/cmake/resources/software.html), [Curl](http://curl.haxx.se/libcurl/), [libjson-cpp](https://github.com/open-source-parsers/jsoncpp) and other packages to be built. They may be installed on Linux as follows:
 
 ```sh
-sudo apt-get install cmake libcurl4-openssl-dev libjsoncpp-dev libuv1-dev libssl-dev libhwloc-dev
+sudo apt-get install cmake
+sudo apt-get instal libcurl4-openssl-dev libjsoncpp-dev libuv1-dev libssl-dev libhwloc-dev
 sudo apt-get install libx11-dev libxcursor-dev zlib1g zlib1g-dev libpng-dev uuid-dev 
 ```
-(NB: zlib1g is with a '1', not an 'l' :)
+(NB: zlib1g is with a '1', not an 'i' :)
 
-+ **Build and run**
++ **Build and run (terminal)**
 
-Navigate to solominer directory and proceed to build as follows:
+Navigate to solominer2 directory and proceed to build from the terminal as follows:
 
 ```sh
 mkdir build
@@ -150,13 +157,26 @@ make -j8
 ```
 *(NB: you may replace -j8 with the actual number of cores on your machine if different)*
 
-Run the application from /bin directory which contains the release assets and conf files:
+After building, copy bin assets and conf and run the application from build/bin directory:
 ```sh
-cd ../bin
+cp -r ../bin .
+cd bin
 sudo ./solominer
 ```
 *At first start gui may take a bit of time to appear. See notes in section **'Running the software'** above for details
 about running and configuring solominer*
+
++ **Build and run (IDE)**
+ 
+If using CLion, Visual Code or other cmake compatible environment relying on vcpkg, install required vcpkg and add
+the following cmake options in your settings:
+```sh
+"-DCMAKE_TOOLCHAIN_FILE=<vcpkg-root>/scripts/buildsystems/vcpkg.cmake -DCMAKE_PAK=VCPKG"
+```
+(e.g. <vcpkg-root> will probably be "/home/<username>/.vcpkg-clion/" for CLion on Linux)
+
+After the initial cloning and before debug/run, copy ./bin directory containing assets and conf files to ./build/bin
+working directory.
 
 + **Using daemon/wallet/core**
 

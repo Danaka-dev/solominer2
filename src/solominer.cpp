@@ -170,6 +170,31 @@ Config &getPoolsConfig() {
 }
 
 //////////////////////////////////////////////////////////////////////////////
+//! Config values
+
+bool getConfigSectionValue( Config &config ,const char *section ,const char *entry ,const char *member ,String &s ,const char *defaultValue ) {
+    auto *psection = config.peekSection(section);
+
+    if( !psection ) return false;
+
+    const char *str = getMember( psection->params ,entry ,NullPtr );
+
+    if( str == NullPtr ) return false;
+
+    Params params;
+
+    fromString( params ,str );
+
+    s = getMember( params ,member ,defaultValue );
+
+    return true;
+}
+
+bool getGlobalSectionValue( Config &config ,const char *entry ,const char *member ,String &s ,const char *defaultValue ) {
+    return getConfigSectionValue( config ,"global" ,entry ,member ,s ,defaultValue );
+}
+
+//////////////////////////////////////////////////////////////////////////////
 //! Login
 
 const String &getGlobalLogin() {
@@ -379,19 +404,13 @@ bool isBrokerEnabled() {
 }
 
 bool getGlobalEnabled( Config &config ,const char *name ) {
-    auto *section = config.peekSection(name);
+    String s;
 
-    if( !section ) return false;
-
-    const char *s = getMember( section->params ,"global" ,"" );
-
-    Params params;
-
-    fromString( params ,s );
+    if( !getConfigSectionValue( config ,name ,"global" ,"enabled" ,s ,"false" ) ) return false;
 
     bool result = false;
 
-    return fromString( result ,getMember( params ,"enabled" ,"false" ) );
+    return fromString( result ,s );
 }
 
 bool initTrading( Config &config ) {

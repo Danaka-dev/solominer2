@@ -3,6 +3,7 @@
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
 //////////////////////////////////////////////////////////////////////////////
+#include <solominer.h>
 #include <coins/cores.h>
 #include <pools/pools.h>
 

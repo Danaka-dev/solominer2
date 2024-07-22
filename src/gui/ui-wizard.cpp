@@ -3,6 +3,8 @@
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
 //////////////////////////////////////////////////////////////////////////////
+#include <solominer.h>
+
 #include "ui.h"
 #include "ui-theme.h"
 #include "ui-assets.h"
@@ -617,9 +619,15 @@ struct WizSelectPool : GuiGroup ,CGuiTabControl {
         setRoot(wizard.root());
         root().addBinding("page",this);
 
-        auto &global = getGlobalConfig();
+        /* {
+            auto &global = getGlobalConfig();
 
-        m_vars = global.params;
+            const char *str = getMember( global.params ,"general" ,"" );
+
+            fromString( m_vars ,str );
+        } */
+
+        getGlobalSectionValue( getConfig() ,"general" ,"worker" ,m_vars["worker"] ,"solominer2" );
 
         //-- controls
         m_pools.placement() = UiPoolList::placeDiamond;
