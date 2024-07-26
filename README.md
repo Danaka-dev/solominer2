@@ -140,7 +140,7 @@ The application requires [CMake](http://www.cmake.org/cmake/resources/software.h
 
 ```sh
 sudo apt-get install cmake
-sudo apt-get instal libcurl4-openssl-dev libjsoncpp-dev libuv1-dev libssl-dev libhwloc-dev
+sudo apt-get install libcurl4-openssl-dev libjsoncpp-dev libuv1-dev libssl-dev libhwloc-dev
 sudo apt-get install libx11-dev libxcursor-dev zlib1g zlib1g-dev libpng-dev uuid-dev 
 ```
 (NB: zlib1g is with a '1', not an 'i' :)
@@ -173,7 +173,7 @@ the following cmake options in your settings:
 ```sh
 "-DCMAKE_TOOLCHAIN_FILE=<vcpkg-root>/scripts/buildsystems/vcpkg.cmake -DCMAKE_PAK=VCPKG"
 ```
-(e.g. <vcpkg-root> will probably be "/home/<username>/.vcpkg-clion/" for CLion on Linux)
+(e.g. "<vcpkg-root>" will probably be "/home/username/.vcpkg-clion/" for CLion on Linux)
 
 After the initial cloning and before debug/run, copy ./bin directory containing assets and conf files to ./build/bin
 working directory.
@@ -190,24 +190,28 @@ daemon or wallet is located in '.bin/cores/' directory, this can be changed in s
 
 Contribute
 ----------
-> <cite> Mining solo harbors this strange impression of togetherness and solidarity that arise from acting as an 
-> individual, in our own bubble, while at the same time participating in the most positive way to a greater thing. </cite>
+> <cite> Mining solo brings me this strange impression of togetherness and solidarity as an individual acting in my own
+> bubble while at the same time I participate in the most positive way to a greater thing. </cite>
 
-The **Solominer** adventure is that of community and is open for everyone to participate.
+With **solominer** we hope to promote digital currencies visibility and accessibility by providing an intuitive and 
+ergonomic experience of mining blockchains, alone or together.
+\ Join us if that's an idea you like !
 
 ### *Many ways one can contribute to Solominer:* 
 
-+ Using the software, participating in GitHub discussion and providing feedback.
++ Using the software, providing feedback.
 + Giving Solominer a shout-out, tell your friends, let the world know!
 + Report on bugs, isolate bugs, propose fixes.
 + Review code, write test units, fix typoes.
 + Write documentation, tutorials, samples.
 + Provide translation.
 + Propose features and improvements.
-+ And more... 
++ and more... 
 
 ### *Code of conduct*
 
+The **Solominer** adventure is that of community and is open for everyone to participate.
+\
 A positive attitude and constructive mindset is all you need to participate to Solominer.
 
 Coming soon
