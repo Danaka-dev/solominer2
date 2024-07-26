@@ -173,7 +173,7 @@ the following cmake options in your settings:
 ```sh
 "-DCMAKE_TOOLCHAIN_FILE=<vcpkg-root>/scripts/buildsystems/vcpkg.cmake -DCMAKE_PAK=VCPKG"
 ```
-(e.g. "<vcpkg-root>" will probably be "/home/username/.vcpkg-clion/" for CLion on Linux)
+(e.g. "vcpkg-root" will probably be "/home/username/.vcpkg-clion/" for CLion on Linux)
 
 After the initial cloning and before debug/run, copy ./bin directory containing assets and conf files to ./build/bin
 working directory.
@@ -183,19 +183,23 @@ working directory.
 Solominer will communicate with running daemon(s) or wallet(s) (such as MAXE,RTC,RTM...) to provide earnings information,
 direct mining on your full node, and automatic mining reward exchange. Make sure your ip port, --rpcuser and --rpcpass 
 is set and match core configuration in solominer.
-\
-You can also start and stop daemon/wallet from solominer which will configure this for you. By default solominer assumes
-daemon or wallet is located in '.bin/cores/' directory, this can be changed in solominer core settings or in section
-[CORES] from service.conf file.  
+
+You can start and stop daemon/wallet directly from solominer which will configure this for you. By default, solominer
+assumes daemon or wallet is located in '.bin/cores/' directory, this can be changed in solominer core settings or in
+section [CORES] from service.conf file.  
+
+If set you may configure solominer with your daemon wallet password (settings/credential/...). We encourage to set a global
+login password for solominer so that all your credentials (password,api_key,...) can be encrypted in your conf files.
 
 Contribute
 ----------
-> <cite> Mining solo brings me this strange impression of togetherness and solidarity as an individual acting in my own
-> bubble while at the same time I participate in the most positive way to a greater thing. </cite>
+> <cite> Mining solo brings me this sense of togetherness and solidarity as I am acting in my own individual bubble
+> while simultaneously contributing in the most positive way to a greater thing. </cite>
 
 With **solominer** we hope to promote digital currencies visibility and accessibility by providing an intuitive and 
-ergonomic experience of mining blockchains, alone or together.
-\ Join us if that's an idea you like !
+ergonomic experience of mining blockchains.
+
+**Join us if that's an idea you like !**
 
 ### *Many ways one can contribute to Solominer:* 
 
