@@ -531,6 +531,10 @@ TINYFUN OsTimerTime OsTimerConvertToNanosec( OsTimerCycle cycles );
 //! must call OsTimerGetResolution before calling this function
 //TODO .. not
 
+inline OsTimerTime OsTimerNow( void ) {
+    return OsTimerConvertToMs( OsTimerGetTimeNow() );
+}
+
 //////////////////////////////////////////////////////////////////////////
 //! file (drive)
 

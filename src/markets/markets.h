@@ -55,6 +55,8 @@ public:
 
     static const char *category() { return "market"; }
 
+    API_DECL(void) noCache() {}
+
 public: ///-- IService
     //...
 

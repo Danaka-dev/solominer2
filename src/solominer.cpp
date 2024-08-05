@@ -510,6 +510,7 @@ void mainAppLoop() {
 //! Main
 
 // #include "test-graph.hpp"
+#include "test-trade.hpp"
 
 #define ERROR_OK            0
 #define ERROR_ARGS          -1
@@ -532,9 +533,11 @@ int main( int argc ,char *argv[] ) {
     //////////////////////////////////////////////////////////////////////////////
     //! TEST
 
-    /* OsTimerGetResolution();
+    test::test_trade();
+    return 0;
 
-    // algo::test_graph();
+    /*
+    algo::test_graph();
 
     while( OsSystemDoEvents() == ENOERROR ) {
         OsSleep(10);

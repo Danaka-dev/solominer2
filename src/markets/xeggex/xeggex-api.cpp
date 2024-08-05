@@ -700,8 +700,10 @@ bool CApi2::marketGetBySymbol( const char *symbol ,Market2 &market ) {
 bool CApi2::marketGetOrderBookBySymbol( const char *symbol ,OrderBook &book ) {
     String response; long status;
 
-    if( !HttpSend( "/market/getorderbookbysymbol/" ,symbol ,nullptr ,response ,status ,false ,false ) )
+    if( !HttpSend( "/market/getorderbookbysymbol/" ,symbol ,nullptr ,response ,status ,false ,m_noCache ) )
         return( false );
+
+    m_noCache = false;
 
     return parseResponseStruct_( response ,book );
 }
@@ -709,8 +711,10 @@ bool CApi2::marketGetOrderBookBySymbol( const char *symbol ,OrderBook &book ) {
 bool CApi2::marketGetOrderBookByMarketId( const char *marketId ,OrderBook &book ) {
     String response; long status;
 
-    if( !HttpSend( "/market/getorderbookbymarketid/" ,marketId ,nullptr ,response ,status ,false ,false ) )
+    if( !HttpSend( "/market/getorderbookbymarketid/" ,marketId ,nullptr ,response ,status ,false ,m_noCache ) )
         return( false );
+
+    m_noCache = false;
 
     return parseResponseStruct_( response ,book );
 }
@@ -826,12 +830,12 @@ bool CApi2::getOrder( const char *orderId ,Order &order ) {
     return parseResponseStruct_( response ,order );
 }
 
-bool CApi2::getOrders( const char *ticker ,const char *orderStatus ,ListOf<Order> &orders ,int limit ,int skip ) {
+bool CApi2::getOrders( const char *marketPair ,const char *orderStatus ,ListOf<Order> &orders ,int limit ,int skip ) {
     String response; long status;
 
     std::stringstream ss;
 
-    ss << "?ticker=" << ticker << "&status=" << orderStatus << "&limit=" << limit << "&skip=" << skip;
+    ss << "?symbol=" << marketPair << "&status=" << orderStatus << "&limit=" << limit << "&skip=" << skip;
 
     if( !HttpSend( "/getorders" ,ss.str().c_str() ,nullptr ,response ,status ,true ,true ) )
         return( false );

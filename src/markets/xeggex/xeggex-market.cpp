@@ -222,7 +222,7 @@ xeggex::OrderToCreate &toManifest( const MarketOrder &p ,xeggex::OrderToCreate &
 
     manifest.userProvidedId = p.userId;
     manifest.symbol = toMarketSymbol( symbol ,p.amount.value ,p.toValue );
-    manifest.side = "sell";
+    manifest.side = (p.side == MarketOrder::Sell) ? "sell" : "buy";
     manifest.type = (p.price < 0.) ? "market" : "limit";
     manifest.quantity = toString( p.amount.amount );
     manifest.price = toString( MAX( p.price ,0. ) );
@@ -263,13 +263,15 @@ MarketOrder &fromManifest( MarketOrder &p ,const xeggex::Order &manifest ) {
         swap( primaryAsset ,secondaryAsset );
 
     p.id = manifest.id;
+    p.userId = manifest.userProvidedId;
 
     p.amount.amount = fromString<double>( manifest.quantity );
     p.amount.value = primaryAsset;
     p.toValue = secondaryAsset;
     p.price = fromString<double>( manifest.price );
-    // p.validity;
+    p.side = (manifest.side == "buy") ? MarketOrder::Buy : MarketOrder::Sell;
 
+    // p.validity; //TODO
     p.quantityFilled = fromString<double>( manifest.executedQuantity );
 
     p.status = manifest.status;
@@ -533,8 +535,20 @@ IAPI_DEF CMarketXeggex::listWithdrawals( const char *value ,std::vector<MarketWi
 }
 
 IAPI_DEF CMarketXeggex::listOrders( const char *pair ,std::vector<MarketOrder> &orders ,int from ,int count ) {
-    //TODO here ... and other IMarket to XeggeX
-    return INOEXEC;
+    ListOf<xeggex::Order> xorders;
+
+    if( !api().getOrders( pair ,"active" ,xorders ) ) //! TODO .. limit vs since ?
+        return IERROR;
+
+    MarketOrder order;
+
+    for( const auto &it : xorders ) {
+        fromManifest( order ,it );
+
+        orders.emplace_back( order );
+    }
+
+    return IOK;
 }
 
 //////////////////////////////////////////////////////////////////////////////

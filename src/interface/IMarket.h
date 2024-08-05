@@ -136,6 +136,8 @@ struct MarketOrder {
         //! <0 market rate ,else limit price
         //! NB stop order handled using IBroker
 
+    enum Side { Sell=0 ,Buy } side;
+
     TimeSec validity; //! time until order is valid
 
     double quantityFilled; //! order quantity already filled
@@ -152,7 +154,7 @@ inline bool isSpotOrder( const MarketOrder &order ) {
 }
 
 template <> inline MarketOrder &Zero( MarketOrder &p ) {
-    p = { "" ,"" ,{ 0. ,"" } ,"" ,0. }; return p;
+    p = { "" ,"" ,{ 0. ,"" } ,"" ,0. ,MarketOrder::Sell ,0 ,0. }; return p;
 }
 
 //////////////////////////////////////////////////////////////////////////////

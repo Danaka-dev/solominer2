@@ -53,6 +53,8 @@ public:
 
     xeggex::CApi2 &api() { return m_api; }
 
+    API_IMPL(void) noCache() IOVERRIDE { api().noCache(); }
+
 public: ///-- IMarket
     IAPI_IMPL getAssetList( ListOf<String> &assets ) IOVERRIDE;
 

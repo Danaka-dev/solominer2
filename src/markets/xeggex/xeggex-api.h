@@ -475,13 +475,17 @@ protected:
 
     ApiConfig m_config;
 
+    bool m_noCache; //! cache use for next request only
+
 public:
-    CApi2( IHttp &http ) : m_http(http)
+    CApi2( IHttp &http ) : m_http(http) ,m_noCache(false)
     {}
 
     const ApiConfig &config() const { return m_config; }
 
     ApiConfig &config() { return m_config; }
+
+    void noCache() { m_noCache = true; }
 
 //////////////////////////////////////////////////////////////////////////////
 //! APIv2
@@ -511,7 +515,7 @@ public: ///-- account
     bool getDeposits( const char *ticker ,ListOf<Deposit> &deposits ,int limit=0 ,int skip=500 );
     bool getWithdrawals( const char *ticker ,ListOf<Withdrawal> &withdrawals ,int limit=0 ,int skip=500 );
     bool getOrder( const char *orderId ,Order &order );
-    bool getOrders( const char *ticker ,const char *orderStatus ,ListOf<Order> &orders ,int limit=0 ,int skip=500 );
+    bool getOrders( const char *marketPair ,const char *orderStatus ,ListOf<Order> &orders ,int limit=100 ,int skip=0 );
 
     bool getTrades( const char *symbol ,ListOf<Trade> &trades ,int limit=0 ,int skip=500 );
     bool getTradesSince( const char *ticker ,ListOf<Trade> &trades ,const char *sinceTimestampMs ,int limit=0 ,int skip=500 );

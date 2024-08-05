@@ -48,6 +48,10 @@ for you automatically.*
 and trading directly from the user interface.*
 \
 (WARNING: this is a non fully debugged BETA feature, only use for testing or development purpose at this time!)
+\
+Trading features use Xeggex low fee exchange, if you don't have an account you may create one using our referral link:
+\
+<https://xeggex.com?ref=658a9ac948bb17dc13997793&campaign=solominer2&source=github>
 
 ### ![text](https://cdn.jsdelivr.net/gh/Readme-Workflows/Readme-Icons@main/icons/octicons/ApprovedChanges.svg) *version*
 
@@ -226,7 +230,6 @@ support for more pools and blockchains on the way.
 Windows/MSVC port will follow right after. 
 
 ### ***Stay tuned !***
-
 
 Donation
 --------
