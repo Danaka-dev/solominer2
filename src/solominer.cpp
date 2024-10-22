@@ -510,7 +510,7 @@ void mainAppLoop() {
 //! Main
 
 // #include "test-graph.hpp"
-#include "test-trade.hpp"
+// #include "test-trade.hpp"
 
 #define ERROR_OK            0
 #define ERROR_ARGS          -1
@@ -533,7 +533,7 @@ int main( int argc ,char *argv[] ) {
     //////////////////////////////////////////////////////////////////////////////
     //! TEST
 
-    test::test_trade();
+    test_trade();
     return 0;
 
     /*
